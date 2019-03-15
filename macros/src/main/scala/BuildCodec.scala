@@ -1,0 +1,260 @@
+package zd
+package proto
+
+import com.google.protobuf.CodedOutputStream
+import scala.reflect.macros.blackbox.Context
+
+trait BuildCodec extends Common {
+  val c: Context
+  import c.universe._
+  import definitions._
+
+  def sizeBasic(field: FieldInfo, sizeAcc: TermName): Option[List[c.Tree]] =
+    common.sizeFun(field).map(fun => List(
+      q"${sizeAcc} = ${sizeAcc} + ${CodedOutputStream.computeTagSize(field.num)} + ${fun}"
+    ))
+
+  def sizeOption(field: FieldInfo, sizeAcc: TermName): Option[List[c.Tree]] =
+    if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+      val tpe1 = field.tpe.typeArgs(0)
+      val field1 = field.copy(getter=q"${field.getter}.get", tpe=tpe1, num=field.num) 
+      common.sizeFun(field1).map(v => List(
+        q"if (${field.getter}.isDefined) ${sizeAcc} = ${sizeAcc} + ${CodedOutputStream.computeTagSize(field.num)} + ${v}"
+      )).orElse(Some(List(
+        q"""val ${field.prepareName}: ${OptionClass}[${PrepareType}] = if (${field.getter}.isDefined) {
+          val p: ${PrepareType} = implicitly[${messageCodecFor(tpe1)}].prepare(${field.getter}.get)
+          ${sizeAcc} = ${sizeAcc} + ${CodedOutputStream.computeTagSize(field.num)} + ${CodedOutputStreamType.typeSymbol.companion}.computeUInt32SizeNoTag(p.size) + p.size
+          Some(p)
+        } else {
+          None
+        }"""
+      )))
+    } else {
+      None
+    }
+
+  def sizeCollection(field: FieldInfo, sizeAcc: TermName): Option[List[c.Tree]] =
+    if (isIterable(field.tpe)) {
+      val value = TermName("value")
+      val tpe1 = field.tpe.baseType(ItetableType.typeSymbol).typeArgs(0)
+      val field1 = field.copy(getter=q"${value}", tpe=tpe1, num=field.num) 
+      common.sizeFun(field1).map{ v => 
+        List(
+          q"var ${field.sizeName}: Int = 0"
+        , q"${field.getter}.foreach((${value}: ${tpe1}) => ${field.sizeName} = ${field.sizeName} + ${v})"
+        , q"${sizeAcc} = ${sizeAcc} + ${CodedOutputStream.computeTagSize(field.num)} + ${CodedOutputStreamType.typeSymbol.companion}.computeUInt32SizeNoTag(${field.sizeName}) + ${field.sizeName}"
+        )
+      }.orElse{
+        val counter = TermName(c.freshName("n"))
+        Some(List(
+          q"val ${field.prepareName}: ${ArrayClass}[${PrepareType}] = new ${ArrayClass}[${PrepareType}](${field.getter}.size)"
+        , q"var ${counter} = 0"
+        , q"""${field.getter}.foreach((${value}: ${tpe1}) => {
+            val p: ${PrepareType} = implicitly[${messageCodecFor(tpe1)}].prepare(${value})
+            ${field.prepareName}(${counter}) = p
+            ${sizeAcc} = ${sizeAcc} + ${CodedOutputStream.computeTagSize(field.num)} + ${CodedOutputStreamType.typeSymbol.companion}.computeUInt32SizeNoTag(p.size) + p.size
+            ${counter} = ${counter} + 1
+          })"""
+        ))
+      }
+    } else {
+      None
+    }
+
+  def sizeMessage(field: FieldInfo, sizeAcc: TermName): List[c.Tree] =
+    List(
+      q"val ${field.prepareName} = implicitly[${messageCodecFor(field.tpe)}].prepare(${field.getter})"
+    , q"${sizeAcc} = ${sizeAcc} + ${CodedOutputStream.computeTagSize(field.num)} + ${CodedOutputStreamType.typeSymbol.companion}.computeUInt32SizeNoTag(${field.prepareName}.size) + ${field.prepareName}.size"
+    )
+
+  def size(params: List[FieldInfo], sizeAcc: TermName): List[c.Tree] = 
+    params.map{field =>
+      sizeBasic(field, sizeAcc)
+        .orElse(sizeOption(field, sizeAcc))
+        .orElse(sizeCollection(field, sizeAcc))
+        .getOrElse(sizeMessage(field, sizeAcc))
+    }.flatten
+
+  def writeBasic(field: FieldInfo, os: TermName): Option[List[c.Tree]] =
+    common.writeFun(field, os).map(fun => List(
+      q"${os}.writeUInt32NoTag(${common.tag(field)})"
+    , q"${fun}"
+    ))
+
+  def writeOption(field: FieldInfo, os: TermName): Option[List[c.Tree]] =
+    if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+      val tpe1 = field.tpe.typeArgs(0)
+      val field1 = field.copy(getter=q"${field.getter}.get", tpe=tpe1, num=field.num) 
+      common.writeFun(field1, os).map(v => List(
+        q"""if (${field.getter}.isDefined) {
+          ${os}.writeUInt32NoTag(${common.tag(field)})
+          ${v}
+        }"""
+      )).orElse(Some(List(
+        q"""if (${field.prepareName}.isDefined) {
+          val p = ${field.prepareName}.get
+          ${os}.writeUInt32NoTag(${common.tag(field)})
+          ${os}.writeUInt32NoTag(p.size)
+          p.write(${os})
+        }"""
+      )))
+    } else {
+      None
+    }
+
+  def writeCollection(field: FieldInfo, os: TermName): Option[List[c.Tree]] =
+    if (isIterable(field.tpe)) {
+      val value = TermName("value")
+      val tpe1 = field.tpe.baseType(ItetableType.typeSymbol).typeArgs(0)
+      val field1 = field.copy(getter=q"${value}", tpe=tpe1, num=field.num)
+      common.writeFun(field1, os).map(v => List(
+        q"${os}.writeUInt32NoTag(${common.tag(field)})"
+      , q"${os}.writeUInt32NoTag(${field.sizeName})"
+      , q"${field.getter}.foreach((${value}: ${tpe1}) => ${v})"
+      )).orElse{
+        val counter = TermName(c.freshName("n"))
+        Some(List(
+          q"var ${counter} = 0"
+        , q"""while(${counter} < ${field.prepareName}.length) {
+            val p = ${field.prepareName}(${counter})
+            ${os}.writeUInt32NoTag(${common.tag(field)})
+            ${os}.writeUInt32NoTag(p.size)
+            p.write(${os}) 
+            ${counter} = ${counter} + 1
+          }"""
+        ))
+      }
+    } else {
+      None
+    }
+
+  def writeMessage(field: FieldInfo, os: TermName): List[c.Tree] =
+    List(
+      q"${os}.writeUInt32NoTag(${common.tag(field)})"
+    , q"${os}.writeUInt32NoTag(${field.prepareName}.size)"
+    , q"${field.prepareName}.write(${os})"
+    )
+
+  def write(params: List[FieldInfo], os: TermName): List[c.Tree] = 
+    params.map(field =>
+      writeBasic(field, os)
+        .orElse(writeOption(field, os))
+        .orElse(writeCollection(field, os))
+        .getOrElse(writeMessage(field, os))
+    ).flatten
+
+  def prepare(params: List[FieldInfo], aType: c.Type, aName: TermName, sizeAcc: TermName, osName: TermName): List[c.Tree] = {
+    val PrepareName = TypeName(s"Prepare${aType.typeSymbol.name}")
+    List(
+      q"""class ${PrepareName}(${aName}: ${aType}) extends ${PrepareType} {
+        var ${sizeAcc}: ${IntClass} = 0
+        ..${size(params, sizeAcc)}
+        val size: ${IntClass} = ${sizeAcc}
+        def write(${osName}: ${CodedOutputStreamType}): ${UnitClass} = {
+          ..${write(params, osName)}
+        }
+      }"""
+    , q"def prepare(${aName}: ${aType}): ${PrepareType} = new ${PrepareName}(${aName})"
+    )
+  }
+
+  def read(params: List[FieldInfo], t: c.Type): c.Tree = {
+    val init: List[c.Tree] = 
+      if (isTrait(t)) {
+        List(q"var readRes: ${OptionClass}[${t}] = ${NoneModule}")
+      } else {
+        params.map(field =>
+          if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+            q"var ${field.readName}: ${field.tpe} = ${NoneModule}"
+          } else if (isIterable(field.tpe)) {
+            val tpe1 = field.tpe.baseType(ItetableType.typeSymbol).typeArgs(0)
+            q"var ${field.readName}: ${builder(tpe1, field.tpe)} = ${field.tpe.typeConstructor.typeSymbol.companion}.newBuilder"
+          } else {
+            q"var ${field.readName}: ${OptionClass}[${field.tpe}] = ${NoneModule}"
+          }
+        )
+      }
+
+    def readVarName(field: FieldInfo) = if (isTrait(t)) TermName("readRes") else field.readName
+
+    val result = {
+      def args = params.map(field => 
+        if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+          q"${field.name}=${readVarName(field)}"
+        } else if (isIterable(field.tpe)) {
+          q"${field.name}=${readVarName(field)}.result"
+        } else {
+          val err: String = s"missing required field `${field.name}: ${field.tpe}`"
+          q"${field.name}=${readVarName(field)}.getOrElse(throw new RuntimeException(${err}))"
+        }
+      )
+      if (isTrait(t)) {
+        val err: String = s"missing one of required field ${params.map(field => field.name + ": " + field.tpe).mkString("`", "` or `", "`")}"
+        q"readRes.getOrElse(throw new RuntimeException(${err}))"
+      } else if (t.typeSymbol.companion == NoSymbol) {
+        q"${t.typeSymbol.owner.asClass.selfType.member(TermName(t.typeSymbol.name.encodedName.toString))}"
+      } else {
+        q"${t.typeSymbol.companion}.apply(..${args})"  
+      }
+    }
+
+    def putLimit(is: TermName, read: c.Tree): List[c.Tree] = 
+      List(
+        q"val readSize: Int = ${is}.readRawVarint32"
+      , q"val limit = ${is}.pushLimit(readSize)"
+      , q"${read}"
+      , q"${is}.popLimit(limit)"
+      )
+
+    def tagMatch(is: TermName): List[c.Tree] = 
+      params.map{ field =>
+        val readContent: List[c.Tree] = common.readFun(field, is).map(readFun => List(
+          q"${readVarName(field)} = Some(${readFun})"
+        )).getOrElse{
+          val value = TermName("value")
+          if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+            val tpe1 = field.tpe.typeArgs(0)
+            val field1 = field.copy(getter=q"${value}", tpe=tpe1, num=field.num)
+            common.readFun(field1, is).map(readFun => List(
+              q"${readVarName(field)} = Some(${readFun})"
+            )).getOrElse(
+              putLimit(is, q"${readVarName(field)} = Some(implicitly[${messageCodecFor(tpe1)}].read(${is}))")
+            )
+          } else if (isIterable(field.tpe)) {
+            val tpe1 = field.tpe.baseType(ItetableType.typeSymbol).typeArgs(0)
+            val field1: FieldInfo = field.copy(getter=q"${value}", tpe=tpe1, num=field.num)
+            val readMessage: c.Tree = common.readFun(field1, is).map(readFun => 
+              q"""while (${is}.getBytesUntilLimit > 0) {
+                ${field.readName} += ${readFun}
+              }"""
+            ).getOrElse(
+              q"${field.readName} += implicitly[${messageCodecFor(tpe1)}].read(${is})"
+            )
+            putLimit(is, readMessage)
+          } else {
+            putLimit(is, q"${readVarName(field)} = Some(implicitly[${messageCodecFor(field.tpe)}].read(${is}))")
+          }
+        }
+        cq"${common.tag(field)} => ..${readContent}"
+      }
+
+    val isName = TermName("is")
+
+    if (params.size > 0) {
+      q"""def read(${isName}: ${CodedInputStreamType}): ${t} = {
+        var done = false
+        ..${init}
+        while(done == false) {
+          ${isName}.readTag match {
+            case ..${tagMatch(isName)}
+            case 0 => done = true
+            case skip => ${isName}.skipField(skip)
+          }
+        }
+        ${result}
+      }"""
+    } else {
+      q"def read(${isName}: ${CodedInputStreamType}): ${t} = ${result}"
+    }
+  }
+}

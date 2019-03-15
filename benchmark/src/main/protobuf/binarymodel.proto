@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message Data {
+  bytes key = 1;
+  bytes value = 2;
+  int64 modified = 3;
+  repeated Vc vc = 4;
+}
+
+message Vc {
+  string a = 1;
+  int64 b = 2;
+}
