@@ -60,7 +60,7 @@ libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % 1.0
 
 # Usage
 
-```
+```scala
 import zd.proto.api.{encode, decode}
 import zd.proto.macrosapi.messageCodecIdx
 
@@ -70,8 +70,11 @@ final case class Car(id: String, color: Int, equipment: List[Equipment])
 implicit val equipmentCodec = messageCodecIdx[Equipment]
 implicit val CarCodec = messageCodecIdx[Car]
 
-val car = Car(id="1", color=16416882, equipment=List(Equipment(id="1", type="123"), Equipment(id="2", type="456")))
+val equipment = List(Equipment(id="1", type="123"), Equipment(id="2", type="456"))
+val car = Car(id="1", color=16416882, equipment=equipment)
+//encode
 val bytes: Array[byte] = encode(car)
+//decode
 val car2: Car = decode[Car](bytes)
 ```
 
