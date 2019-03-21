@@ -1,6 +1,6 @@
 # protobuf-scala-macros
 
-Lightweight and fast serialization library based on Protocol Buffers
+Lightweight and fast serialization library based on Protocol Buffers without .proto files
 
 # Motivation
 
@@ -61,20 +61,31 @@ libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % 1.0
 
 # Usage
 
+You can pick one of the way how to difine field number:
+- with annotation `@zd.proto.api.N` and use `messageCodecAuto`
+- explicitly specify nums `messageCodecNums('field1->1, 'field2->2)`
+- field numbers by index `messageCodecIdx`
+
 ```scala
-import zd.proto.api.{encode, decode}
-import zd.proto.macrosapi.messageCodecIdx
+import scala.collection.immutable.TreeMap
+import zd.proto.api.{encode, decode, N}
+import zd.proto.macrosapi.{messageCodecIdx, messageCodecNums, messageCodecAuto}
 
-final case class Equipment(id: String, type: String)
-final case class Car(id: String, color: Int, equipment: List[Equipment])
+final case class VectorClock(versions: TreeMap[String, Long])
+final case class Equipment(@N(1) id: String, @N(2) tpe: String)
+final case class Car(id: String, color: Int, equipment: List[Equipment], vc: VectorClock)
 
-implicit val equipmentCodec = messageCodecIdx[Equipment]
-implicit val CarCodec = messageCodecIdx[Car]
+implicit val tuple2Codec = messageCodecIdx[Tuple2[String, Long]] //codec for TreeMap[String, Long]
 
-val equipment = List(Equipment(id="1", type="123"), Equipment(id="2", type="456"))
-val car = Car(id="1", color=16416882, equipment=equipment)
+implicit val vectorClockCodec = messageCodecIdx[VectorClock]
+implicit val equipmentCodec = messageCodecAuto[Equipment]
+implicit val carCodec = messageCodecNums[Car]('id->1, 'color->4, 'equipment->2, 'vc->3)
+
+val vc = VectorClock(versions=TreeMap.empty)
+val equipment = List(Equipment(id="1", tpe="123"), Equipment(id="2", tpe="456"))
+val car = Car(id="1", color=16416882, equipment=equipment, vc=vc)
 //encode
-val bytes: Array[byte] = encode(car)
+val bytes: Array[Byte] = encode(car)
 //decode
 val car2: Car = decode[Car](bytes)
 ```
