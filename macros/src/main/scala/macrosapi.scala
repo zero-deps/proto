@@ -81,7 +81,6 @@ class Impl(val c: Context) extends BuildCodec {
       member.asTerm
     }.toList
     val res = messageCodec(aType=aType, nums=nums, cParams=cParams, constructor=Some(constructor))
-    println(showCode(res))
     res
   }
 
