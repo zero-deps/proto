@@ -158,7 +158,17 @@ trait BuildCodec extends Common {
     )
   }
 
-  def read(params: List[FieldInfo], t: c.Type): c.Tree = {
+  def initArg(fieldTpe: c.Type, fieldName: TermName, fieldReadName: TermName): c.Tree =
+    if (fieldTpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+      q"${fieldReadName}"
+    } else if (isIterable(fieldTpe)) {
+      q"${fieldReadName}.result"
+    } else {
+      val err: String = s"missing required field `${fieldName}: ${fieldTpe}`"
+      q"${fieldReadName}.getOrElse(throw new RuntimeException(${err}))"
+    }
+
+  def read(params: List[FieldInfo], t: c.Type, buildResult: Option[c.Tree]=None): c.Tree = {
     val init: List[c.Tree] = 
       if (isTrait(t)) {
         List(q"var readRes: ${OptionClass}[${t}] = ${NoneModule}")
@@ -175,26 +185,19 @@ trait BuildCodec extends Common {
         )
       }
 
-    def readVarName(field: FieldInfo) = if (isTrait(t)) TermName("readRes") else field.readName
-
     val result = {
-      def args = params.map(field => 
-        if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
-          q"${field.name}=${readVarName(field)}"
-        } else if (isIterable(field.tpe)) {
-          q"${field.name}=${readVarName(field)}.result"
-        } else {
-          val err: String = s"missing required field `${field.name}: ${field.tpe}`"
-          q"${field.name}=${readVarName(field)}.getOrElse(throw new RuntimeException(${err}))"
-        }
-      )
-      if (isTrait(t)) {
-        val err: String = s"missing one of required field ${params.map(field => field.name + ": " + field.tpe).mkString("`", "` or `", "`")}"
-        q"readRes.getOrElse(throw new RuntimeException(${err}))"
-      } else if (t.typeSymbol.companion == NoSymbol) {
-        q"${t.typeSymbol.owner.asClass.selfType.member(TermName(t.typeSymbol.name.encodedName.toString))}"
-      } else {
-        q"${t.typeSymbol.companion}.apply(..${args})"  
+      buildResult match {
+        case Some(fun1) => q"${fun1}"
+        case None =>
+          if (isTrait(t)) {
+            val err: String = s"missing one of required field ${params.map(field => field.name + ": " + field.tpe).mkString("`", "` or `", "`")}"
+            q"readRes.getOrElse(throw new RuntimeException(${err}))"
+          } else if (t.typeSymbol.companion == NoSymbol) {
+            q"${t.typeSymbol.owner.asClass.selfType.member(TermName(t.typeSymbol.name.encodedName.toString))}"
+          } else {
+            val args = params.map(field => q"${field.name} = ${initArg(field.tpe, field.name, field.readName)}")
+            q"${t.typeSymbol.companion}.apply(..${args})"  
+          }
       }
     }
 
@@ -209,16 +212,16 @@ trait BuildCodec extends Common {
     def tagMatch(is: TermName): List[c.Tree] = 
       params.map{ field =>
         val readContent: List[c.Tree] = common.readFun(field, is).map(readFun => List(
-          q"${readVarName(field)} = Some(${readFun})"
+          q"${field.readName} = Some(${readFun})"
         )).getOrElse{
           val value = TermName("value")
           if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
             val tpe1 = field.tpe.typeArgs(0)
             val field1 = field.copy(getter=q"${value}", tpe=tpe1, num=field.num)
             common.readFun(field1, is).map(readFun => List(
-              q"${readVarName(field)} = Some(${readFun})"
+              q"${field.readName} = Some(${readFun})"
             )).getOrElse(
-              putLimit(is, q"${readVarName(field)} = Some(implicitly[${messageCodecFor(tpe1)}].read(${is}))")
+              putLimit(is, q"${field.readName} = Some(implicitly[${messageCodecFor(tpe1)}].read(${is}))")
             )
           } else if (isIterable(field.tpe)) {
             val tpe1 = field.tpe.baseType(ItetableType.typeSymbol).typeArgs(0)
@@ -232,7 +235,7 @@ trait BuildCodec extends Common {
             )
             putLimit(is, readMessage)
           } else {
-            putLimit(is, q"${readVarName(field)} = Some(implicitly[${messageCodecFor(field.tpe)}].read(${is}))")
+            putLimit(is, q"${field.readName} = Some(implicitly[${messageCodecFor(field.tpe)}].read(${is}))")
           }
         }
         cq"${common.tag(field)} => ..${readContent}"

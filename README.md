@@ -55,31 +55,31 @@ to run benchmark:
 Add dependency:
 ```
 resolvers += Resolver.jcenterRepo
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % 1.0 % Compile
-libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % 1.0
+libraryDependencies += "io.github.zero-deps" %% "proto-macros" % 1.1.1 % Compile
+libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % 1.1.1
 ```
 
 # Usage
 
 You can pick one of the way how to difine field number:
-- with annotation `@zd.proto.api.N` and use `messageCodecAuto`
-- explicitly specify nums `messageCodecNums('field1->1, 'field2->2)`
-- field numbers by index `messageCodecIdx`
+- with annotation `@zd.proto.api.N` and use `caseCodecAuto`
+- explicitly specify nums `caseCodecNums('field1->1, 'field2->2)`
+- field numbers by index `caseCodecIdx`
 
 ```scala
 import scala.collection.immutable.TreeMap
 import zd.proto.api.{encode, decode, N}
-import zd.proto.macrosapi.{messageCodecIdx, messageCodecNums, messageCodecAuto}
+import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto}
 
 final case class VectorClock(versions: TreeMap[String, Long])
 final case class Equipment(@N(1) id: String, @N(2) tpe: String)
 final case class Car(id: String, color: Int, equipment: List[Equipment], vc: VectorClock)
 
-implicit val tuple2Codec = messageCodecIdx[Tuple2[String, Long]] //codec for TreeMap[String, Long]
+implicit val tuple2Codec = caseCodecIdx[Tuple2[String, Long]] //codec for TreeMap[String, Long]
 
-implicit val vectorClockCodec = messageCodecIdx[VectorClock]
-implicit val equipmentCodec = messageCodecAuto[Equipment]
-implicit val carCodec = messageCodecNums[Car]('id->1, 'color->4, 'equipment->2, 'vc->3)
+implicit val vectorClockCodec = caseCodecIdx[VectorClock]
+implicit val equipmentCodec = caseCodecAuto[Equipment]
+implicit val carCodec = caseCodecNums[Car]('id->1, 'color->4, 'equipment->2, 'vc->3)
 
 val vc = VectorClock(versions=TreeMap.empty)
 val equipment = List(Equipment(id="1", tpe="123"), Equipment(id="2", tpe="456"))

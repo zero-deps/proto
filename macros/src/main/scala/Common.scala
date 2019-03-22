@@ -24,7 +24,7 @@ trait Common {
   
   def isIterable(t: c.Type): Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ItetableType.typeConstructor)
   def isTrait(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
-  def isCaseClass(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass && t.typeSymbol.asClass.isFinal
+  def isCaseClass(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass
   def constructorParams(t: c.Type): List[TermSymbol] = t.typeSymbol.asClass.primaryConstructor.asMethod.paramLists.flatten.map(_.asTerm)
   def typeArgsToReplace(t: c.Type): List[(c.Type, c.Type)] = t.typeSymbol.asClass.primaryConstructor.owner.asClass.typeParams.map(_.asType.toType).zip(t.typeArgs)
   def knownDirectSubclasses(t: c.Type): List[c.Type] = t.typeSymbol.asClass.knownDirectSubclasses.toList.map(_.asType.toType).filter(isCaseClass)

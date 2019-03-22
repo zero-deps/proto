@@ -12,11 +12,14 @@ import scala.reflect.macros.blackbox.Context
 
 object macrosapi {
 
-  def messageCodecAuto[A]: MessageCodec[A] = macro Impl.messageCodecAuto[A]
-  def messageCodecNums[A](): MessageCodec[A] = macro Impl.messageCodecNoArgs[A]
-  def messageCodecNums[A](nums: (String, Int)*): MessageCodec[A] = macro Impl.messageCodecString[A]
-  def messageCodecNums[A](nums: (Symbol, Int)*): MessageCodec[A] = macro Impl.messageCodecSymbol[A]
-  def messageCodecIdx[A]: MessageCodec[A] = macro Impl.messageCodecIdx[A]
+  def caseCodecAuto[A]: MessageCodec[A] = macro Impl.caseCodecAuto[A]
+  def caseCodecNums[A](): MessageCodec[A] = macro Impl.caseCodecNoArgs[A]
+  def caseCodecNums[A](nums: (String, Int)*): MessageCodec[A] = macro Impl.caseCodecString[A]
+  def caseCodecNums[A](nums: (Symbol, Int)*): MessageCodec[A] = macro Impl.caseCodecSymbol[A]
+  def caseCodecIdx[A]: MessageCodec[A] = macro Impl.caseCodecIdx[A]
+
+  def classCodecNums[A](nums: (String, Int)*)(constructor: Any): MessageCodec[A] = macro Impl.classCodecString[A]
+  def classCodecNums[A](nums: (Symbol, Int)*)(constructor: Any): MessageCodec[A] = macro Impl.classCodecSymbol[A]
 
   def sealedTraitCodecAuto[A]: MessageCodec[A] = macro Impl.sealedTraitCodecAuto[A]
   def sealedTraitCodecNums[A](nums: (String, Int)*): MessageCodec[A] = macro Impl.sealedTraitCodecString[A]
@@ -31,7 +34,7 @@ class Impl(val c: Context) extends BuildCodec {
     if (isCaseClass(tpe)) tpe else error(s"`${tpe}` is not a final case class")
   }
 
-  def messageCodecAuto[A:c.WeakTypeTag]: c.Tree = {
+  def caseCodecAuto[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getCaseClassType[A]
     val nums: List[(String, Int)] = constructorParams(aType).map(p =>
       p.annotations match {
@@ -44,27 +47,57 @@ class Impl(val c: Context) extends BuildCodec {
         case _ => error(s"multiple ${NType} annotations applied for `${p.name}: ${p.info}`")
       }
     )
-    messageCodec(nums)
+    messageCodec(aType=aType, nums=nums, cParams=constructorParams(aType))
   }
-  def messageCodecNoArgs[A:c.WeakTypeTag](): c.Tree = messageCodec(Seq.empty)
-  def messageCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*): c.Tree = messageCodec(nums.map(evalTyped))
-  def messageCodecSymbol[A:c.WeakTypeTag](nums: c.Expr[(scala.Symbol, Int)]*): c.Tree = messageCodec(nums.map(evalTyped).map(n => n._1.name -> n._2))
-  def messageCodecIdx[A:c.WeakTypeTag]: c.Tree = {
-    messageCodec(constructorParams(getCaseClassType[A]).zipWithIndex.map{case (p, idx) => (p.name.decodedName.toString, idx + 1)})
+  def caseCodecNoArgs[A:c.WeakTypeTag](): c.Tree = {
+    val aType: c.Type = getCaseClassType[A]
+    messageCodec(aType=aType, nums=Seq.empty, cParams=constructorParams(aType))
   }
-
-  def messageCodec[A:c.WeakTypeTag](nums: Seq[(String, Int)]): c.Tree = {
+  def caseCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*): c.Tree = {
+    val aType: c.Type = getCaseClassType[A]
+    messageCodec(aType=aType, nums=nums.map(evalTyped), cParams=constructorParams(aType))
+  }
+  def caseCodecSymbol[A:c.WeakTypeTag](nums: c.Expr[(scala.Symbol, Int)]*): c.Tree = {
+    val aType: c.Type = getCaseClassType[A]
+    messageCodec(aType=aType, nums=nums.map(evalTyped).map(n => n._1.name -> n._2), cParams=constructorParams(aType))
+  }
+  def caseCodecIdx[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getCaseClassType[A]
     val cParams: List[TermSymbol] = constructorParams(aType)
+    val nums = cParams.zipWithIndex.map{case (p, idx) => (p.name.decodedName.toString, idx + 1)}
+    messageCodec(aType=aType, nums=nums, cParams=cParams)
+  }
+
+  def classCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*)(constructor: Impl.this.c.Expr[Any]): c.Tree =
+    classCodec(aType=c.weakTypeOf[A], nums=nums.map(evalTyped), constructor=constructor.tree)
+  def classCodecSymbol[A:c.WeakTypeTag](nums: c.Expr[(scala.Symbol, Int)]*)(constructor: Impl.this.c.Expr[Any]): c.Tree =
+    classCodec(c.weakTypeOf[A], nums.map(evalTyped).map(n => n._1.name -> n._2), constructor=constructor.tree)
+
+  def classCodec(aType: c.Type, nums: Seq[(String, Int)], constructor: c.Tree): c.Tree = {
+    val cParams: List[TermSymbol] = nums.map{ case (name, num) =>
+      val member = aType.member(TermName(name))
+      if (member == NoSymbol) error(s"`${aType}` has no field `${name}`")
+      if (!member.isTerm) error(s"`${aType}` field `${name}` is not a term")
+      member.asTerm
+    }.toList
+    val res = messageCodec(aType=aType, nums=nums, cParams=cParams, constructor=Some(constructor))
+    println(showCode(res))
+    res
+  }
+
+  def messageCodec(aType: c.Type, nums: Seq[(String, Int)], cParams: List[TermSymbol], constructor: Option[c.Tree]=None): c.Tree = {
     if (nums.exists(_._2 < 1)) error(s"nums ${nums} should be > 0")
     if (nums.size != cParams.size) error(s"nums size ${nums} not equal to `${aType}` constructor params size ${cParams.size}")
     if (nums.groupBy(_._2).exists(_._2.size != 1)) error(s"nums ${nums} should be unique")
     val aName = TermName("a")
     val osName = TermName("os")
     val sizeAcc = TermName("sizeAcc")
-    val typeArgs: List[(c.Type, c.Type)] = typeArgsToReplace(aType)
     val params: List[FieldInfo] = cParams.map{ p =>
-      val tpe: c.Type = p.info
+      val typeArgs: List[(c.Type, c.Type)] = typeArgsToReplace(aType)
+      val tpe: c.Type = p.info match {
+        case t@NullaryMethodType(_) => t.resultType
+        case t => t
+      }
       val decodedName: String = p.name.decodedName.toString
       val encodedName: String = p.name.encodedName.toString
       FieldInfo(
@@ -73,13 +106,19 @@ class Impl(val c: Context) extends BuildCodec {
       , prepareName=TermName(s"${encodedName}Prepare")
       , readName=TermName(s"${encodedName}Read")
       , getter=q"${aName}.${p.name}"
-      , tpe=typeArgs.collectFirst{case (fromT, toT) if fromT =:= tpe => toT}.getOrElse(tpe)
+      , tpe=tpe.map(tt => typeArgs.collectFirst{case (fromT, toT) if fromT =:= tt => toT}.getOrElse(tt))
       , num=nums.collectFirst{case (name, num) if name == decodedName => num}.getOrElse(error(s"missing num for `${decodedName}: ${tpe}`"))
       )
     }
+    val constructorF = constructor.collect{
+      case fun1: Function =>
+        val initArgs = params.map(field => q"${initArg(field.tpe, field.name, field.readName)}")
+        q"${c.untypecheck(fun1.duplicate)}(..${initArgs})"
+      case fun1 => error(s"`${showRaw(fun1)}` is not a function")
+    }
     val res: c.Tree = q"""new ${messageCodecFor(aType)} {      
       ..${prepare(params, aType, aName, sizeAcc, osName)}
-      ${read(params, aType)}
+      ${read(params, aType, constructorF)}
     }"""
     res
   }
@@ -133,7 +172,7 @@ class Impl(val c: Context) extends BuildCodec {
           name=TermName(s"field${num}")
         , sizeName=TermName(s"field${num}Size")
         , prepareName=TermName(s"field${num}Prepare")
-        , readName=TermName(s"field${num}Read")
+        , readName=TermName(s"readRes")
         , getter=q" ${aName}"
         , tpe=tpe
         , num=num
