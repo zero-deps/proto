@@ -1,6 +1,6 @@
 # protobuf-scala-macros
 
-Lightweight and fast serialization library based on Protocol Buffers without .proto files
+Lightweight, high performance, fast serialization library for scala based on Protocol Buffers (protobuf) without proto files
 
 # Motivation
 
@@ -55,8 +55,8 @@ to run benchmark:
 Add dependency:
 ```
 resolvers += Resolver.jcenterRepo
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % 1.1.2 % Compile
-libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % 1.1.2
+libraryDependencies += "io.github.zero-deps" %% "proto-macros" % 1.1.3 % Compile
+libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % 1.1.3
 ```
 
 # Usage

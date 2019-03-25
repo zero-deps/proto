@@ -92,20 +92,25 @@ class Impl(val c: Context) extends BuildCodec {
     val osName = TermName("os")
     val sizeAcc = TermName("sizeAcc")
     val params: List[FieldInfo] = cParams.map{ p =>
-      val typeArgs: List[(c.Type, c.Type)] = typeArgsToReplace(aType)
       val tpe: c.Type = p.info match {
         case t@NullaryMethodType(_) => t.resultType
         case t => t
       }
       val decodedName: String = p.name.decodedName.toString
       val encodedName: String = p.name.encodedName.toString
+      val typeArgs: List[(c.Type, c.Type)] = typeArgsToReplace(aType)
+      val withoutTypeArgs: c.Type = if (typeArgs.isEmpty) {
+        tpe
+      } else {
+        tpe.map(tt => typeArgs.collectFirst{case (fromT, toT) if fromT =:= tt => toT}.getOrElse(tt))
+      }
       FieldInfo(
         name=p.name
       , sizeName=TermName(s"${encodedName}Size")
       , prepareName=TermName(s"${encodedName}Prepare")
       , readName=TermName(s"${encodedName}Read")
       , getter=q"${aName}.${p.name}"
-      , tpe=tpe.map(tt => typeArgs.collectFirst{case (fromT, toT) if fromT =:= tt => toT}.getOrElse(tt))
+      , tpe=withoutTypeArgs
       , num=nums.collectFirst{case (name, num) if name == decodedName => num}.getOrElse(error(s"missing num for `${decodedName}: ${tpe}`"))
       )
     }
