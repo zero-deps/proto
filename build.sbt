@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.zero-deps"
-ThisBuild / version := "1.1.3"
+ThisBuild / version := "1.1.4"
 ThisBuild / scalaVersion := "2.12.8"
 ThisBuild / scalacOptions ++= Seq(
   "-Ywarn-extra-implicit",
