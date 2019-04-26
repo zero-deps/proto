@@ -37,7 +37,7 @@ class Impl(val c: Context) extends BuildCodec {
   def caseCodecAuto[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getCaseClassType[A]
     val nums: List[(String, Int)] = constructorParams(aType).map(p =>
-      p.annotations match {
+      p.annotations.filter(_.tree.tpe =:= NType) match {
         case List(a) =>
           a.tree.children.tail match {
             case List(Literal(Constant(n: Int))) => p.name.decodedName.toString -> n
@@ -164,7 +164,7 @@ class Impl(val c: Context) extends BuildCodec {
     val subclasses = knownDirectSubclasses(aType)
     if (subclasses.size <= 0) error(s"required at least 1 subclass for `${aType}`")
     if (nums.size != subclasses.size) error(s"`${aType}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
-    if (nums.exists(_._2 < 1)) error(s"nums ${nums}) should be > 0")
+    if (nums.exists(_._2 < 1)) error(s"nums ${nums} should be > 0")
     if (nums.groupBy(_._2).exists(_._2.size != 1)) error(s"nums ${nums} should be unique")
     val aName = TermName("a")
     val osName = TermName("os")
