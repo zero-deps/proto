@@ -55,8 +55,8 @@ to run benchmark:
 Add dependency:
 ```
 resolvers += Resolver.jcenterRepo
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % 1.1.3 % Compile
-libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % 1.1.3
+libraryDependencies += "io.github.zero-deps" %% "proto-macros" % 1.1.4 % Compile
+libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % 1.1.4
 ```
 
 # Usage
