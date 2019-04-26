@@ -272,7 +272,8 @@ class testing extends FreeSpec {
       , setBasic = setBasic
       , setMessage = setMessage
       )
-      val decoded = decode(encode(data))
+      val encoded = encode(data)
+      val decoded = decode(encoded)
       assert(decoded.int === data.int)
       assert(decoded.long === data.long)
       assert(decoded.bool === data.bool)

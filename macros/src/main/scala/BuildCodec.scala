@@ -38,12 +38,24 @@ trait BuildCodec extends Common {
       val value = TermName("value")
       val tpe1 = field.tpe.baseType(ItetableType.typeSymbol).typeArgs(0)
       val field1 = field.copy(getter=q"${value}", tpe=tpe1, num=field.num) 
-      common.sizeFun(field1).map{ v => 
-        List(
-          q"var ${field.sizeName}: Int = 0"
-        , q"${field.getter}.foreach((${value}: ${tpe1}) => ${field.sizeName} = ${field.sizeName} + ${v})"
-        , q"${sizeAcc} = ${sizeAcc} + ${CodedOutputStream.computeTagSize(field.num)} + ${CodedOutputStreamType.typeSymbol.companion}.computeUInt32SizeNoTag(${field.sizeName}) + ${field.sizeName}"
-        )
+      common.sizeFun(field1).map{ v =>
+        if ( field1.tpe =:= StringClass.selfType
+          || field1.tpe =:= ArrayByteType
+           ) {
+          val tagSizeName = TermName(s"${field.sizeName}TagSize")
+          List(
+            q"val ${tagSizeName} = ${CodedOutputStream.computeTagSize(field.num)}"
+          , q"var ${field.sizeName}: Int = 0"
+          , q"${field.getter}.foreach((${value}: ${tpe1}) => ${field.sizeName} = ${field.sizeName} + ${v} + ${tagSizeName})"
+          , q"${sizeAcc} = ${sizeAcc} + ${field.sizeName}"
+          )
+        } else {
+          List(
+            q"var ${field.sizeName}: Int = 0"
+          , q"${field.getter}.foreach((${value}: ${tpe1}) => ${field.sizeName} = ${field.sizeName} + ${v})"
+          , q"${sizeAcc} = ${sizeAcc} + ${CodedOutputStream.computeTagSize(field.num)} + ${CodedOutputStreamType.typeSymbol.companion}.computeUInt32SizeNoTag(${field.sizeName}) + ${field.sizeName}"
+          )
+        }
       }.orElse{
         val counter = TermName(c.freshName("n"))
         Some(List(
@@ -107,11 +119,24 @@ trait BuildCodec extends Common {
       val value = TermName("value")
       val tpe1 = field.tpe.baseType(ItetableType.typeSymbol).typeArgs(0)
       val field1 = field.copy(getter=q"${value}", tpe=tpe1, num=field.num)
-      common.writeFun(field1, os).map(v => List(
-        q"${os}.writeUInt32NoTag(${common.tag(field)})"
-      , q"${os}.writeUInt32NoTag(${field.sizeName})"
-      , q"${field.getter}.foreach((${value}: ${tpe1}) => ${v})"
-      )).orElse{
+      common.writeFun(field1, os).map(v =>
+        if ( field1.tpe =:= StringClass.selfType
+          || field1.tpe =:= ArrayByteType
+           ) {
+          List(
+            q"""${field.getter}.foreach((${value}: ${tpe1}) => {
+              ${os}.writeUInt32NoTag(${common.tag(field)})
+              ${v}
+            })"""
+          )
+        } else {
+          List(
+            q"${os}.writeUInt32NoTag(${common.tag(field)})"
+          , q"${os}.writeUInt32NoTag(${field.sizeName})"
+          , q"${field.getter}.foreach((${value}: ${tpe1}) => ${v})"
+          )
+        }
+      ).orElse{
         val counter = TermName(c.freshName("n"))
         Some(List(
           q"var ${counter} = 0"
@@ -226,14 +251,21 @@ trait BuildCodec extends Common {
           } else if (isIterable(field.tpe)) {
             val tpe1 = field.tpe.baseType(ItetableType.typeSymbol).typeArgs(0)
             val field1: FieldInfo = field.copy(getter=q"${value}", tpe=tpe1, num=field.num)
-            val readMessage: c.Tree = common.readFun(field1, is).map(readFun => 
-              q"""while (${is}.getBytesUntilLimit > 0) {
-                ${field.readName} += ${readFun}
-              }"""
-            ).getOrElse(
-              q"${field.readName} += implicitly[${messageCodecFor(tpe1)}].read(${is})"
-            )
-            putLimit(is, readMessage)
+            common.readFun(field1, is).map(readFun =>
+              if ( field1.tpe =:= StringClass.selfType
+                || field1.tpe =:= ArrayByteType
+                 ) {
+                q"${field.readName} += ${readFun}" :: Nil
+              } else {
+                val readMessage: c.Tree = q"""while (${is}.getBytesUntilLimit > 0) {
+                  ${field.readName} += ${readFun}
+                }"""
+                putLimit(is, readMessage)
+              }
+            ).getOrElse{
+              val readMessage: c.Tree = q"${field.readName} += implicitly[${messageCodecFor(tpe1)}].read(${is})"
+              putLimit(is, readMessage)
+            }
           } else {
             putLimit(is, q"${field.readName} = Some(implicitly[${messageCodecFor(field.tpe)}].read(${is}))")
           }
