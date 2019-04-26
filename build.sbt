@@ -30,6 +30,12 @@ lazy val runtime = (project in file("runtime")).settings(
   libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.6.1",
 )
 
+lazy val js = project.in(file("js")).settings(
+  name := "proto-js",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.7" % Test,
+  libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+).dependsOn(runtime)
+
 lazy val benchmark = (project in file("benchmark")).settings(
   libraryDependencies += "com.twitter" %% "chill" % "0.9.3",
   libraryDependencies += "org.scodec" %% "core" % "1.10.4",
