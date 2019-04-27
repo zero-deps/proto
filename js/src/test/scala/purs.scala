@@ -5,10 +5,40 @@ import org.scalatest.{FreeSpec, Matchers}
 import zd.proto.api.N
 
 class PurescriptSpec extends FreeSpec with Matchers {
-  "data type" - {
+  "purs has" - {
     val res = Purescript.generate[Push]
-    res(0) should be ("data Push = SiteOpts SiteOpts")
-    ()
+    "data type" in {
+      res.dataType should be ("data Push = SiteOpts SiteOpts")
+      ()
+    }
+    "types" in {
+      res.types should be (List(
+        "type SiteOpt = { id :: String, label :: String }",
+        "type SiteOpts = { xs :: Array SiteOpt }",
+      ))
+      ()
+    }
+    "decoders" in {
+      assert(res.decoders(0).contains("decodePush"))
+      assert(res.decoders(0).contains("1 -> do"))
+      assert(res.decoders(0).contains("decodeSiteOpts reader msglen"))
+      assert(res.decoders(0).contains("SiteOpts x"))
+
+      assert(res.decoders(1).contains("decodeSiteOpt"))
+      assert(res.decoders(1).contains("""{ id: "", label: "" }"""))
+      assert(res.decoders(1).contains("2 -> do"))
+      assert(res.decoders(1).contains("string reader"))
+      assert(res.decoders(1).contains("acc { id = x }"))
+      assert(res.decoders(1).contains("acc { label = x }"))
+
+      assert(res.decoders(2).contains("decodeSiteOpts"))
+      assert(res.decoders(2).contains("{ xs: [] }"))
+      assert(res.decoders(2).contains("uint32 reader >>= decodeSiteOpt reader"))
+      assert(res.decoders(2).contains("acc { xs = snoc acc.xs x }"))
+    }
+    "print" in {
+      println(res.format)
+    }
   }
 }
 
