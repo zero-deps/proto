@@ -20,17 +20,17 @@ ThisBuild / scalacOptions ++= Seq(
 )
 ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
-lazy val root = (project in file(".")).settings(
+lazy val root = project.in(file(".")).settings(
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test",
   skip in publish := true,
-).dependsOn(macros).aggregate(macros, runtime)
+).dependsOn(macros).aggregate(macros, runtime, js)
 
-lazy val macros = (project in file("macros")).settings(
+lazy val macros = project.in(file("macros")).settings(
   name := "proto-macros",
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
 ).dependsOn(runtime)
 
-lazy val runtime = (project in file("runtime")).settings(
+lazy val runtime = project.in(file("runtime")).settings(
   name := "proto-runtime",
   libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.6.1",
 )
@@ -41,7 +41,7 @@ lazy val js = project.in(file("js")).settings(
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
 ).dependsOn(runtime)
 
-lazy val benchmark = (project in file("benchmark")).settings(
+lazy val benchmark = project.in(file("benchmark")).settings(
   libraryDependencies += "com.twitter" %% "chill" % "0.9.3",
   libraryDependencies += "org.scodec" %% "core" % "1.10.4",
   libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.9.7",
