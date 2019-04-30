@@ -1,5 +1,10 @@
 ThisBuild / organization := "io.github.zero-deps"
-ThisBuild / version := "1.1.4"
+ThisBuild / version := {
+  val repo = org.eclipse.jgit.api.Git.open(file("."))
+  val desc = repo.describe.setTags(true).call.stripPrefix("v")
+  val dirty = if (repo.status.call.isClean) "" else "-dirty"
+  s"${desc}${dirty}"
+}
 ThisBuild / scalaVersion := "2.12.8"
 ThisBuild / scalacOptions ++= Seq(
   "-Ywarn-extra-implicit",
