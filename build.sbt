@@ -21,7 +21,7 @@ ThisBuild / scalacOptions ++= Seq(
 ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
 lazy val root = project.in(file(".")).settings(
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.7" % Test,
   skip in publish := true,
 ).dependsOn(macros).aggregate(macros, runtime, js)
 
@@ -32,7 +32,7 @@ lazy val macros = project.in(file("macros")).settings(
 
 lazy val runtime = project.in(file("runtime")).settings(
   name := "proto-runtime",
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.6.1",
+  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.7.1",
 )
 
 lazy val js = project.in(file("js")).settings(
