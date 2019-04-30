@@ -10,7 +10,7 @@ final case class Res(prelude: String, dataType: String, types: List[String], dec
 }
 
 object Purescript {
-  def generate[A](implicit ttag: TypeTag[A]): Res = {
+  def generate[A](moduleName: String)(implicit ttag: TypeTag[A]): Res = {
     val datas = mutable.ListBuffer.empty[String]
     val types = mutable.ListBuffer.empty[String]
     val decoders = mutable.ListBuffer.empty[String]
@@ -143,19 +143,20 @@ object Purescript {
     }
     
     Res(
-      prelude,
+      prelude(moduleName),
       dataType = s"data ${traitName} = ${datas.mkString(" | ")}",
       types.toList,
       decoders.toList,
     )
   }
 
-  def prelude: String = s"""module Codecs where
+  def prelude(moduleName: String): String = s"""module ${moduleName} where
 
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Effect (Effect)
-import Prelude"""
+import Prelude (bind, discard, pure, ($$), (+), (<), (>>=))
+import Proto (Reader, createReader, pos, skipType, string, uint32)"""
 }

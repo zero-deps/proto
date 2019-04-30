@@ -6,7 +6,10 @@ import zd.proto.api.N
 
 class PurescriptSpec extends FreeSpec with Matchers {
   "purs has" - {
-    val res = Purescript.generate[Push]
+    val res = Purescript.generate[Push](moduleName="PushModule")
+    "module name" in {
+      res.prelude.startsWith("module PushModule")
+    }
     "data type" in {
       res.dataType should be ("data Push = SiteOpts SiteOpts")
       ()
