@@ -6,7 +6,7 @@ import zd.proto.api.N
 
 class PurescriptSpec extends FreeSpec with Matchers {
   "purs has" - {
-    val res = Purescript.generate[Push](moduleName="PushModule")
+    val res = Purescript.generate[Push, Pull](moduleName="PushModule")
     "module name" in {
       res.prelude.startsWith("module PushModule")
     }
@@ -49,3 +49,7 @@ sealed trait Push
 @N(1) final case class SiteOpts(@N(1) xs: Stream[SiteOpt]) extends Push
 
 final case class SiteOpt(@N(1) id: String, @N(2) label: String)
+
+sealed trait Pull
+@N(1) final case object GetSites extends Pull
+@N(2) final case class GetSitePermissions(@N(1) siteId: String) extends Pull

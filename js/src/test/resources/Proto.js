@@ -31,3 +31,40 @@ exports.skipType = function(reader) {
     }
   }
 }
+
+exports.createWriter = function() {
+  return protobuf.Writer.create()
+}
+
+exports.write_uint32 = function(writer) {
+  return function(v) {
+    return function() {
+      return writer.uint32(v)
+    }
+  }
+}
+
+exports.write_string = function(writer) {
+  return function(v) {
+    return function() {
+      return writer.string(v)
+    }
+  }
+}
+
+exports.writer_fork = function(writer) {
+  return function() {
+    return writer.fork()
+  }
+}
+
+exports.writer_ldelim = function(writer) {
+  return function() {
+    return writer.ldelim()
+  }
+}
+
+exports.writer_finish = function(writer) {
+  return writer.finish()
+}
+

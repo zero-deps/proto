@@ -5,15 +5,17 @@ import scala.collection.mutable
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 
-final case class Res(prelude: String, dataType: String, types: List[String], decoders: List[String]) {
-  def format: String = prelude + "\n\n" + dataType + "\n\n" + types.mkString("\n") + "\n\n" + decoders.mkString("\n\n")
+final case class Res(prelude: String, dataType: String, types: List[String], decoders: List[String], encoders: List[String]) {
+  def format: String = prelude + "\n\n" + dataType + "\n\n" + types.mkString("\n") + "\n\n" + decoders.mkString("\n\n") +
+    "\n\n" + encoders.mkString("\n\n")
 }
 
 object Purescript {
-  def generate[A](moduleName: String)(implicit ttag: TypeTag[A]): Res = {
+  def generate[D, E](moduleName: String)(implicit dtag: TypeTag[D], etag: TypeTag[E]): Res = {
     val datas = mutable.ListBuffer.empty[String]
     val types = mutable.ListBuffer.empty[String]
     val decoders = mutable.ListBuffer.empty[String]
+    val encoders = mutable.ListBuffer.empty[String]
 
     def findN(x: Symbol): String Either Int = {
       x.annotations.filter(_.tree.tpe == typeOf[zd.proto.api.N]) match {
@@ -36,7 +38,7 @@ object Purescript {
     def isIterable(tpe: Type): Boolean = {
       tpe.baseClasses.exists(_.asType.toType.typeConstructor <:< typeOf[scala.collection.TraversableOnce[Unit]].typeConstructor)
     }
-    
+
     def constructType(name: String, fieldsOf: List[(String, Type, String Either Int)]): String = {
       fieldsOf.map{ case (name, tpe, _) =>
         val pursType =
@@ -107,8 +109,8 @@ object Purescript {
           |      else pure acc""".stripMargin
     }
 
-    val traitTpe = typeOf[A]
-    val clazz = traitTpe.typeSymbol.asClass
+    val decodeTpe = typeOf[D]
+    val clazz = decodeTpe.typeSymbol.asClass
     val traitName = clazz.name.encodedName.toString
     def decodeTrait(name: String, clazz: ClassSymbol): String = {
       val cases = clazz.knownDirectSubclasses.map{ x =>
@@ -141,12 +143,18 @@ object Purescript {
       types += constructType(name, fields(tpe))
       decoders += constructDecode(name, fields(tpe))
     }
-    
+
+    val encodeTpe = typeOf[E]
+    val encodeClass = encodeTpe.typeSymbol.asClass
+    val encodeName = encodeClass.name.encodedName.toString
+    //
+
     Res(
       prelude(moduleName),
       dataType = s"data ${traitName} = ${datas.mkString(" | ")}",
       types.toList,
       decoders.toList,
+      encoders.toList,
     )
   }
 
