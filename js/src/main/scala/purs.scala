@@ -112,12 +112,12 @@ object Purescript {
     val decodeTpe = typeOf[D]
     val clazz = decodeTpe.typeSymbol.asClass
     val traitName = clazz.name.encodedName.toString
-    def decodeTrait(name: String, clazz: ClassSymbol): String = {
+    decoders += {
       val cases = clazz.knownDirectSubclasses.map{ x =>
         findN(x) match {
           case Left(e) => throw new Exception(e)
           case Right(n) =>
-            val subclassName = x.name.decodedName.toString
+            val subclassName = x.name.encodedName.toString
             List(
               s"${n} -> do"
             , s"  msglen <- uint32 reader"
@@ -125,17 +125,16 @@ object Purescript {
             , s"  pure $$ Just $$ ${subclassName} x"
             )
         }
-      }.flatten
-      s"""|decode${name} :: Uint8Array -> Effect (Maybe ${name})
-          |decode${name} bytes = do
+      }
+      s"""|decode${traitName} :: Uint8Array -> Effect (Maybe ${traitName})
+          |decode${traitName} bytes = do
           |  let reader = createReader bytes
           |  tag <- uint32 reader
           |  case zshr tag 3 of
-          |${cases.map("    "+_).mkString("\n")}
+          |${cases.map(_.map("    "+_).mkString("\n")).mkString("\n")}
           |    _ ->
           |      pure Nothing""".stripMargin
     }
-    decoders += decodeTrait(traitName, clazz)
     clazz.knownDirectSubclasses.map{ x =>
       val name = x.name.decodedName.toString
       datas += s"${name} ${name}"
@@ -147,7 +146,28 @@ object Purescript {
     val encodeTpe = typeOf[E]
     val encodeClass = encodeTpe.typeSymbol.asClass
     val encodeName = encodeClass.name.encodedName.toString
-    //
+    encoders += {
+      val cases = encodeClass.knownDirectSubclasses.map{ x =>
+        findN(x) match {
+          case Left(e) => throw new Exception(e)
+          case Right(n) =>
+            val subclassName = x.name.encodedName.toString
+            List(
+              s"${subclassName} y -> do"
+            , s"  write_uint32 writer $$ (shl ${n} 3) + 2"
+            , s"  writer_fork writer"
+            , s"  encode${subclassName} writer y"
+            , s"  writer_ldelim writer"
+            )
+        }
+      }
+      s"""|encode${encodeName} :: ${encodeName} -> Effect Uint8Array
+          |encode${encodeName} x = do
+          |  let writer = createWriter unit
+          |  case x of
+          |${cases.map(_.map("    "+_).mkString("\n")).mkString("\n")}
+          |  pure $$ writer_finish writer""".stripMargin
+    }
 
     Res(
       prelude(moduleName),
@@ -162,9 +182,9 @@ object Purescript {
 
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Int.Bits (zshr, (.&.))
+import Data.Int.Bits (zshr, shl, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Effect (Effect)
 import Prelude (bind, discard, pure, ($$), (+), (<), (>>=))
-import Proto (Reader, createReader, pos, skipType, string, uint32)"""
+import Proto (Reader, createReader, pos, skipType, string, uint32, createWriter, write_uint32, write_string, write_ldelm, writer_finish)"""
 }
