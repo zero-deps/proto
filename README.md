@@ -99,7 +99,7 @@ Essentially Scala code replaces .proto files. But because Scala code is part of 
 at moment of runtime using reflection. Macros is not suitable because their purpose is to manipulate with AST and
 not to generate anything but code tree.
 
-1. Copy `js/src/test/resources/Proto.*` to your project
+1. Copy `js/src/test/resources/*` to your project
 1. Run method `zd.proto.Purescript.generate[D, E](moduleName="N")` where `D`/`E` are types of your base trait for decode/encode and `N` is
    name to put at beginning of file. Method return string which you can save to file or print.
 
