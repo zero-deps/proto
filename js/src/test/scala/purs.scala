@@ -6,18 +6,23 @@ import zd.proto.api.N
 
 class PurescriptSpec extends FreeSpec with Matchers {
   "purs has" - {
-    val res = Purescript.generate[Push, Pull](moduleName="PushModule")
+    val res = Purescript.generate[Push, Pull](moduleName="Api")
     "module name" in {
-      res.prelude.startsWith("module PushModule")
+      res.prelude.startsWith("module Api")
     }
     "data type" in {
-      res.dataType should be ("data Push = SiteOpts SiteOpts")
+      res.decodeData should be ("data Push = SiteOpts SiteOpts")
+      res.encodeData should be ("data Pull = GetSitePermissions GetSitePermissions | GetSites GetSites")
       ()
     }
     "types" in {
-      res.types should be (List(
+      res.decodeTypes.toSet should be (Set(
         "type SiteOpt = { id :: String, label :: String }",
         "type SiteOpts = { xs :: Array SiteOpt }",
+      ))
+      res.encodeTypes.toSet should be (Set(
+        "type GetSites = {  }",
+        "type GetSitePermissions = { siteId :: String }",
       ))
       ()
     }
@@ -51,5 +56,5 @@ sealed trait Push
 final case class SiteOpt(@N(1) id: String, @N(2) label: String)
 
 sealed trait Pull
-@N(1) final case object GetSites extends Pull
+@N(1) final case class GetSites() extends Pull
 @N(2) final case class GetSitePermissions(@N(1) siteId: String) extends Pull
