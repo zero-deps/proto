@@ -42,7 +42,7 @@ object Purescript {
       tpe.baseClasses.exists(_.asType.toType.typeConstructor <:< typeOf[scala.collection.TraversableOnce[Unit]].typeConstructor)
     }
 
-    def constructType(name: String, fieldsOf: List[(String, Type, String Either Int)]): String = {
+    def constructType(name: String, fieldsOf: List[(String, Type, Any)]): String = {
       fieldsOf.map{ case (name, tpe, _) =>
         val pursType =
           if (tpe =:= StringClass.selfType) {
@@ -58,6 +58,28 @@ object Purescript {
           }
         s"${name} :: ${pursType}"
       }.mkString(s"type ${name} = { ", ", ", " }")
+    }
+
+    def constructEncode(name: String, fieldsOf: List[(String, Type, String Either Int)]): String = {
+      val encodeFields = fieldsOf.collect{ case (name, tpe, Right(n)) => 
+        if (tpe =:= StringClass.selfType) {
+          List(
+            s"""write_uint32 writer $$ (shl ${n} 3) + 2""",
+            s"""write_string writer msg.${name}""",
+          )
+        } else {
+          "?"+tpe.toString :: Nil
+        }
+      }.flatten
+      if (encodeFields.nonEmpty) {
+        s"""|encode${name} :: Writer -> ${name} -> Effect Writer
+            |encode${name} writer msg = do
+            |${encodeFields.map("  "+_).mkString("\n")}
+            |  pure writer""".stripMargin
+      } else {
+        s"""|encode${name} :: Writer -> ${name} -> Effect Writer
+            |encode${name} writer _ = pure writer""".stripMargin
+      }
     }
 
     def constructDecode(name: String, fieldsOf: List[(String, Type, String Either Int)]): String = {
@@ -176,8 +198,8 @@ object Purescript {
       encodeData += s"${name} ${name}"
       val tpe = x.asType.toType.typeSymbol
       encodeTypes += constructType(name, fields(tpe))
-      //encoders += constructEncode(name, fields(tpe))
-   }
+      encoders += constructEncode(name, fields(tpe))
+    }
       
     Res(
       prelude(moduleName),
