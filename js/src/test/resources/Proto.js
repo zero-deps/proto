@@ -52,6 +52,14 @@ exports.write_string = function(writer) {
   }
 }
 
+exports.write_bytes = function(writer) {
+  return function(v) {
+    return function() {
+      return writer.bytes(v)
+    }
+  }
+}
+
 exports.writer_fork = function(writer) {
   return function() {
     return writer.fork()

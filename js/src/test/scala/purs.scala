@@ -12,7 +12,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
     }
     "data type" in {
       res.decodeData should be ("data Push = SiteOpts SiteOpts")
-      res.encodeData should be ("data Pull = GetSitePermissions GetSitePermissions | GetSites GetSites")
+      res.encodeData should be ("data Pull = GetSites GetSites | GetSitePermissions GetSitePermissions | UploadChunk UploadChunk")
       ()
     }
     "types" in {
@@ -23,6 +23,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.encodeTypes.toSet should be (Set(
         "type GetSites = {  }",
         "type GetSitePermissions = { siteId :: String }",
+        "type UploadChunk = { siteID :: String, path :: Array String, name :: String, id :: String, chunk :: Uint8Array }",
       ))
       ()
     }
@@ -30,7 +31,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.decoders.toSet should be (Set(Snippets.decodePush, Snippets.decodeSiteOpt, Snippets.decodeSiteOpts))
     }
     "encoders" in {
-      res.encoders.toSet should be (Set(Snippets.encodePull, Snippets.encodeGSP, Snippets.encodeGetSites))
+      res.encoders.toSet should be (Set(Snippets.encodePull, Snippets.encodeGSP, Snippets.encodeGetSites, Snippets.encodeUploadChunk))
     }
     "print" in {
       println(res.format)
@@ -46,6 +47,13 @@ final case class SiteOpt(@N(1) id: String, @N(2) label: String)
 sealed trait Pull
 @N(1) final case class GetSites() extends Pull
 @N(2) final case class GetSitePermissions(@N(1) siteId: String) extends Pull
+@N(100) final case class UploadChunk
+  ( @N(1) siteID: String
+  , @N(3) name: String
+  , @N(2) path: List[String]
+  , @N(4) id: String
+  , @N(5) chunk: Array[Byte]
+  ) extends Pull
 
 object Snippets {
   val decodePush = """decodePush :: Uint8Array -> Effect (Maybe Push)
@@ -103,24 +111,45 @@ decodeSiteOpts reader msglen = do
 encodePull x = do
   let writer = createWriter unit
   case x of
+    GetSites y -> do
+      write_uint32 writer 10
+      writer_fork writer
+      encodeGetSites writer y
+      writer_ldelim writer
     GetSitePermissions y -> do
-      write_uint32 writer $ (shl 2 3) + 2
+      write_uint32 writer 18
       writer_fork writer
       encodeGetSitePermissions writer y
       writer_ldelim writer
-    GetSites y -> do
-      write_uint32 writer $ (shl 1 3) + 2
+    UploadChunk y -> do
+      write_uint32 writer 802
       writer_fork writer
-      encodeGetSites writer y
+      encodeUploadChunk writer y
       writer_ldelim writer
   pure $ writer_finish writer"""
 
   val encodeGSP = """encodeGetSitePermissions :: Writer -> GetSitePermissions -> Effect Writer
 encodeGetSitePermissions writer msg = do
-  write_uint32 writer $ (shl 1 3) + 2
+  write_uint32 writer 10
   write_string writer msg.siteId
   pure writer"""
 
   val encodeGetSites = """encodeGetSites :: Writer -> GetSites -> Effect Writer
 encodeGetSites writer _ = pure writer"""
+
+  val encodeUploadChunk = """encodeUploadChunk :: Writer -> UploadChunk -> Effect Writer
+encodeUploadChunk writer msg = do
+  write_uint32 writer 10
+  write_string writer msg.siteID
+  sequence $ map (\x -> do
+    write_uint32 writer 18
+    write_string writer x
+  ) msg.path
+  write_uint32 writer 26
+  write_string writer msg.name
+  write_uint32 writer 34
+  write_string writer msg.id
+  write_uint32 writer 42
+  write_bytes writer msg.chunk
+  pure writer"""
 }

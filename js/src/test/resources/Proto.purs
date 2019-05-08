@@ -18,6 +18,7 @@ foreign import data Writer :: Type
 foreign import createWriter :: Unit -> Writer
 foreign import write_uint32 :: Writer -> Int -> Effect Writer
 foreign import write_string :: Writer -> String -> Effect Writer
+foreign import write_bytes :: Writer -> Uint8Array -> Effect Writer
 foreign import writer_fork :: Writer -> Effect Writer
 foreign import writer_ldelim :: Writer -> Effect Writer
 foreign import writer_finish :: Writer -> Uint8Array

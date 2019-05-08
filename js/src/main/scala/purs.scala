@@ -31,11 +31,11 @@ object Purescript {
       }
     }
 
-    def fields(tpe: Symbol): List[(String, Type, String Either Int)] = {
+    def fields(tpe: Symbol): List[(String, Type, Int)] = {
       tpe.asClass.primaryConstructor.asMethod.paramLists.flatten.map{ x =>
         val term = x.asTerm
         (term.name.encodedName.toString, term.info, findN(x))
-      }
+      }.collect{ case (a, b, Right(n)) => (a, b, n) }.sortBy(_._3)
     }
 
     def isIterable(tpe: Type): Boolean = {
@@ -47,11 +47,15 @@ object Purescript {
         val pursType =
           if (tpe =:= StringClass.selfType) {
             "String"
+          } else if (tpe =:= typeOf[Array[Byte]]) {
+            "Uint8Array"
           } else if (isIterable(tpe)) {
             val typeArg = tpe.typeArgs.head.typeSymbol
             val typeArgName = typeArg.asClass.name.encodedName.toString
-            val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
-            decodeTypes += constructType(typeArgName, typeArgFields)
+            val typeArgType = typeArg.asType.toType
+            val typeArgFields = fields(typeArgType.typeSymbol)
+            if (typeArgType =:= StringClass.selfType) ()
+            else decodeTypes += constructType(typeArgName, typeArgFields)
             s"Array ${typeArgName}"
           } else {
             "?"+tpe.toString
@@ -60,13 +64,32 @@ object Purescript {
       }.mkString(s"type ${name} = { ", ", ", " }")
     }
 
-    def constructEncode(name: String, fieldsOf: List[(String, Type, String Either Int)]): String = {
-      val encodeFields = fieldsOf.collect{ case (name, tpe, Right(n)) => 
+    def constructEncode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
+      val encodeFields = fieldsOf.map{ case (name, tpe, n) => 
         if (tpe =:= StringClass.selfType) {
           List(
-            s"""write_uint32 writer $$ (shl ${n} 3) + 2""",
+            s"""write_uint32 writer ${(n<<3)+2}""",
             s"""write_string writer msg.${name}""",
           )
+        } else if (tpe =:= typeOf[Array[Byte]]) {
+          List(
+            s"""write_uint32 writer ${(n<<3)+2}""",
+            s"""write_bytes writer msg.${name}""",
+          )
+        } else if (isIterable(tpe)) {
+          val typeArg = tpe.typeArgs.head.typeSymbol
+          val typeArgName = typeArg.asClass.name.encodedName.toString
+          val typeArgType = typeArg.asType.toType
+          if (typeArgType =:= StringClass.selfType) {
+            List(
+              s"""sequence $$ map (\\x -> do""",
+              s"""  write_uint32 writer ${(n<<3)+2}""",
+              s"""  write_string writer x""",
+              s""") msg.${name}""",
+            )
+          } else {
+            s"?unknown_typearg_${typeArgName}_for_encoder_${name}" :: Nil
+          }
         } else {
           "?"+tpe.toString :: Nil
         }
@@ -82,7 +105,7 @@ object Purescript {
       }
     }
 
-    def constructDecode(name: String, fieldsOf: List[(String, Type, String Either Int)]): String = {
+    def constructDecode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
       val defObj = fieldsOf.map{
         case (name, tpe, _) =>
           if (tpe =:= StringClass.selfType) {
@@ -94,7 +117,7 @@ object Purescript {
           }
       }.mkString("{ ", ", ", " }")
       val cases = fieldsOf.map{
-        case (name, tpe, Right(n)) =>
+        case (name, tpe, n) =>
           if (tpe =:= StringClass.selfType) {
             List(
               s"${n} -> do"
@@ -114,8 +137,6 @@ object Purescript {
           } else {
             List("?"+tpe.toString)
           }
-        case (_, _, Left(e)) =>
-          throw new Exception(e)
       }.flatten
       s"""|decode${name} :: Reader -> Int -> Effect ${name}
           |decode${name} reader msglen = do
@@ -137,19 +158,16 @@ object Purescript {
     val decodeTpe = typeOf[D]
     val decodeClass = decodeTpe.typeSymbol.asClass
     val decodeName = decodeClass.name.encodedName.toString
+    val decodeSubclasses = decodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Right(n)) => x -> n }.sortBy(_._2)
     decoders += {
-      val cases = decodeClass.knownDirectSubclasses.map{ x =>
-        findN(x) match {
-          case Left(e) => throw new Exception(e)
-          case Right(n) =>
-            val subclassName = x.name.encodedName.toString
-            List(
-              s"${n} -> do"
-            , s"  msglen <- uint32 reader"
-            , s"  x <- decode${subclassName} reader msglen"
-            , s"  pure $$ Just $$ ${subclassName} x"
-            )
-        }
+      val cases = decodeSubclasses.map{ case (x, n) =>
+        val subclassName = x.name.encodedName.toString
+        List(
+          s"${n} -> do"
+        , s"  msglen <- uint32 reader"
+        , s"  x <- decode${subclassName} reader msglen"
+        , s"  pure $$ Just $$ ${subclassName} x"
+        )
       }
       s"""|decode${decodeName} :: Uint8Array -> Effect (Maybe ${decodeName})
           |decode${decodeName} bytes = do
@@ -160,7 +178,7 @@ object Purescript {
           |    _ ->
           |      pure Nothing""".stripMargin
     }
-    decodeClass.knownDirectSubclasses.map{ x =>
+    decodeSubclasses.map{ case (x, _) =>
       val name = x.name.encodedName.toString
       decodeData += s"${name} ${name}"
       val tpe = x.asType.toType.typeSymbol
@@ -171,20 +189,17 @@ object Purescript {
     val encodeTpe = typeOf[E]
     val encodeClass = encodeTpe.typeSymbol.asClass
     val encodeName = encodeClass.name.encodedName.toString
+    val encodeSubclasses = encodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Right(n)) => x -> n }.sortBy(_._2)
     encoders += {
-      val cases = encodeClass.knownDirectSubclasses.map{ x =>
-        findN(x) match {
-          case Left(e) => throw new Exception(e)
-          case Right(n) =>
-            val subclassName = x.name.encodedName.toString
-            List(
-              s"${subclassName} y -> do"
-            , s"  write_uint32 writer $$ (shl ${n} 3) + 2"
-            , s"  writer_fork writer"
-            , s"  encode${subclassName} writer y"
-            , s"  writer_ldelim writer"
-            )
-        }
+      val cases = encodeSubclasses.map{ case (x, n) =>
+        val subclassName = x.name.encodedName.toString
+        List(
+          s"${subclassName} y -> do"
+        , s"  write_uint32 writer ${(n << 3) + 2}"
+        , s"  writer_fork writer"
+        , s"  encode${subclassName} writer y"
+        , s"  writer_ldelim writer"
+        )
       }
       s"""|encode${encodeName} :: ${encodeName} -> Effect Uint8Array
           |encode${encodeName} x = do
@@ -193,7 +208,7 @@ object Purescript {
           |${cases.map(_.map("    "+_).mkString("\n")).mkString("\n")}
           |  pure $$ writer_finish writer""".stripMargin
     }
-    encodeClass.knownDirectSubclasses.map{ x =>
+    encodeSubclasses.map{ case (x, _) =>
       val name = x.name.encodedName.toString
       encodeData += s"${name} ${name}"
       val tpe = x.asType.toType.typeSymbol
@@ -216,9 +231,10 @@ object Purescript {
 
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Int.Bits (zshr, shl, (.&.))
+import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
+import Data.Traversable (sequence)
 import Effect (Effect)
 import Prelude (bind, discard, pure, ($$), (+), (<), (>>=))
-import Proto (Reader, createReader, pos, skipType, string, uint32, createWriter, write_uint32, write_string, write_ldelm, writer_finish)"""
+import Proto (Reader, createReader, pos, skipType, string, uint32, createWriter, write_uint32, write_string, write_bytes, write_ldelm, writer_finish)"""
 }
