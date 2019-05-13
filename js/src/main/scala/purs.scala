@@ -8,7 +8,8 @@ import scala.reflect.runtime.universe.definitions._
 final case class Res(prelude: String, decodeData: String, encodeData: String, decodeTypes: List[String], encodeTypes: List[String], decoders: List[String], encoders: List[String]) {
   def format: String = prelude + "\n\n" + 
     decodeData + "\n" + decodeTypes.mkString("\n") + "\n\n" + decoders.mkString("\n\n") + "\n\n" +
-    encodeData + "\n" + encodeTypes.mkString("\n") + "\n\n" + encoders.mkString("\n\n")
+    encodeData + "\n" + encodeTypes.mkString("\n") + "\n\n" + encoders.mkString("\n\n") +
+    "\n"
 }
 
 object Purescript {
@@ -82,7 +83,7 @@ object Purescript {
           val typeArgType = typeArg.asType.toType
           if (typeArgType =:= StringClass.selfType) {
             List(
-              s"""sequence $$ map (\\x -> do""",
+              s"""void $ sequence $$ map (\\x -> do""",
               s"""  write_uint32 writer ${(n<<3)+2}""",
               s"""  write_string writer x""",
               s""") msg.${name}""",
@@ -95,13 +96,13 @@ object Purescript {
         }
       }.flatten
       if (encodeFields.nonEmpty) {
-        s"""|encode${name} :: Writer -> ${name} -> Effect Writer
+        s"""|encode${name} :: Writer -> ${name} -> Effect Unit
             |encode${name} writer msg = do
             |${encodeFields.map("  "+_).mkString("\n")}
-            |  pure writer""".stripMargin
+            |  pure unit""".stripMargin
       } else {
-        s"""|encode${name} :: Writer -> ${name} -> Effect Writer
-            |encode${name} writer _ = pure writer""".stripMargin
+        s"""|encode${name} :: Writer -> ${name} -> Effect Unit
+            |encode${name} writer _ = pure unit""".stripMargin
       }
     }
 
@@ -235,6 +236,6 @@ import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Traversable (sequence)
 import Effect (Effect)
-import Prelude (bind, discard, pure, ($$), (+), (<), (>>=))
-import Proto (Reader, createReader, pos, skipType, string, uint32, createWriter, write_uint32, write_string, write_bytes, write_ldelm, writer_finish)"""
+import Prelude (Unit, map, bind, discard, pure, unit, void, ($$), (+), (<), (>>=))
+import Proto (Reader, createReader, pos, skipType, string, uint32, Writer, createWriter, write_uint32, write_string, write_bytes, writer_fork, writer_ldelim, writer_finish)"""
 }
