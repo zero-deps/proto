@@ -20,14 +20,14 @@ object Purescript {
     val decoders = mutable.ListBuffer.empty[String]
     val encoders = mutable.ListBuffer.empty[String]
 
-    def findN(x: Symbol): String Either Int = {
+    def findN(x: Symbol): Option[Int] = {
       x.annotations.filter(_.tree.tpe == typeOf[zd.proto.api.N]) match {
         case List(x1) => x1.tree.children.tail match {
-          case List(Literal(Constant(n: Int))) => Right(n)
-          case _ => Left("bad args in N")
+          case List(Literal(Constant(n: Int))) => Some(n)
+          case _ => throw new Exception("bad args in N")
         }
-        case Nil => Left(s"no N on ${x}")
-        case _ => Left(s"multiple N on ${x}")
+        case Nil => None
+        case _ => throw new Exception(s"multiple N on ${x}")
       }
     }
 
@@ -35,7 +35,7 @@ object Purescript {
       tpe.asClass.primaryConstructor.asMethod.paramLists.flatten.map{ x =>
         val term = x.asTerm
         (term.name.encodedName.toString, term.info, findN(x))
-      }.collect{ case (a, b, Right(n)) => (a, b, n) }.sortBy(_._3)
+      }.collect{ case (a, b, Some(n)) => (a, b, n) }.sortBy(_._3)
     }
 
     def isIterable(tpe: Type): Boolean = {
@@ -158,7 +158,7 @@ object Purescript {
     val decodeTpe = typeOf[D]
     val decodeClass = decodeTpe.typeSymbol.asClass
     val decodeName = decodeClass.name.encodedName.toString
-    val decodeSubclasses = decodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Right(n)) => x -> n }.sortBy(_._2)
+    val decodeSubclasses = decodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2)
     decoders += {
       val cases = decodeSubclasses.map{ case (x, n) =>
         val subclassName = x.name.encodedName.toString
@@ -189,7 +189,7 @@ object Purescript {
     val encodeTpe = typeOf[E]
     val encodeClass = encodeTpe.typeSymbol.asClass
     val encodeName = encodeClass.name.encodedName.toString
-    val encodeSubclasses = encodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Right(n)) => x -> n }.sortBy(_._2)
+    val encodeSubclasses = encodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2)
     encoders += {
       val cases = encodeSubclasses.map{ case (x, n) =>
         val subclassName = x.name.encodedName.toString
