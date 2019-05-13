@@ -83,7 +83,7 @@ object Purescript {
           val typeArgType = typeArg.asType.toType
           if (typeArgType =:= StringClass.selfType) {
             List(
-              s"""void $ sequence $$ map (\\x -> do""",
+              s"""void $$ sequence $$ map (\\x -> do""",
               s"""  write_uint32 writer ${(n<<3)+2}""",
               s"""  write_string writer x""",
               s""") msg.${name}""",
