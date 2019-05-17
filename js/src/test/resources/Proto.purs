@@ -3,7 +3,7 @@ module Proto where
 import Data.ArrayBuffer.Types (Uint8Array)
 import Effect (Effect)
 import Prelude
-import Data.Int.Bits (shl, zshr, (.&.), (.|.))
+import Data.Int.Bits (shl, zshr, and, (.&.), (.|.))
 import Data.Either (Either(Left, Right))
 
 type Pos = Int
@@ -65,12 +65,24 @@ skip' xs pos0 = let len = arrayview_length xs in loop pos0 len
     else if ((arrayview_index_impl xs pos) .&. 128) == 0 then pure { offset: 1, val: unit }
     else loop (pos+1) len
 
+skip :: Int -> Uint8Array -> Pos -> Result Unit
+skip n xs pos0 = let len = arrayview_length xs in if pos0 + n > len then Left (OutOfBound (pos0+n) len) else pure { offset: pos0+n, val: unit }
+
 skipType :: Uint8Array -> Pos -> Int -> Result Unit
 skipType xs pos 0 = skip' xs pos
---skipType xs pos 1 = skip 8 xs pos
---skipType xs pos 2 =
---skipType xs pos 3 =
---skipType xs pos 5 = skip 4 xs pos
+skipType xs pos 1 = skip 8 xs pos
+skipType xs pos 2 = do
+  { offset, val } <- read_uint32 xs pos
+  skip val xs $ pos+offset
+skipType xs pos 3 = loop xs pos
+  where
+  loop xs pos = do
+    { offset, val: wireType } <- map (and 7) read_uint32 xs pos
+    if wireType /= 4 then do
+      { offset1, val } <- skipType xs (pos+offset) wireType
+      loop xs $ pos+offset+offset1
+    else pure { offset: pos+offset, val: unit }
+skipType xs pos 5 = skip 4 xs pos
 skipType _ _ x = Left $ BadWireType x
 
 foreign import data Writer :: Type
