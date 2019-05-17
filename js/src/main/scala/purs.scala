@@ -235,7 +235,7 @@ import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Traversable (sequence)
 import Effect (Effect)
-import Proto (Error(..), Result, Writer, createWriter, read_string, read_uint32, skipType, write_bytes, write_string, write_uint32, writer_finish, writer_fork, writer_lde    lim)
+import Proto (Error(..), Result, Writer, createWriter, read_string, read_uint32, skipType, write_bytes, write_string, write_uint32, writer_finish, writer_fork, writer_ldelim)
 import Prelude (Unit, bind, discard, map, pure, unit, void, ($$), (+), (<))
 import Data.Either (Either(Left))"""
 }
