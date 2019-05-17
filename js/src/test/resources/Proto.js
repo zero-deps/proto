@@ -1,35 +1,25 @@
 "use strict"
 
-exports.createReader = function(bytes) {
-  return protobuf.Reader.create(bytes)
+exports.arrayview_length = function(xs) {
+  return xs.length
 }
 
-exports.len = function(reader) {
-  return reader.len
-}
-
-exports.pos = function(reader) {
-  return reader.pos
-}
-
-exports.uint32 = function(reader) {
-  return function() {
-    return reader.uint32()
+exports.arrayview_index_impl = function(xs) {
+  return function(i) {
+    return xs[i]
   }
 }
 
-exports.string = function(reader) {
-  return function() {
-    return reader.string()
-  }
-}
-
-exports.skipType = function(reader) {
-  return function(tag) {
-    return function() {
-      return reader.skipType(tag)
+exports.arrayview_slice = function(xs) {
+  return function(start) {
+    return function(end) {
+      return xs.slice(start, end)
     }
   }
+}
+
+exports.uint8array_tostring = function(xs) {
+  return protobuf.util.utf8.read(xs, 0, xs.length)
 }
 
 exports.createWriter = function() {

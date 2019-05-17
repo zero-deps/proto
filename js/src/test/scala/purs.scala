@@ -28,10 +28,19 @@ class PurescriptSpec extends FreeSpec with Matchers {
       ()
     }
     "decoders" in {
-      res.decoders.toSet should be (Set(Snippets.decodePush, Snippets.decodeSiteOpt, Snippets.decodeSiteOpts))
+      res.decoders.foreach{
+        case d if d.startsWith("decodePush :: ") => d should be (Snippets.decodePush)
+        case d if d.startsWith("decodeSiteOpt :: ") => d should be (Snippets.decodeSiteOpt)
+        case d if d.startsWith("decodeSiteOpts :: ") => d should be (Snippets.decodeSiteOpts)
+      }
     }
     "encoders" in {
-      res.encoders.toSet should be (Set(Snippets.encodePull, Snippets.encodeGSP, Snippets.encodeGetSites, Snippets.encodeUploadChunk))
+      res.encoders.foreach{
+        case e if e.startsWith("encodePull :: ") => e should be (Snippets.encodePull)
+        case e if e.startsWith("encodeGetSites :: ") => e should be (Snippets.encodeGetSites)
+        case e if e.startsWith("encodeUploadChunk :: ") => e should be (Snippets.encodeUploadChunk)
+        case e if e.startsWith("encodeGetSitePermissions :: ") => e should be (Snippets.encodeGSP)
+      }
     }
     "print" in {
       println(res.format)
@@ -56,56 +65,56 @@ sealed trait Pull
   ) extends Pull
 
 object Snippets {
-  val decodePush = """decodePush :: Uint8Array -> Effect (Maybe Push)
-decodePush bytes = do
-  let reader = createReader bytes
-  tag <- uint32 reader
-  case zshr tag 3 of
+  val decodePush = """decodePush :: Uint8Array -> Result Push
+decodePush xs = do
+  { offset: offset1, val: tag } <- read_uint32 xs 0
+  case tag `zshr` 3 of
     1 -> do
-      msglen <- uint32 reader
-      x <- decodeSiteOpts reader msglen
-      pure $ Just $ SiteOpts x
-    _ ->
-      pure Nothing"""
+      { offset: offset2, val: msglen } <- read_uint32 xs offset1
+      { offset: offset3, val } <- decodeSiteOpts xs (offset1+offset2) msglen
+      pure { offset: offset1+offset2+offset3, val: SiteOpts val }
+    x ->
+      Left $ BadType x"""
 
-  val decodeSiteOpt = """decodeSiteOpt :: Reader -> Int -> Effect SiteOpt
-decodeSiteOpt reader msglen = do
-  let end = pos reader + msglen
-  decode end { id: "", label: "" }
-  where
-    decode :: Int -> SiteOpt -> Effect SiteOpt
-    decode end acc =
-      if pos reader < end then do
-        tag <- uint32 reader
-        case zshr tag 3 of
+  val decodeSiteOpt = """decodeSiteOpt :: Uint8Array -> Int -> Int -> Result SiteOpt
+decodeSiteOpt xs offset msglen = do
+  let end = offset + msglen
+  decode end { id: "", label: "" } offset
+    where
+    decode :: Int -> SiteOpt -> Int -> Result SiteOpt
+    decode end acc offset1 =
+      if offset1 < end then do
+        { offset: offset2, val: tag } <- read_uint32 xs offset1
+        case tag `zshr` 3 of
           1 -> do
-            x <- string reader
-            decode end $ acc { id = x }
+            { offset: offset3, val } <- read_string xs $ offset1+offset2
+            decode end (acc { id = val }) $ offset1+offset2+offset3
           2 -> do
-            x <- string reader
-            decode end $ acc { label = x }
+            { offset: offset3, val } <- read_string xs $ offset1+offset2
+            decode end (acc { label = val }) $ offset1+offset2+offset3
           _ -> do
-            skipType reader $ tag .&. 7
-            decode end acc
-      else pure acc"""
+            { offset: offset3 } <- skipType xs (offset1+offset2) $ tag .&. 7
+            decode end acc $ offset1+offset2+offset3
+      else pure { offset: offset1, val: acc }"""
 
-  val decodeSiteOpts = """decodeSiteOpts :: Reader -> Int -> Effect SiteOpts
-decodeSiteOpts reader msglen = do
-  let end = pos reader + msglen
-  decode end { xs: [] }
-  where
-    decode :: Int -> SiteOpts -> Effect SiteOpts
-    decode end acc =
-      if pos reader < end then do
-        tag <- uint32 reader
-        case zshr tag 3 of
+  val decodeSiteOpts = """decodeSiteOpts :: Uint8Array -> Int -> Int -> Result SiteOpts
+decodeSiteOpts xs offset msglen = do
+  let end = offset + msglen
+  decode end { xs: [] } offset
+    where
+    decode :: Int -> SiteOpts -> Int -> Result SiteOpts
+    decode end acc offset1 =
+      if offset1 < end then do
+        { offset: offset2, val: tag } <- read_uint32 xs offset1
+        case tag `zshr` 3 of
           1 -> do
-            x <- uint32 reader >>= decodeSiteOpt reader
-            decode end $ acc { xs = snoc acc.xs x }
+            { offset: offset3, val: msglen1 } <- read_uint32 xs $ offset1+offset2
+            { offset: offset4, val } <- decodeSiteOpt xs (offset1+offset2+offset3) msglen1
+            decode end (acc { xs = snoc acc.xs val }) $ offset1+offset2+offset3+offset4
           _ -> do
-            skipType reader $ tag .&. 7
-            decode end acc
-      else pure acc"""
+            { offset: offset3 } <- skipType xs (offset1+offset2) $ tag .&. 7
+            decode end acc $ offset1+offset2+offset3
+      else pure { offset: offset1, val: acc }"""
 
   val encodePull = """encodePull :: Pull -> Effect Uint8Array
 encodePull x = do
@@ -128,20 +137,20 @@ encodePull x = do
       writer_ldelim writer
   pure $ writer_finish writer"""
 
-  val encodeGSP = """encodeGetSitePermissions :: Writer -> GetSitePermissions -> Effect Writer
+  val encodeGSP = """encodeGetSitePermissions :: Writer -> GetSitePermissions -> Effect Unit
 encodeGetSitePermissions writer msg = do
   write_uint32 writer 10
   write_string writer msg.siteId
-  pure writer"""
+  pure unit"""
 
-  val encodeGetSites = """encodeGetSites :: Writer -> GetSites -> Effect Writer
-encodeGetSites writer _ = pure writer"""
+  val encodeGetSites = """encodeGetSites :: Writer -> GetSites -> Effect Unit
+encodeGetSites writer _ = pure unit"""
 
-  val encodeUploadChunk = """encodeUploadChunk :: Writer -> UploadChunk -> Effect Writer
+  val encodeUploadChunk = """encodeUploadChunk :: Writer -> UploadChunk -> Effect Unit
 encodeUploadChunk writer msg = do
   write_uint32 writer 10
   write_string writer msg.siteID
-  sequence $ map (\x -> do
+  void $ sequence $ map (\x -> do
     write_uint32 writer 18
     write_string writer x
   ) msg.path
@@ -151,5 +160,5 @@ encodeUploadChunk writer msg = do
   write_string writer msg.id
   write_uint32 writer 42
   write_bytes writer msg.chunk
-  pure writer"""
+  pure unit"""
 }

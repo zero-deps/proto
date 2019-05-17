@@ -122,8 +122,8 @@ object Purescript {
           if (tpe =:= StringClass.selfType) {
             List(
               s"${n} -> do"
-            , s"  x <- string reader"
-            , s"  decode end $$ acc { ${name} = x }"
+            , s"  { offset: offset3, val } <- read_string xs $$ offset1+offset2"
+            , s"  decode end (acc { ${name} = val }) $$ offset1+offset2+offset3"
             )
           } else if (isIterable(tpe)) {
             val typeArg = tpe.typeArgs.head.typeSymbol
@@ -132,28 +132,29 @@ object Purescript {
             decoders += constructDecode(typeArgName, typeArgFields)
             List(
               s"${n} -> do"
-            , s"  x <- uint32 reader >>= decode${typeArgName} reader"
-            , s"  decode end $$ acc { ${name} = snoc acc.${name} x }"
+            , s"  { offset: offset3, val: msglen1 } <- read_uint32 xs $$ offset1+offset2"
+            , s"  { offset: offset4, val } <- decode${typeArgName} xs (offset1+offset2+offset3) msglen1"
+            , s"  decode end (acc { ${name} = snoc acc.${name} val }) $$ offset1+offset2+offset3+offset4"
             )
           } else {
             List("?"+tpe.toString)
           }
       }.flatten
-      s"""|decode${name} :: Reader -> Int -> Effect ${name}
-          |decode${name} reader msglen = do
-          |  let end = pos reader + msglen
-          |  decode end ${defObj}
-          |  where
-          |    decode :: Int -> ${name} -> Effect ${name}
-          |    decode end acc =
-          |      if pos reader < end then do
-          |        tag <- uint32 reader
-          |        case zshr tag 3 of
+      s"""|decode${name} :: Uint8Array -> Int -> Int -> Result ${name}
+          |decode${name} xs offset msglen = do
+          |  let end = offset + msglen
+          |  decode end ${defObj} offset
+          |    where
+          |    decode :: Int -> ${name} -> Int -> Result ${name}
+          |    decode end acc offset1 =
+          |      if offset1 < end then do
+          |        { offset: offset2, val: tag } <- read_uint32 xs offset1
+          |        case tag `zshr` 3 of
           |${cases.map("          "+_).mkString("\n")}
           |          _ -> do
-          |            skipType reader $$ tag .&. 7
-          |            decode end acc
-          |      else pure acc""".stripMargin
+          |            { offset: offset3 } <- skipType xs (offset1+offset2) $$ tag .&. 7
+          |            decode end acc $$ offset1+offset2+offset3
+          |      else pure { offset: offset1, val: acc }""".stripMargin
     }
 
     val decodeTpe = typeOf[D]
@@ -165,19 +166,18 @@ object Purescript {
         val subclassName = x.name.encodedName.toString
         List(
           s"${n} -> do"
-        , s"  msglen <- uint32 reader"
-        , s"  x <- decode${subclassName} reader msglen"
-        , s"  pure $$ Just $$ ${subclassName} x"
+        , s"  { offset: offset2, val: msglen } <- read_uint32 xs offset1"
+        , s"  { offset: offset3, val } <- decode${subclassName} xs (offset1+offset2) msglen"
+        , s"  pure { offset: offset1+offset2+offset3, val: ${subclassName} val }"
         )
       }
-      s"""|decode${decodeName} :: Uint8Array -> Effect (Maybe ${decodeName})
-          |decode${decodeName} bytes = do
-          |  let reader = createReader bytes
-          |  tag <- uint32 reader
-          |  case zshr tag 3 of
+      s"""|decode${decodeName} :: Uint8Array -> Result ${decodeName}
+          |decode${decodeName} xs = do
+          |  { offset: offset1, val: tag } <- read_uint32 xs 0
+          |  case tag `zshr` 3 of
           |${cases.map(_.map("    "+_).mkString("\n")).mkString("\n")}
-          |    _ ->
-          |      pure Nothing""".stripMargin
+          |    x ->
+          |      Left $$ BadType x""".stripMargin
     }
     decodeSubclasses.map{ case (x, _) =>
       val name = x.name.encodedName.toString
@@ -216,7 +216,7 @@ object Purescript {
       encodeTypes += constructType(name, fields(tpe))
       encoders += constructEncode(name, fields(tpe))
     }
-      
+
     Res(
       prelude(moduleName),
       decodeData = s"data ${decodeName} = ${decodeData.mkString(" | ")}",
@@ -233,9 +233,9 @@ object Purescript {
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Int.Bits (zshr, (.&.))
-import Data.Maybe (Maybe(Just, Nothing))
 import Data.Traversable (sequence)
 import Effect (Effect)
-import Prelude (Unit, map, bind, discard, pure, unit, void, ($$), (+), (<), (>>=))
-import Proto (Reader, createReader, pos, skipType, string, uint32, Writer, createWriter, write_uint32, write_string, write_bytes, writer_fork, writer_ldelim, writer_finish)"""
+import Proto (Error(..), Result, Writer, createWriter, read_string, read_uint32, skipType, write_bytes, write_string, write_uint32, writer_finish, writer_fork, writer_lde    lim)
+import Prelude (Unit, bind, discard, map, pure, unit, void, ($$), (+), (<))
+import Data.Either (Either(Left))"""
 }
