@@ -3,7 +3,7 @@ module Proto where
 import Data.ArrayBuffer.Types (Uint8Array)
 import Effect (Effect)
 import Prelude
-import Data.Int.Bits (shl, zshr, and, (.&.), (.|.))
+import Data.Int.Bits (shl, zshr, (.&.), (.|.))
 import Data.Either (Either(Left, Right))
 
 type Pos = Int
@@ -74,14 +74,15 @@ skipType xs pos 1 = skip 8 xs pos
 skipType xs pos 2 = do
   { offset, val } <- read_uint32 xs pos
   skip val xs $ pos+offset
-skipType xs pos 3 = loop xs pos
+skipType xs0 pos0 3 = loop xs0 pos0
   where
   loop xs pos = do
-    { offset, val: wireType } <- map (and 7) read_uint32 xs pos
+    { offset, val } <- read_uint32 xs pos
+    let wireType = val .&. 7
     if wireType /= 4 then do
-      { offset1, val } <- skipType xs (pos+offset) wireType
+      { offset: offset1 } <- skipType xs (pos+offset) wireType
       loop xs $ pos+offset+offset1
-    else pure { offset: pos+offset, val: unit }
+      else pure { offset: pos+offset, val: unit }
 skipType xs pos 5 = skip 4 xs pos
 skipType _ _ x = Left $ BadWireType x
 
