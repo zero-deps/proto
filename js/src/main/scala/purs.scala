@@ -66,16 +66,16 @@ object Purescript {
     }
 
     def constructEncode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
-      val encodeFields = fieldsOf.map{ case (name, tpe, n) => 
+      val encodeFields = fieldsOf.flatMap{ case (name, tpe, n) => 
         if (tpe =:= StringClass.selfType) {
           List(
-            s"""write_uint32 writer ${(n<<3)+2}""",
-            s"""write_string writer msg.${name}""",
+            s"""write_uint32 ${(n<<3)+2}"""
+          , s"""write_string msg.${name}"""
           )
         } else if (tpe =:= typeOf[Array[Byte]]) {
           List(
-            s"""write_uint32 writer ${(n<<3)+2}""",
-            s"""write_bytes writer msg.${name}""",
+            s"""write_uint32 ${(n<<3)+2}"""
+          , s"""write_bytes msg.${name}"""
           )
         } else if (isIterable(tpe)) {
           val typeArg = tpe.typeArgs.head.typeSymbol
@@ -83,10 +83,7 @@ object Purescript {
           val typeArgType = typeArg.asType.toType
           if (typeArgType =:= StringClass.selfType) {
             List(
-              s"""void $$ sequence $$ map (\\x -> do""",
-              s"""  write_uint32 writer ${(n<<3)+2}""",
-              s"""  write_string writer x""",
-              s""") msg.${name}""",
+              s"""uint8array_concatall $$ concatMap (\\x -> [ write_uint32 ${(n<<3)+2}, write_string x ]) msg.${name}""",
             )
           } else {
             s"?unknown_typearg_${typeArgName}_for_encoder_${name}" :: Nil
@@ -94,15 +91,14 @@ object Purescript {
         } else {
           "?"+tpe.toString :: Nil
         }
-      }.flatten
+      }
       if (encodeFields.nonEmpty) {
-        s"""|encode${name} :: Writer -> ${name} -> Effect Unit
-            |encode${name} writer msg = do
-            |${encodeFields.map("  "+_).mkString("\n")}
-            |  pure unit""".stripMargin
+        s"""|encode${name} :: ${name} -> Uint8Array
+            |encode${name} msg = uint8array_concatall
+            |  ${encodeFields.mkString("[ ", "\n  , ", "\n  ]")}""".stripMargin
       } else {
-        s"""|encode${name} :: Writer -> ${name} -> Effect Unit
-            |encode${name} writer _ = pure unit""".stripMargin
+        s"""|encode${name} :: ${name} -> Uint8Array
+            |encode${name} _ = write_uint32 0""".stripMargin
       }
     }
 
@@ -195,19 +191,11 @@ object Purescript {
       val cases = encodeSubclasses.map{ case (x, n) =>
         val subclassName = x.name.encodedName.toString
         List(
-          s"${subclassName} y -> do"
-        , s"  write_uint32 writer ${(n << 3) + 2}"
-        , s"  writer_fork writer"
-        , s"  encode${subclassName} writer y"
-        , s"  writer_ldelim writer"
+          s"encode${encodeName} (${subclassName} x) = uint8array_concatall [ write_uint32 ${(n << 3) + 2}, encode${subclassName} x ]"
         )
       }
-      s"""|encode${encodeName} :: ${encodeName} -> Effect Uint8Array
-          |encode${encodeName} x = do
-          |  let writer = createWriter unit
-          |  case x of
-          |${cases.map(_.map("    "+_).mkString("\n")).mkString("\n")}
-          |  pure $$ writer_finish writer""".stripMargin
+      s"""|encode${encodeName} :: ${encodeName} -> Uint8Array
+          |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
     }
     encodeSubclasses.map{ case (x, _) =>
       val name = x.name.encodedName.toString
@@ -230,12 +218,10 @@ object Purescript {
 
   def prelude(moduleName: String): String = s"""module ${moduleName} where
 
-import Data.Array (snoc)
+import Data.Array (snoc, concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
+import Data.Either (Either(Left))
 import Data.Int.Bits (zshr, (.&.))
-import Data.Traversable (sequence)
-import Effect (Effect)
-import Proto (Error(..), Result, Writer, createWriter, read_string, read_uint32, skipType, write_bytes, write_string, write_uint32, writer_finish, writer_fork, writer_ldelim)
-import Prelude (Unit, bind, discard, map, pure, unit, void, ($$), (+), (<))
-import Data.Either (Either(Left))"""
+import Prelude (bind, pure, ($$), (+), (<))
+import Proto"""
 }
