@@ -94,8 +94,11 @@ object Purescript {
       }
       if (encodeFields.nonEmpty) {
         s"""|encode${name} :: ${name} -> Uint8Array
-            |encode${name} msg = uint8array_concatall
-            |  ${encodeFields.mkString("[ ", "\n  , ", "\n  ]")}""".stripMargin
+            |encode${name} msg = do
+            |  let xs = uint8array_concatall
+            |  ${encodeFields.mkString("      [ ", "\n        , ", "\n        ]")}
+            |  let len = uint8array_length xs
+            |  uint8array_concatall [ write_uint32 len, xs ]""".stripMargin
       } else {
         s"""|encode${name} :: ${name} -> Uint8Array
             |encode${name} _ = write_uint32 0""".stripMargin

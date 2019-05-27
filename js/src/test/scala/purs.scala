@@ -121,15 +121,18 @@ encodePull (UploadChunk x) = uint8array_concatall [ write_uint32 802, encodeUplo
 encodeGetSites _ = write_uint32 0"""
 
   val encodeUploadChunk = """encodeUploadChunk :: UploadChunk -> Uint8Array
-encodeUploadChunk msg = uint8array_concatall
-  [ write_uint32 10
-  , write_string msg.siteID
-  , uint8array_concatall $ concatMap (\x -> [ write_uint32 18, write_string x ]) msg.path
-  , write_uint32 26
-  , write_string msg.name
-  , write_uint32 34
-  , write_string msg.id
-  , write_uint32 42
-  , write_bytes msg.chunk
-  ]"""
+encodeUploadChunk msg = do
+  let xs = uint8array_concatall
+        [ write_uint32 10
+        , write_string msg.siteID
+        , uint8array_concatall $ concatMap (\x -> [ write_uint32 18, write_string x ]) msg.path
+        , write_uint32 26
+        , write_string msg.name
+        , write_uint32 34
+        , write_string msg.id
+        , write_uint32 42
+        , write_bytes msg.chunk
+        ]
+  let len = uint8array_length xs
+  uint8array_concatall [ write_uint32 len, xs ]"""
 }
