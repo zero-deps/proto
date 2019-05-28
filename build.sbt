@@ -19,6 +19,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-Ywarn-value-discard"
 )
 ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
+ThisBuild / isSnapshot := true
 
 lazy val root = project.in(file(".")).settings(
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.7" % Test,

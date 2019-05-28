@@ -1,24 +1,6 @@
 "use strict"
 
-exports.uint8array_length = function(xs) {
-  return xs.length
-}
-
-exports.uint8array_index_impl = function(xs) {
-  return function(i) {
-    return xs[i]
-  }
-}
-
-exports.uint8array_slice = function(xs) {
-  return function(start) {
-    return function(end) {
-      return xs.slice(start, end)
-    }
-  }
-}
-
-exports.utf8_length = function(string) {
+exports.numOfBytes = function(string) {
   var len = 0,
       c = 0
   for (var i = 0; i < string.length; ++i) {
@@ -36,7 +18,7 @@ exports.utf8_length = function(string) {
   return len
 }
 
-exports.utf8_read = function(buffer) {
+exports.toString = function(buffer) {
   var start = 0
   var end = buffer.length
   var len = end - start
@@ -71,7 +53,7 @@ exports.utf8_read = function(buffer) {
   return String.fromCharCode.apply(String, chunk.slice(0, i))
 }
 
-exports.utf8_write = function(string) {
+exports.toUint8Array = function(string) {
   return function(len) {
     var buffer = new Uint8Array(len)
     var offset = 0
@@ -99,20 +81,5 @@ exports.utf8_write = function(string) {
     }
     return buffer
   }
-}
-
-exports.array_touint8array = function(xs) {
-  return new Uint8Array(xs)
-}
-
-exports.uint8array_concatall = function(xs) {
-  var zs = new Uint8Array(xs.reduce(function(acc, x) {
-    return acc + x.length
-  }, 0))
-  xs.reduce(function(acc, x) {
-    zs.set(x, acc)
-    return acc + x.length
-  }, 0)
-  return zs
 }
 

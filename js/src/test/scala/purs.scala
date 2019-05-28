@@ -62,77 +62,77 @@ sealed trait Pull
   ) extends Pull
 
 object Snippets {
-  val decodePush = """decodePush :: Uint8Array -> Result Push
+  val decodePush = """decodePush :: Uint8Array -> Decode.Result Push
 decodePush xs = do
-  { offset: offset1, val: tag } <- read_uint32 xs 0
+  { pos: pos1, val: tag } <- Decode.uint32 xs 0
   case tag `zshr` 3 of
     1 -> do
-      { offset: offset2, val: msglen } <- read_uint32 xs offset1
-      { offset: offset3, val } <- decodeSiteOpts xs (offset1+offset2) msglen
-      pure { offset: offset1+offset2+offset3, val: SiteOpts val }
-    x ->
-      Left $ BadType x"""
+      { pos: pos2, val: msglen } <- Decode.uint32 xs pos1
+      { pos: pos3, val } <- decodeSiteOpts xs pos2 msglen
+      pure { pos: pos3, val: SiteOpts val }
+    i ->
+      Left $ BadType i"""
 
-  val decodeSiteOpt = """decodeSiteOpt :: Uint8Array -> Int -> Int -> Result SiteOpt
-decodeSiteOpt xs offset msglen = do
-  let end = offset + msglen
-  decode end { id: "", label: "" } offset
+  val decodeSiteOpt = """decodeSiteOpt :: Uint8Array -> Int -> Int -> Decode.Result SiteOpt
+decodeSiteOpt xs pos msglen = do
+  let end = pos + msglen
+  decode end { id: "", label: "" } pos
     where
-    decode :: Int -> SiteOpt -> Int -> Result SiteOpt
-    decode end acc offset1 =
-      if offset1 < end then do
-        { offset: offset2, val: tag } <- read_uint32 xs offset1
+    decode :: Int -> SiteOpt -> Int -> Decode.Result SiteOpt
+    decode end acc pos1 =
+      if pos1 < end then do
+        { pos: pos2, val: tag } <- Decode.uint32 xs pos1
         case tag `zshr` 3 of
           1 -> do
-            { offset: offset3, val } <- read_string xs $ offset1+offset2
-            decode end (acc { id = val }) $ offset1+offset2+offset3
+            { pos: pos3, val } <- Decode.string xs pos2
+            decode end (acc { id = val }) pos3
           2 -> do
-            { offset: offset3, val } <- read_string xs $ offset1+offset2
-            decode end (acc { label = val }) $ offset1+offset2+offset3
+            { pos: pos3, val } <- Decode.string xs pos2
+            decode end (acc { label = val }) pos3
           _ -> do
-            { offset: offset3 } <- skipType xs (offset1+offset2) $ tag .&. 7
-            decode end acc $ offset1+offset2+offset3
-      else pure { offset: offset1, val: acc }"""
+            { pos: pos3 } <- Decode.skipType xs pos2 $ tag .&. 7
+            decode end acc pos3
+      else pure { pos: pos1, val: acc }"""
 
-  val decodeSiteOpts = """decodeSiteOpts :: Uint8Array -> Int -> Int -> Result SiteOpts
-decodeSiteOpts xs offset msglen = do
-  let end = offset + msglen
-  decode end { xs: [] } offset
+  val decodeSiteOpts = """decodeSiteOpts :: Uint8Array -> Int -> Int -> Decode.Result SiteOpts
+decodeSiteOpts xs pos msglen = do
+  let end = pos + msglen
+  decode end { xs: [] } pos
     where
-    decode :: Int -> SiteOpts -> Int -> Result SiteOpts
-    decode end acc offset1 =
-      if offset1 < end then do
-        { offset: offset2, val: tag } <- read_uint32 xs offset1
+    decode :: Int -> SiteOpts -> Int -> Decode.Result SiteOpts
+    decode end acc pos1 =
+      if pos1 < end then do
+        { pos: pos2, val: tag } <- Decode.uint32 xs pos1
         case tag `zshr` 3 of
           1 -> do
-            { offset: offset3, val: msglen1 } <- read_uint32 xs $ offset1+offset2
-            { offset: offset4, val } <- decodeSiteOpt xs (offset1+offset2+offset3) msglen1
-            decode end (acc { xs = snoc acc.xs val }) $ offset1+offset2+offset3+offset4
+            { pos: pos3, val: msglen1 } <- Decode.uint32 xs pos2
+            { pos: pos4, val } <- decodeSiteOpt xs pos3 msglen1
+            decode end (acc { xs = snoc acc.xs val }) pos4
           _ -> do
-            { offset: offset3 } <- skipType xs (offset1+offset2) $ tag .&. 7
-            decode end acc $ offset1+offset2+offset3
-      else pure { offset: offset1, val: acc }"""
+            { pos: pos3 } <- Decode.skipType xs pos2 $ tag .&. 7
+            decode end acc pos3
+      else pure { pos: pos1, val: acc }"""
 
   val encodePull = """encodePull :: Pull -> Uint8Array
-encodePull (GetSites x) = uint8array_concatall [ write_uint32 10, encodeGetSites x ]
-encodePull (UploadChunk x) = uint8array_concatall [ write_uint32 802, encodeUploadChunk x ]"""
+encodePull (GetSites x) = concatAll [ Encode.uint32 10, encodeGetSites x ]
+encodePull (UploadChunk x) = concatAll [ Encode.uint32 802, encodeUploadChunk x ]"""
 
   val encodeGetSites = """encodeGetSites :: GetSites -> Uint8Array
-encodeGetSites _ = write_uint32 0"""
+encodeGetSites _ = Encode.uint32 0"""
 
   val encodeUploadChunk = """encodeUploadChunk :: UploadChunk -> Uint8Array
 encodeUploadChunk msg = do
-  let xs = uint8array_concatall
-        [ write_uint32 10
-        , write_string msg.siteID
-        , uint8array_concatall $ concatMap (\x -> [ write_uint32 18, write_string x ]) msg.path
-        , write_uint32 26
-        , write_string msg.name
-        , write_uint32 34
-        , write_string msg.id
-        , write_uint32 42
-        , write_bytes msg.chunk
+  let xs = concatAll
+        [ Encode.uint32 10
+        , Encode.string msg.siteID
+        , concatAll $ concatMap (\x -> [ Encode.uint32 18, Encode.string x ]) msg.path
+        , Encode.uint32 26
+        , Encode.string msg.name
+        , Encode.uint32 34
+        , Encode.string msg.id
+        , Encode.uint32 42
+        , Encode.bytes msg.chunk
         ]
-  let len = uint8array_length xs
-  uint8array_concatall [ write_uint32 len, xs ]"""
+  let len = length xs
+  concatAll [ Encode.uint32 len, xs ]"""
 }

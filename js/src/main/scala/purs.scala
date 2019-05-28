@@ -69,13 +69,13 @@ object Purescript {
       val encodeFields = fieldsOf.flatMap{ case (name, tpe, n) => 
         if (tpe =:= StringClass.selfType) {
           List(
-            s"""write_uint32 ${(n<<3)+2}"""
-          , s"""write_string msg.${name}"""
+            s"""Encode.uint32 ${(n<<3)+2}"""
+          , s"""Encode.string msg.${name}"""
           )
         } else if (tpe =:= typeOf[Array[Byte]]) {
           List(
-            s"""write_uint32 ${(n<<3)+2}"""
-          , s"""write_bytes msg.${name}"""
+            s"""Encode.uint32 ${(n<<3)+2}"""
+          , s"""Encode.bytes msg.${name}"""
           )
         } else if (isIterable(tpe)) {
           val typeArg = tpe.typeArgs.head.typeSymbol
@@ -83,7 +83,7 @@ object Purescript {
           val typeArgType = typeArg.asType.toType
           if (typeArgType =:= StringClass.selfType) {
             List(
-              s"""uint8array_concatall $$ concatMap (\\x -> [ write_uint32 ${(n<<3)+2}, write_string x ]) msg.${name}""",
+              s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.${name}""",
             )
           } else {
             s"?unknown_typearg_${typeArgName}_for_encoder_${name}" :: Nil
@@ -95,13 +95,13 @@ object Purescript {
       if (encodeFields.nonEmpty) {
         s"""|encode${name} :: ${name} -> Uint8Array
             |encode${name} msg = do
-            |  let xs = uint8array_concatall
+            |  let xs = concatAll
             |  ${encodeFields.mkString("      [ ", "\n        , ", "\n        ]")}
-            |  let len = uint8array_length xs
-            |  uint8array_concatall [ write_uint32 len, xs ]""".stripMargin
+            |  let len = length xs
+            |  concatAll [ Encode.uint32 len, xs ]""".stripMargin
       } else {
         s"""|encode${name} :: ${name} -> Uint8Array
-            |encode${name} _ = write_uint32 0""".stripMargin
+            |encode${name} _ = Encode.uint32 0""".stripMargin
       }
     }
 
@@ -121,8 +121,8 @@ object Purescript {
           if (tpe =:= StringClass.selfType) {
             List(
               s"${n} -> do"
-            , s"  { offset: offset3, val } <- read_string xs $$ offset1+offset2"
-            , s"  decode end (acc { ${name} = val }) $$ offset1+offset2+offset3"
+            , s"  { pos: pos3, val } <- Decode.string xs pos2"
+            , s"  decode end (acc { ${name} = val }) pos3"
             )
           } else if (isIterable(tpe)) {
             val typeArg = tpe.typeArgs.head.typeSymbol
@@ -131,29 +131,29 @@ object Purescript {
             decoders += constructDecode(typeArgName, typeArgFields)
             List(
               s"${n} -> do"
-            , s"  { offset: offset3, val: msglen1 } <- read_uint32 xs $$ offset1+offset2"
-            , s"  { offset: offset4, val } <- decode${typeArgName} xs (offset1+offset2+offset3) msglen1"
-            , s"  decode end (acc { ${name} = snoc acc.${name} val }) $$ offset1+offset2+offset3+offset4"
+            , s"  { pos: pos3, val: msglen1 } <- Decode.uint32 xs pos2"
+            , s"  { pos: pos4, val } <- decode${typeArgName} xs pos3 msglen1"
+            , s"  decode end (acc { ${name} = snoc acc.${name} val }) pos4"
             )
           } else {
             List("?"+tpe.toString)
           }
       }.flatten
-      s"""|decode${name} :: Uint8Array -> Int -> Int -> Result ${name}
-          |decode${name} xs offset msglen = do
-          |  let end = offset + msglen
-          |  decode end ${defObj} offset
+      s"""|decode${name} :: Uint8Array -> Int -> Int -> Decode.Result ${name}
+          |decode${name} xs pos msglen = do
+          |  let end = pos + msglen
+          |  decode end ${defObj} pos
           |    where
-          |    decode :: Int -> ${name} -> Int -> Result ${name}
-          |    decode end acc offset1 =
-          |      if offset1 < end then do
-          |        { offset: offset2, val: tag } <- read_uint32 xs offset1
+          |    decode :: Int -> ${name} -> Int -> Decode.Result ${name}
+          |    decode end acc pos1 =
+          |      if pos1 < end then do
+          |        { pos: pos2, val: tag } <- Decode.uint32 xs pos1
           |        case tag `zshr` 3 of
           |${cases.map("          "+_).mkString("\n")}
           |          _ -> do
-          |            { offset: offset3 } <- skipType xs (offset1+offset2) $$ tag .&. 7
-          |            decode end acc $$ offset1+offset2+offset3
-          |      else pure { offset: offset1, val: acc }""".stripMargin
+          |            { pos: pos3 } <- Decode.skipType xs pos2 $$ tag .&. 7
+          |            decode end acc pos3
+          |      else pure { pos: pos1, val: acc }""".stripMargin
     }
 
     val decodeTpe = typeOf[D]
@@ -165,18 +165,18 @@ object Purescript {
         val subclassName = x.name.encodedName.toString
         List(
           s"${n} -> do"
-        , s"  { offset: offset2, val: msglen } <- read_uint32 xs offset1"
-        , s"  { offset: offset3, val } <- decode${subclassName} xs (offset1+offset2) msglen"
-        , s"  pure { offset: offset1+offset2+offset3, val: ${subclassName} val }"
+        , s"  { pos: pos2, val: msglen } <- Decode.uint32 xs pos1"
+        , s"  { pos: pos3, val } <- decode${subclassName} xs pos2 msglen"
+        , s"  pure { pos: pos3, val: ${subclassName} val }"
         )
       }
-      s"""|decode${decodeName} :: Uint8Array -> Result ${decodeName}
+      s"""|decode${decodeName} :: Uint8Array -> Decode.Result ${decodeName}
           |decode${decodeName} xs = do
-          |  { offset: offset1, val: tag } <- read_uint32 xs 0
+          |  { pos: pos1, val: tag } <- Decode.uint32 xs 0
           |  case tag `zshr` 3 of
           |${cases.map(_.map("    "+_).mkString("\n")).mkString("\n")}
-          |    x ->
-          |      Left $$ BadType x""".stripMargin
+          |    i ->
+          |      Left $$ Decode.BadType i""".stripMargin
     }
     decodeSubclasses.map{ case (x, _) =>
       val name = x.name.encodedName.toString
@@ -194,7 +194,7 @@ object Purescript {
       val cases = encodeSubclasses.map{ case (x, n) =>
         val subclassName = x.name.encodedName.toString
         List(
-          s"encode${encodeName} (${subclassName} x) = uint8array_concatall [ write_uint32 ${(n << 3) + 2}, encode${subclassName} x ]"
+          s"encode${encodeName} (${subclassName} x) = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode${subclassName} x ]"
         )
       }
       s"""|encode${encodeName} :: ${encodeName} -> Uint8Array
@@ -226,5 +226,7 @@ import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left))
 import Data.Int.Bits (zshr, (.&.))
 import Prelude (bind, pure, ($$), (+), (<))
-import Proto"""
+import Proto.Encode as Encode
+import Proto.Decode as Decode
+import Uint8ArrayExt (length, concatAll)"""
 }
