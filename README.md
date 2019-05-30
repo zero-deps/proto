@@ -55,8 +55,8 @@ to run benchmark:
 Add dependency:
 ```
 resolvers += Resolver.jcenterRepo
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % 1.1.4 % Compile
-libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % 1.1.4
+libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "latest.integration" % Compile
+libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % "latest.integration"
 ```
 
 # Usage
@@ -94,13 +94,14 @@ More examples in testing.scala
 
 ## Purescript
 
-There is an option to generate Purescript code to decode protobuf bytes. Code is generated based on same Scala models.
+There is an option to generate Purescript code to decode/encode protobuf bytes. Code is generated based on same Scala models.
 Essentially Scala code replaces .proto files. But because Scala code is part of sources Purescript should be generated
 at moment of runtime using reflection. Macros is not suitable because their purpose is to manipulate with AST and
 not to generate anything but code tree.
 
-1. Copy `js/src/test/resources/*` to your project
+1. Add dependency `libraryDependencies += "io.github.zero-deps" %% "proto-purs" % "latest.integration"`
+1. Add resolver `resolvers += Resolver.jcenterRepo`
+1. Copy `purs/src/test/resources/*` to your project
 1. Run method `zd.proto.Purescript.generate[D, E](moduleName="N")` where `D`/`E` are types of your base trait for decode/encode and `N` is
    name to put at beginning of file. Method return string which you can save to file or print.
 
-Working example is located at `js/src/test/scala/purs.scala`.
