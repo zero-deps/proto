@@ -1,6 +1,10 @@
 # protobuf-scala-macros
 
-Lightweight, high performance, fast serialization library for scala based on Protocol Buffers (protobuf) without proto files
+Lightweight, high performance, fast serialization library for scala based on Protocol Buffers (protobuf) without proto files.
+
+![Bintray](https://img.shields.io/bintray/v/zero-deps/maven/proto-macros.svg)
+![Bintray](https://img.shields.io/bintray/v/zero-deps/maven/proto-purs.svg)
+![Bintray](https://img.shields.io/bintray/v/zero-deps/maven/proto-runtime.svg)
 
 # Motivation
 
