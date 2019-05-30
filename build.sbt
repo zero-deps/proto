@@ -22,9 +22,10 @@ ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 ThisBuild / isSnapshot := true
 
 lazy val root = project.in(file(".")).settings(
+  name := "proto",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.7" % Test,
   skip in publish := true,
-).dependsOn(macros).aggregate(macros, runtime, js)
+).dependsOn(macros).aggregate(macros, runtime, purs)
 
 lazy val macros = project.in(file("macros")).settings(
   name := "proto-macros",
@@ -36,8 +37,8 @@ lazy val runtime = project.in(file("runtime")).settings(
   libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.7.1",
 )
 
-lazy val js = project.in(file("js")).settings(
-  name := "proto-js",
+lazy val purs = project.in(file("purs")).settings(
+  name := "proto-purs",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.7" % Test,
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
 ).dependsOn(runtime)
