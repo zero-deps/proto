@@ -127,14 +127,23 @@ object Purescript {
           } else if (isIterable(tpe)) {
             val typeArg = tpe.typeArgs.head.typeSymbol
             val typeArgName = typeArg.asClass.name.encodedName.toString
-            val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
-            decoders += constructDecode(typeArgName, typeArgFields)
-            List(
-              s"${n} -> do"
-            , s"  { pos: pos3, val: msglen1 } <- Decode.uint32 xs pos2"
-            , s"  { pos: pos4, val } <- decode${typeArgName} xs pos3 msglen1"
-            , s"  decode end (acc { ${name} = snoc acc.${name} val }) pos4"
-            )
+            val typeArgType = typeArg.asType.toType
+            if (typeArgType =:= StringClass.selfType) {
+              List(
+                s"${n} -> do"
+              , s"  { pos: pos3, val } <- Decode.string xs pos2"
+              , s"  decode end (acc { ${name} = snoc acc.${name} val }) pos3"
+              )
+            } else {
+              val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
+              decoders += constructDecode(typeArgName, typeArgFields)
+              List(
+                s"${n} -> do"
+              , s"  { pos: pos3, val: msglen1 } <- Decode.uint32 xs pos2"
+              , s"  { pos: pos4, val } <- decode${typeArgName} xs pos3 msglen1"
+              , s"  decode end (acc { ${name} = snoc acc.${name} val }) pos4"
+              )
+            }
           } else {
             List("?"+tpe.toString)
           }

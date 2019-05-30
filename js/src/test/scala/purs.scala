@@ -11,7 +11,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.prelude.startsWith("module Api")
     }
     "data type" in {
-      res.decodeData should be ("data Push = SiteOpts SiteOpts")
+      res.decodeData should be ("data Push = SiteOpts SiteOpts | Permissions Permissions")
       res.encodeData should be ("data Pull = GetSites GetSites | UploadChunk UploadChunk")
       ()
     }
@@ -19,6 +19,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.decodeTypes.toSet should be (Set(
         "type SiteOpt = { id :: String, label :: String }",
         "type SiteOpts = { xs :: Array SiteOpt }",
+        "type Permissions = { xs :: Array String }",
       ))
       res.encodeTypes.toSet should be (Set(
         "type GetSites = {  }",
@@ -31,6 +32,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
         case d if d.startsWith("decodePush :: ") => d should be (Snippets.decodePush)
         case d if d.startsWith("decodeSiteOpt :: ") => d should be (Snippets.decodeSiteOpt)
         case d if d.startsWith("decodeSiteOpts :: ") => d should be (Snippets.decodeSiteOpts)
+        case d if d.startsWith("decodePermissions :: ") => d should be (Snippets.decodePermissions)
       }
     }
     "encoders" in {
@@ -48,6 +50,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
 
 sealed trait Push
 @N(1) final case class SiteOpts(@N(1) xs: Stream[SiteOpt]) extends Push
+@N(2) final case class Permissions(@N(1) xs: List[String]) extends Push
 
 final case class SiteOpt(@N(1) id: String, @N(2) label: String)
 
@@ -70,8 +73,12 @@ decodePush xs = do
       { pos: pos2, val: msglen } <- Decode.uint32 xs pos1
       { pos: pos3, val } <- decodeSiteOpts xs pos2 msglen
       pure { pos: pos3, val: SiteOpts val }
+    2 -> do
+      { pos: pos2, val: msglen } <- Decode.uint32 xs pos1
+      { pos: pos3, val } <- decodePermissions xs pos2 msglen
+      pure { pos: pos3, val: Permissions val }
     i ->
-      Left $ BadType i"""
+      Left $ Decode.BadType i"""
 
   val decodeSiteOpt = """decodeSiteOpt :: Uint8Array -> Int -> Int -> Decode.Result SiteOpt
 decodeSiteOpt xs pos msglen = do
@@ -108,6 +115,24 @@ decodeSiteOpts xs pos msglen = do
             { pos: pos3, val: msglen1 } <- Decode.uint32 xs pos2
             { pos: pos4, val } <- decodeSiteOpt xs pos3 msglen1
             decode end (acc { xs = snoc acc.xs val }) pos4
+          _ -> do
+            { pos: pos3 } <- Decode.skipType xs pos2 $ tag .&. 7
+            decode end acc pos3
+      else pure { pos: pos1, val: acc }"""
+
+  val decodePermissions = """decodePermissions :: Uint8Array -> Int -> Int -> Decode.Result Permissions
+decodePermissions xs pos msglen = do
+  let end = pos + msglen
+  decode end { xs: [] } pos
+    where
+    decode :: Int -> Permissions -> Int -> Decode.Result Permissions
+    decode end acc pos1 =
+      if pos1 < end then do
+        { pos: pos2, val: tag } <- Decode.uint32 xs pos1
+        case tag `zshr` 3 of
+          1 -> do
+            { pos: pos3, val } <- Decode.string xs pos2
+            decode end (acc { xs = snoc acc.xs val }) pos3
           _ -> do
             { pos: pos3 } <- Decode.skipType xs pos2 $ tag .&. 7
             decode end acc pos3
