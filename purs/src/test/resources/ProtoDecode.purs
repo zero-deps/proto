@@ -28,16 +28,21 @@ index xs i =
 
 uint32 :: Uint8Array -> Pos -> Result Int
 uint32 xs pos = do
-  val <- map (\x -> (x .&. 127) `zshr` 0) $ index xs pos
-  if val < 128 then pure { pos: pos+1, val: val } else do
-    val1 <- map (\x -> (val .|. ((x .&. 127) `shl` 7)) `zshr` 0) $ index xs (pos+1)
-    if val1 < 128 then pure { pos: pos+2, val: val1 } else do
-      val2 <- map (\x -> (val1 .|. ((x .&. 127) `shl` 14)) `zshr` 0) $ index xs (pos+2)
-      if val2 < 128 then pure { pos: pos+3, val: val2 } else do
-        val3 <- map (\x -> (val2 .|. ((x .&. 127) `shl` 21)) `zshr` 0) $ index xs (pos+3)
-        if val3 < 128 then pure { pos: pos+4, val: val3 } else do
-          val4 <- map (\x -> (val3 .|. ((x .&. 15) `shl` 28)) `zshr` 0) $ index xs (pos+4)
-          if val4 < 128 then pure { pos: pos+5, val: val4 } else Left $ UnexpectedCase val4 (pos+4)
+  x <- index xs pos
+  val <- (x .&. 127) `zshr` 0
+  if x < 128 then pure { pos: pos+1, val: val } else do
+    x1 <- index xs (pos+1)
+    val1 <- (val .|. ((x1 .&. 127) `shl` 7)) `zshr` 0
+    if x1 < 128 then pure { pos: pos+2, val: val1 } else do
+      x2 <- index xs (pos+2)
+      val2 <- (val1 .|. ((x2 .&. 127) `shl` 14)) `zshr` 0
+      if x2 < 128 then pure { pos: pos+3, val: val2 } else do
+        x3 <- index xs (pos+3)
+        val3 <- (val2 .|. ((x3 .&. 127) `shl` 21)) `zshr` 0
+        if x3 < 128 then pure { pos: pos+4, val: val3 } else do
+          x4 <- index xs (pos+4)
+          val4 <- (val3 .|. ((x4 .&. 15) `shl` 28)) `zshr` 0
+          if x4 < 128 then pure { pos: pos+5, val: val4 } else Left $ UnexpectedCase x4 (pos+4)
 
 bytes :: Uint8Array -> Pos -> Result Uint8Array
 bytes xs pos0 = do
