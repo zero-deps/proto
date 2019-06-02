@@ -94,7 +94,7 @@ val bytes: Array[Byte] = encode(car)
 val car2: Car = decode[Car](bytes)
 ```
 
-More examples in testing.scala
+More examples in [testing.scala](src/test/scala/testing.scala)
 
 ## Purescript
 
