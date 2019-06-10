@@ -48,6 +48,8 @@ object Purescript {
         val pursType =
           if (tpe =:= StringClass.selfType) {
             "String"
+          } else if (tpe =:= IntClass.selfType) {
+            "Int"
           } else if (tpe =:= typeOf[Array[Byte]]) {
             "Uint8Array"
           } else if (isIterable(tpe)) {
@@ -59,7 +61,11 @@ object Purescript {
             else decodeTypes += constructType(typeArgName, typeArgFields)
             s"Array ${typeArgName}"
           } else {
-            "?"+tpe.toString
+            val symbol = tpe.typeSymbol
+            val name = symbol.name.encodedName.toString
+            println(s"name=${name}, symbol=${symbol}")
+            decodeTypes += constructType(name, fields(symbol))
+            s"${name}"
           }
         s"${name} :: ${pursType}"
       }.mkString(s"type ${name} = { ", ", ", " }")
@@ -71,6 +77,11 @@ object Purescript {
           List(
             s"""Encode.uint32 ${(n<<3)+2}"""
           , s"""Encode.string msg.${name}"""
+          )
+        } else if (tpe =:= IntClass.selfType) {
+          List(
+            s"""Encode.uint32 ${(n<<3)+0}"""
+          , s"""Encode.uint32 msg.${name}"""
           )
         } else if (tpe =:= typeOf[Array[Byte]]) {
           List(
@@ -106,23 +117,35 @@ object Purescript {
     }
 
     def constructDecode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
-      val defObj = fieldsOf.map{
+      def defObj(fs: List[(String, Type, Int)]): String = fs.map{
         case (name, tpe, _) =>
           if (tpe =:= StringClass.selfType) {
             s"""${name}: """""
+          } else if (tpe =:= IntClass.selfType) {
+            s"""${name}: 0"""
           } else if (isIterable(tpe)) {
             s"${name}: []"
           } else {
-            "?"+tpe.toString
+            s"${name}: ${defObj(fields(tpe.typeSymbol))}"
           }
       }.mkString("{ ", ", ", " }")
       val cases = fieldsOf.map{
         case (name, tpe, n) =>
           if (tpe =:= StringClass.selfType) {
             List(
-              s"${n} -> do"
-            , s"  { pos: pos3, val } <- Decode.string xs pos2"
-            , s"  decode end (acc { ${name} = val }) pos3"
+              s"${n} ->"
+            , s"  case Decode.string xs pos2 of"
+            , s"    (Left err1) -> Left err1"
+            , s"    (Right { pos: pos3, val }) ->"
+            , s"       decode end (acc { ${name} = val }) pos3"
+            )
+          } else if (tpe =:= IntClass.selfType) {
+            List(
+              s"${n} ->"
+            , s"  case Decode.int32 xs pos2 of" 
+            , s"    (Left err1) -> Left err1"
+            , s"    (Right { pos: pos3, val }) ->"
+            , s"      decode end (acc { ${name} = val }) pos3"
             )
           } else if (isIterable(tpe)) {
             val typeArg = tpe.typeArgs.head.typeSymbol
@@ -130,38 +153,59 @@ object Purescript {
             val typeArgType = typeArg.asType.toType
             if (typeArgType =:= StringClass.selfType) {
               List(
-                s"${n} -> do"
-              , s"  { pos: pos3, val } <- Decode.string xs pos2"
-              , s"  decode end (acc { ${name} = snoc acc.${name} val }) pos3"
+                s"${n} ->"
+              , s"  case Decode.string xs pos2 of"
+              , s"    (Left err1) -> Left err1"
+              , s"    (Right { pos: pos3, val }) -> "
+              , s"      decode end (acc { ${name} = snoc acc.${name} val }) pos3"
               )
             } else {
               val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
               decoders += constructDecode(typeArgName, typeArgFields)
               List(
-                s"${n} -> do"
-              , s"  { pos: pos3, val: msglen1 } <- Decode.uint32 xs pos2"
-              , s"  { pos: pos4, val } <- decode${typeArgName} xs pos3 msglen1"
-              , s"  decode end (acc { ${name} = snoc acc.${name} val }) pos4"
+                s"${n} ->"
+              , s"  case Decode.uint32 xs pos2 of"
+              , s"    (Left err1) -> Left err1"
+              , s"    (Right { pos: pos3, val: msglen1 }) ->"
+              , s"      case decode${typeArgName} xs pos3 msglen1 of"
+              , s"        (Left err2) -> Left err2"
+              , s"        (Right { pos: pos4, val }) ->"
+              , s"          decode end (acc { ${name} = snoc acc.${name} val }) pos4"
               )
             }
           } else {
-            List("?"+tpe.toString)
+            val symbol = tpe.typeSymbol
+            val symbolName = symbol.name.encodedName.toString
+            decoders += constructDecode(symbolName, fields(symbol))
+            List(
+              s"${n} ->"
+            , s"  case Decode.uint32 xs pos2 of"
+            , s"    (Left err1) -> err1"
+            , s"    (Right { pos: pos3, val: msglen1 }) ->"
+            , s"      case decode${symbolName} xs pos3 msglen1 of"
+            , s"        (Left err2) -> err2"
+            , s"        (Right { pos: pos4, val }) ->"
+            , s"          decode end (acc { ${name} = val }) pos4"
+            )
           }
       }.flatten
       s"""|decode${name} :: Uint8Array -> Int -> Int -> Decode.Result ${name}
           |decode${name} xs pos msglen = do
           |  let end = pos + msglen
-          |  decode end ${defObj} pos
+          |  decode end ${defObj(fieldsOf)} pos
           |    where
           |    decode :: Int -> ${name} -> Int -> Decode.Result ${name}
           |    decode end acc pos1 =
-          |      if pos1 < end then do
-          |        { pos: pos2, val: tag } <- Decode.uint32 xs pos1
-          |        case tag `zshr` 3 of
-          |${cases.map("          "+_).mkString("\n")}
-          |          _ -> do
-          |            { pos: pos3 } <- Decode.skipType xs pos2 $$ tag .&. 7
-          |            decode end acc pos3
+          |      if pos1 < end then
+          |        case Decode.uint32 xs pos1 of    
+          |          (Left err1) -> Left err1
+          |          (Right { pos: pos2, val: tag }) ->
+          |            case tag `zshr` 3 of
+          |${cases.map("              "+_).mkString("\n")}
+          |              _ ->
+          |                case Decode.skipType xs pos2 $$ tag .&. 7 of
+          |                  (Left err1) -> Left err1
+          |                  (Right { pos: pos3 }) -> decode end acc pos3
           |      else pure { pos: pos1, val: acc }""".stripMargin
     }
 
@@ -232,7 +276,7 @@ object Purescript {
 
 import Data.Array (snoc, concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Either (Either(Left))
+import Data.Either (Either(Left, Right))
 import Data.Int.Bits (zshr, (.&.))
 import Prelude (bind, pure, ($$), (+), (<))
 import Proto.Encode as Encode
