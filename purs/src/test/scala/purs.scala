@@ -5,25 +5,34 @@ import org.scalatest.{FreeSpec, Matchers}
 import zd.proto.api.N
 
 class PurescriptSpec extends FreeSpec with Matchers {
+  val res = Purescript.generate[Push, Pull](moduleName="Api")
   "purs has" - {
-    val res = Purescript.generate[Push, Pull](moduleName="Api")
     "module name" in {
       res.prelude.startsWith("module Api")
     }
-    "data type" in {
-      res.decodeData should be ("data Push = SiteOpts SiteOpts | Permissions Permissions")
-      res.encodeData should be ("data Pull = GetSites GetSites | UploadChunk UploadChunk")
-      ()
-    }
     "types" in {
       res.decodeTypes.toSet should be (Set(
+        "data Push = Push_SiteOpts Push_SiteOpts | Push_Permissions Push_Permissions | Push_Page Push_Page",
+        "data PageType = PageType_Widgets PageType_Widgets | PageType_Url PageType_Url",
+        "type PageType_Url = { addr :: String }",
+        "type PageType_Url' = { addr :: Maybe (String) }",
+        "type PageType_Widgets = {  }",
+        "type PageType_Widgets' = {  }",
+        "type Push_Page = { tpe :: tpe }",
+        "type Push_Page' = { tpe :: Maybe (tpe) }",
+        "type Push_Permissions = { xs :: Array String }",
+        "type Push_Permissions' = { xs :: Maybe (Array String) }",
+        "type Push_SiteOpts = { xs :: Array SiteOpt }",
+        "type Push_SiteOpts' = { xs :: Maybe (Array SiteOpt) }",
         "type SiteOpt = { id :: String, label :: String }",
-        "type SiteOpts = { xs :: Array SiteOpt }",
-        "type Permissions = { xs :: Array String }",
+        "type SiteOpt' = { id :: Maybe (String), label :: Maybe (String) }",
       ))
       res.encodeTypes.toSet should be (Set(
-        "type GetSites = {  }",
-        "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }",
+        "data Pull = Pull_GetSites Pull_GetSites | Pull_UploadChunk Pull_UploadChunk",
+        "type Pull_GetSites = {  }",
+        "type Pull_GetSites' = {  }",
+        "type Pull_UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }",
+        "type Pull_UploadChunk' = { path :: Maybe (Array String), id :: Maybe (String), chunk :: Maybe (Uint8Array) }",
       ))
       ()
     }
@@ -33,6 +42,10 @@ class PurescriptSpec extends FreeSpec with Matchers {
         case d if d.startsWith("decodeSiteOpt :: ") => d should be (Snippets.decodeSiteOpt)
         case d if d.startsWith("decodeSiteOpts :: ") => d should be (Snippets.decodeSiteOpts)
         case d if d.startsWith("decodePermissions :: ") => d should be (Snippets.decodePermissions)
+        case d if d.startsWith("decodePage :: ") => d should be (Snippets.decodePage)
+        case d if d.startsWith("decodePageType :: ") => d should be (Snippets.decodePageType)
+        case d if d.startsWith("decodePageType_Widgets :: ") => d should be (Snippets.decodePageType_Widgets)
+        case d if d.startsWith("decodePageType_Url :: ") => d should be (Snippets.decodePageType_Url)
       }
     }
     "encoders" in {
@@ -51,8 +64,12 @@ class PurescriptSpec extends FreeSpec with Matchers {
 sealed trait Push
 @N(1) final case class SiteOpts(@N(1) xs: Stream[SiteOpt]) extends Push
 @N(2) final case class Permissions(@N(1) xs: List[String]) extends Push
+@N(3) final case class Page(@N(1) tpe: PageType) extends Push
 
 final case class SiteOpt(@N(1) id: String, @N(2) label: String)
+sealed trait PageType
+@N(1) final case class Widgets() extends PageType
+@N(2) final case class Url(@N(1) addr: String) extends PageType
 
 sealed trait Pull
 @N(1000) final case class GetSites() extends Pull
@@ -75,6 +92,10 @@ decodePush xs = do
       { pos: pos2, val: msglen } <- Decode.uint32 xs pos1
       { pos: pos3, val } <- decodePermissions xs pos2 msglen
       pure { pos: pos3, val: Permissions val }
+    3 -> do
+      { pos: pos2, val: msglen } <- Decode.uint32 xs pos1
+      { pos: pos3, val } <- decodePage xs pos2 msglen
+      pure { pos: pos3, val: Page val }
     i ->
       Left $ Decode.BadType i"""
 
@@ -151,6 +172,105 @@ decodePermissions xs pos msglen = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { xs = snoc acc.xs val }) pos3
+              _ ->
+                case Decode.skipType xs pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }"""
+
+  val decodePage = """decodePage :: Uint8Array -> Int -> Int -> Decode.Result Page
+decodePage xs pos msglen = do
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { tpe: Nothing } pos
+  case val of
+    { tpe: Just tpe } -> pure { pos: pos1, val: { tpe }
+    _ -> Left $ Decode.Missing $ show val
+    where
+    decode :: Int -> Page' -> Int -> Decode.Result Page'
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uin32 xs pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case decodePageType xs pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { tpe = Just val }) pos3"""
+
+  val decodePageType = """decodePageType :: Uint8Array -> Int -> Decode.Result PageType
+decodePageType xs pos = do
+  { pos: pos1, val: msglen } <- Decode.uin32 xs pos
+  let end = pos + msglen
+  decode end Nothing pos
+    where
+    decode :: Int -> Maybe PageType -> Int -> Decode.Result PageType
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 xs pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case decodePageType_Widgets xs pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (Just val) pos3
+              2 ->
+                case decodePageType_Url xs pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (Just val) pos3
+              _ ->
+                case Decode.skipType xs pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else
+        case acc of
+          Just x -> pure { pos: pos1, val: acc }
+          Nothing -> Left $ Decode.Missing "PageType""""
+
+  val decodePageType_Url = """decodePageType_Url :: Uint8Array -> Int -> Decode.Result PageType
+decodePageType_Url xs pos = do
+  { pos: pos1, val: msglen } <- Decode.uint32 xs pos
+  let end = pos + msglen
+  decode end { addr: "" } pos
+    where
+    decode :: Int -> PageType_Url -> Int -> Decode.Result PageType_Url
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uin32 xs pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.string xs pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { addr = val }) pos3
+              _ ->
+                case Decode.skipType xs pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }"""
+
+  val decodePageType_Widgets = """decodePageType_Widgets :: Uint8Array -> Int -> Decode.Result PageType
+decodePageType_Widgets xs pos = do
+  { pos: pos1, val: msglen } <- Decode.uint32 xs pos
+  let end = pos + msglen
+  decode end {  } pos
+    where
+    decode :: Int -> PageType_Widgets -> Int -> Decode.Result PageType_Widgets
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 xs pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
               _ ->
                 case Decode.skipType xs pos2 $ tag .&. 7 of
                   Left x -> Left x

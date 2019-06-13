@@ -5,19 +5,15 @@ import scala.collection.mutable
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 
-final case class Res(prelude: String, decodeData: String, encodeData: String, decodeTypes: List[String], encodeTypes: List[String], decoders: List[String], encoders: List[String]) {
-  def format: String = prelude + "\n\n" + 
-    decodeData + "\n" + decodeTypes.mkString("\n") + "\n\n" + decoders.mkString("\n\n") + "\n\n" +
-    encodeData + "\n" + encodeTypes.mkString("\n") + "\n\n" + encoders.mkString("\n\n") +
+final case class Res(prelude: String, decodeTypes: List[String], encodeTypes: List[String], decoders: List[String], encoders: List[String]) {
+  def format: String = prelude + "\n\n" +
+    decodeTypes.mkString("\n") + "\n\n" + decoders.mkString("\n\n") + "\n\n" +
+    encodeTypes.mkString("\n") + "\n\n" + encoders.mkString("\n\n") +
     "\n"
 }
 
 object Purescript {
   def generate[D, E](moduleName: String)(implicit dtag: TypeTag[D], etag: TypeTag[E]): Res = {
-    val decodeData = mutable.ListBuffer.empty[String]
-    val encodeData = mutable.ListBuffer.empty[String]
-    val decodeTypes = mutable.ListBuffer.empty[String]
-    val encodeTypes = mutable.ListBuffer.empty[String]
     val decoders = mutable.ListBuffer.empty[String]
     val encoders = mutable.ListBuffer.empty[String]
 
@@ -42,9 +38,22 @@ object Purescript {
     def isIterable(tpe: Type): Boolean = {
       tpe.baseClasses.exists(_.asType.toType.typeConstructor <:< typeOf[scala.collection.TraversableOnce[Unit]].typeConstructor)
     }
+    def isTrait(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
 
-    def constructType(name: String, fieldsOf: List[(String, Type, Any)]): String = {
-      fieldsOf.map{ case (name, tpe, _) =>
+    def constructTypesForTrait(x: Type): List[String] = {
+      val aClass = x.typeSymbol.asClass
+      val name = aClass.name.encodedName.toString
+      val children = aClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, _) => (x.name.encodedName.toString, x.asType.toType.typeSymbol) }
+      val data = s"data ${name} = ${children.map{ case (name1, _) => s"${name}_${name1} ${name}_${name1}"}.mkString(" | ")}"
+      data :: children.flatMap{ case (name1, tpe) =>
+        val fs = fields(tpe)
+        constructTypes(s"${name}_${name1}", fs)
+      }.sorted
+    }
+
+    def constructTypes(name: String, fieldsOf: List[(String, Type, Any)]): List[String] = {
+      val types = mutable.ListBuffer.empty[String]
+      val fs = fieldsOf.map{ case (name, tpe, _) =>
         val pursType =
           if (tpe =:= StringClass.selfType) {
             "String"
@@ -58,17 +67,22 @@ object Purescript {
             val typeArgType = typeArg.asType.toType
             val typeArgFields = fields(typeArgType.typeSymbol)
             if (typeArgType =:= StringClass.selfType) ()
-            else decodeTypes += constructType(typeArgName, typeArgFields)
+            else types ++= constructTypes(typeArgName, typeArgFields)
             s"Array ${typeArgName}"
+          } else if (isTrait(tpe)) {
+            types ++= constructTypesForTrait(tpe)
+            s"${name}"
           } else {
             val symbol = tpe.typeSymbol
             val name = symbol.name.encodedName.toString
-            println(s"name=${name}, symbol=${symbol}")
-            decodeTypes += constructType(name, fields(symbol))
+            types ++= constructTypes(name, fields(symbol))
             s"${name}"
           }
-        s"${name} :: ${pursType}"
-      }.mkString(s"type ${name} = { ", ", ", " }")
+        name -> pursType
+      }
+      types += fs.map{ case (name, tpe) => s"${name} :: ${tpe}" }.mkString(s"type ${name} = { ", ", ", " }")
+      types += fs.map{ case (name, tpe) => s"${name} :: Maybe (${tpe})" }.mkString(s"type ${name}' = { ", ", ", " }")
+      types.toList
     }
 
     def constructEncode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
@@ -125,6 +139,8 @@ object Purescript {
             s"""${name}: 0"""
           } else if (isIterable(tpe)) {
             s"${name}: []"
+          } else if (isTrait(tpe)) {
+            s"${name}: null"
           } else {
             s"${name}: ${defObj(fields(tpe.typeSymbol))}"
           }
@@ -173,6 +189,19 @@ object Purescript {
               , s"          decode end (acc { ${name} = snoc acc.${name} val }) pos4"
               )
             }
+          } else if (isTrait(tpe)) {
+            val symbol = tpe.typeSymbol
+            val symbolName = symbol.name.encodedName.toString
+            List(
+              s"${n} ->"
+            , s"  case Decode.uint32 xs pos2 of"
+            , s"    Left x -> Left x"
+            , s"    Right { pos: pos3, val: msglen1 } ->"
+            , s"      case decode${symbolName} xs pos3 msglen1 of"
+            , s"        Left x -> Left x"
+            , s"        Right { pos: pos4, val } ->"
+            , s"          decode end (acc { ${name} = val }) pos4"
+            )
           } else {
             val symbol = tpe.typeSymbol
             val symbolName = symbol.name.encodedName.toString
@@ -211,6 +240,7 @@ object Purescript {
     }
 
     val decodeTpe = typeOf[D]
+    val decodeTypes = constructTypesForTrait(decodeTpe)
     val decodeClass = decodeTpe.typeSymbol.asClass
     val decodeName = decodeClass.name.encodedName.toString
     val decodeSubclasses = decodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2)
@@ -234,13 +264,12 @@ object Purescript {
     }
     decodeSubclasses.map{ case (x, _) =>
       val name = x.name.encodedName.toString
-      decodeData += s"${name} ${name}"
       val tpe = x.asType.toType.typeSymbol
-      decodeTypes += constructType(name, fields(tpe))
       decoders += constructDecode(name, fields(tpe))
     }
 
     val encodeTpe = typeOf[E]
+    val encodeTypes = constructTypesForTrait(encodeTpe)
     val encodeClass = encodeTpe.typeSymbol.asClass
     val encodeName = encodeClass.name.encodedName.toString
     val encodeSubclasses = encodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2)
@@ -256,18 +285,14 @@ object Purescript {
     }
     encodeSubclasses.map{ case (x, _) =>
       val name = x.name.encodedName.toString
-      encodeData += s"${name} ${name}"
       val tpe = x.asType.toType.typeSymbol
-      encodeTypes += constructType(name, fields(tpe))
       encoders += constructEncode(name, fields(tpe))
     }
 
     Res(
       prelude(moduleName),
-      decodeData = s"data ${decodeName} = ${decodeData.mkString(" | ")}",
-      encodeData = s"data ${encodeName} = ${encodeData.mkString(" | ")}",
-      decodeTypes.toList,
-      encodeTypes.toList,
+      decodeTypes,
+      encodeTypes,
       decoders.toList,
       encoders.toList,
     )
