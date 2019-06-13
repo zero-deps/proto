@@ -135,16 +135,16 @@ object Purescript {
             List(
               s"${n} ->"
             , s"  case Decode.string xs pos2 of"
-            , s"    (Left err1) -> Left err1"
-            , s"    (Right { pos: pos3, val }) ->"
-            , s"       decode end (acc { ${name} = val }) pos3"
+            , s"    Left x -> Left x"
+            , s"    Right { pos: pos3, val } ->"
+            , s"      decode end (acc { ${name} = val }) pos3"
             )
           } else if (tpe =:= IntClass.selfType) {
             List(
               s"${n} ->"
-            , s"  case Decode.int32 xs pos2 of" 
-            , s"    (Left err1) -> Left err1"
-            , s"    (Right { pos: pos3, val }) ->"
+            , s"  case Decode.int32 xs pos2 of"
+            , s"    Left x -> Left x"
+            , s"    Right { pos: pos3, val } ->"
             , s"      decode end (acc { ${name} = val }) pos3"
             )
           } else if (isIterable(tpe)) {
@@ -155,8 +155,8 @@ object Purescript {
               List(
                 s"${n} ->"
               , s"  case Decode.string xs pos2 of"
-              , s"    (Left err1) -> Left err1"
-              , s"    (Right { pos: pos3, val }) -> "
+              , s"    Left x -> Left x"
+              , s"    Right { pos: pos3, val } ->"
               , s"      decode end (acc { ${name} = snoc acc.${name} val }) pos3"
               )
             } else {
@@ -165,11 +165,11 @@ object Purescript {
               List(
                 s"${n} ->"
               , s"  case Decode.uint32 xs pos2 of"
-              , s"    (Left err1) -> Left err1"
-              , s"    (Right { pos: pos3, val: msglen1 }) ->"
+              , s"    Left x -> Left x"
+              , s"    Right { pos: pos3, val: msglen1 } ->"
               , s"      case decode${typeArgName} xs pos3 msglen1 of"
-              , s"        (Left err2) -> Left err2"
-              , s"        (Right { pos: pos4, val }) ->"
+              , s"        Left x -> Left x"
+              , s"        Right { pos: pos4, val } ->"
               , s"          decode end (acc { ${name} = snoc acc.${name} val }) pos4"
               )
             }
@@ -180,11 +180,11 @@ object Purescript {
             List(
               s"${n} ->"
             , s"  case Decode.uint32 xs pos2 of"
-            , s"    (Left err1) -> err1"
-            , s"    (Right { pos: pos3, val: msglen1 }) ->"
+            , s"    Left x -> Left x"
+            , s"    Right { pos: pos3, val: msglen1 }) ->"
             , s"      case decode${symbolName} xs pos3 msglen1 of"
-            , s"        (Left err2) -> err2"
-            , s"        (Right { pos: pos4, val }) ->"
+            , s"        Left x -> Left x"
+            , s"        Right { pos: pos4, val } ->"
             , s"          decode end (acc { ${name} = val }) pos4"
             )
           }
@@ -197,15 +197,16 @@ object Purescript {
           |    decode :: Int -> ${name} -> Int -> Decode.Result ${name}
           |    decode end acc pos1 =
           |      if pos1 < end then
-          |        case Decode.uint32 xs pos1 of    
-          |          (Left err1) -> Left err1
-          |          (Right { pos: pos2, val: tag }) ->
+          |        case Decode.uint32 xs pos1 of
+          |          Left x -> Left x
+          |          Right { pos: pos2, val: tag } ->
           |            case tag `zshr` 3 of
           |${cases.map("              "+_).mkString("\n")}
           |              _ ->
           |                case Decode.skipType xs pos2 $$ tag .&. 7 of
-          |                  (Left err1) -> Left err1
-          |                  (Right { pos: pos3 }) -> decode end acc pos3
+          |                  Left x -> Left x
+          |                  Right { pos: pos3 } ->
+          |                    decode end acc pos3
           |      else pure { pos: pos1, val: acc }""".stripMargin
     }
 

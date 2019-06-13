@@ -23,7 +23,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
       ))
       res.encodeTypes.toSet should be (Set(
         "type GetSites = {  }",
-        "type UploadChunk = { siteID :: String, path :: Array String, name :: String, id :: String, chunk :: Uint8Array }",
+        "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }",
       ))
       ()
     }
@@ -55,13 +55,11 @@ sealed trait Push
 final case class SiteOpt(@N(1) id: String, @N(2) label: String)
 
 sealed trait Pull
-@N(1) final case class GetSites() extends Pull
-@N(100) final case class UploadChunk
-  ( @N(1) siteID: String
-  , @N(3) name: String
-  , @N(2) path: List[String]
-  , @N(4) id: String
-  , @N(5) chunk: Array[Byte]
+@N(1000) final case class GetSites() extends Pull
+@N(1001) final case class UploadChunk
+  ( @N(1) path: List[String]
+  , @N(2) id: String
+  , @N(3) chunk: Array[Byte]
   ) extends Pull
 
 object Snippets {
@@ -87,18 +85,26 @@ decodeSiteOpt xs pos msglen = do
     where
     decode :: Int -> SiteOpt -> Int -> Decode.Result SiteOpt
     decode end acc pos1 =
-      if pos1 < end then do
-        { pos: pos2, val: tag } <- Decode.uint32 xs pos1
-        case tag `zshr` 3 of
-          1 -> do
-            { pos: pos3, val } <- Decode.string xs pos2
-            decode end (acc { id = val }) pos3
-          2 -> do
-            { pos: pos3, val } <- Decode.string xs pos2
-            decode end (acc { label = val }) pos3
-          _ -> do
-            { pos: pos3 } <- Decode.skipType xs pos2 $ tag .&. 7
-            decode end acc pos3
+      if pos1 < end then
+        case Decode.uint32 xs pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.string xs pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { id = val }) pos3
+              2 ->
+                case Decode.string xs pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { label = val }) pos3
+              _ ->
+                case Decode.skipType xs pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
   val decodeSiteOpts = """decodeSiteOpts :: Uint8Array -> Int -> Int -> Decode.Result SiteOpts
@@ -108,16 +114,24 @@ decodeSiteOpts xs pos msglen = do
     where
     decode :: Int -> SiteOpts -> Int -> Decode.Result SiteOpts
     decode end acc pos1 =
-      if pos1 < end then do
-        { pos: pos2, val: tag } <- Decode.uint32 xs pos1
-        case tag `zshr` 3 of
-          1 -> do
-            { pos: pos3, val: msglen1 } <- Decode.uint32 xs pos2
-            { pos: pos4, val } <- decodeSiteOpt xs pos3 msglen1
-            decode end (acc { xs = snoc acc.xs val }) pos4
-          _ -> do
-            { pos: pos3 } <- Decode.skipType xs pos2 $ tag .&. 7
-            decode end acc pos3
+      if pos1 < end then
+        case Decode.uint32 xs pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.uint32 xs pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val: msglen1 } ->
+                    case decodeSiteOpt xs pos3 msglen1 of
+                      Left x -> Left x
+                      Right { pos: pos4, val } ->
+                        decode end (acc { xs = snoc acc.xs val }) pos4
+              _ ->
+                case Decode.skipType xs pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
   val decodePermissions = """decodePermissions :: Uint8Array -> Int -> Int -> Decode.Result Permissions
@@ -127,20 +141,26 @@ decodePermissions xs pos msglen = do
     where
     decode :: Int -> Permissions -> Int -> Decode.Result Permissions
     decode end acc pos1 =
-      if pos1 < end then do
-        { pos: pos2, val: tag } <- Decode.uint32 xs pos1
-        case tag `zshr` 3 of
-          1 -> do
-            { pos: pos3, val } <- Decode.string xs pos2
-            decode end (acc { xs = snoc acc.xs val }) pos3
-          _ -> do
-            { pos: pos3 } <- Decode.skipType xs pos2 $ tag .&. 7
-            decode end acc pos3
+      if pos1 < end then
+        case Decode.uint32 xs pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.string xs pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { xs = snoc acc.xs val }) pos3
+              _ ->
+                case Decode.skipType xs pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
   val encodePull = """encodePull :: Pull -> Uint8Array
-encodePull (GetSites x) = concatAll [ Encode.uint32 10, encodeGetSites x ]
-encodePull (UploadChunk x) = concatAll [ Encode.uint32 802, encodeUploadChunk x ]"""
+encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]
+encodePull (UploadChunk x) = concatAll [ Encode.uint32 8010, encodeUploadChunk x ]"""
 
   val encodeGetSites = """encodeGetSites :: GetSites -> Uint8Array
 encodeGetSites _ = Encode.uint32 0"""
@@ -148,14 +168,10 @@ encodeGetSites _ = Encode.uint32 0"""
   val encodeUploadChunk = """encodeUploadChunk :: UploadChunk -> Uint8Array
 encodeUploadChunk msg = do
   let xs = concatAll
-        [ Encode.uint32 10
-        , Encode.string msg.siteID
-        , concatAll $ concatMap (\x -> [ Encode.uint32 18, Encode.string x ]) msg.path
-        , Encode.uint32 26
-        , Encode.string msg.name
-        , Encode.uint32 34
+        [ concatAll $ concatMap (\x -> [ Encode.uint32 10, Encode.string x ]) msg.path
+        , Encode.uint32 18
         , Encode.string msg.id
-        , Encode.uint32 42
+        , Encode.uint32 26
         , Encode.bytes msg.chunk
         ]
   let len = length xs
