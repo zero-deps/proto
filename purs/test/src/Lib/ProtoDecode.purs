@@ -13,6 +13,7 @@ data Error
   | BadWireType Int
   | BadType Int
   | UnexpectedCase Int Int
+  | MissingFields String
 type Result a = Either Error { pos :: Int, val :: a }
 
 instance showError :: Show Error where
@@ -20,6 +21,7 @@ instance showError :: Show Error where
   show (BadWireType x) = "bad wire type="<>show x
   show (BadType x) = "bad type="<>show x
   show (UnexpectedCase x i) = "unexpected case val="<>show x<>" pos="<>show i
+  show (MissingFields x) = "missing fields in="<>x
 
 index :: Uint8Array -> Int -> Either Error Int
 index xs i =

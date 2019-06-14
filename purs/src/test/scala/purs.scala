@@ -12,41 +12,40 @@ class PurescriptSpec extends FreeSpec with Matchers {
     }
     "types" in {
       res.decodeTypes.toSet should be (Set(
-        "data Push = Push_SiteOpts Push_SiteOpts | Push_Permissions Push_Permissions | Push_Page Push_Page",
-        "data PageType = PageType_Widgets PageType_Widgets | PageType_Url PageType_Url",
-        "type PageType_Url = { addr :: String }",
-        "type PageType_Url' = { addr :: Maybe (String) }",
-        "type PageType_Widgets = {  }",
-        "type PageType_Widgets' = {  }",
-        "type Push_Page = { tpe :: tpe }",
-        "type Push_Page' = { tpe :: Maybe (tpe) }",
-        "type Push_Permissions = { xs :: Array String }",
-        "type Push_Permissions' = { xs :: Maybe (Array String) }",
-        "type Push_SiteOpts = { xs :: Array SiteOpt }",
-        "type Push_SiteOpts' = { xs :: Maybe (Array SiteOpt) }",
+        "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page",
+        "data PageType = PageWidgets PageWidgets | PageUrl PageUrl",
+        "type PageUrl = { addr :: String }",
+        "type PageUrl' = { addr :: Maybe (String) }",
+        "type PageWidgets = {  }",
+        "type PageWidgets' = {  }",
+        "type Page = { tpe :: tpe }",
+        "type Page' = { tpe :: Maybe (tpe) }",
+        "type Permissions = { xs :: Array String }",
+        "type Permissions' = { xs :: Maybe (Array String) }",
+        "type SiteOpts = { xs :: Array SiteOpt }",
+        "type SiteOpts' = { xs :: Maybe (Array SiteOpt) }",
         "type SiteOpt = { id :: String, label :: String }",
         "type SiteOpt' = { id :: Maybe (String), label :: Maybe (String) }",
       ))
       res.encodeTypes.toSet should be (Set(
-        "data Pull = Pull_GetSites Pull_GetSites | Pull_UploadChunk Pull_UploadChunk",
-        "type Pull_GetSites = {  }",
-        "type Pull_GetSites' = {  }",
-        "type Pull_UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }",
-        "type Pull_UploadChunk' = { path :: Maybe (Array String), id :: Maybe (String), chunk :: Maybe (Uint8Array) }",
+        "data Pull = GetSites GetSites | UploadChunk UploadChunk",
+        "type GetSites = {  }",
+        "type GetSites' = {  }",
+        "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }",
+        "type UploadChunk' = { path :: Maybe (Array String), id :: Maybe (String), chunk :: Maybe (Uint8Array) }",
       ))
       ()
     }
     "decoders" in {
-      res.decoders.foreach{
-        case d if d.startsWith("decodePush :: ") => d should be (Snippets.decodePush)
-        case d if d.startsWith("decodeSiteOpt :: ") => d should be (Snippets.decodeSiteOpt)
-        case d if d.startsWith("decodeSiteOpts :: ") => d should be (Snippets.decodeSiteOpts)
-        case d if d.startsWith("decodePermissions :: ") => d should be (Snippets.decodePermissions)
-        case d if d.startsWith("decodePage :: ") => d should be (Snippets.decodePage)
-        case d if d.startsWith("decodePageType :: ") => d should be (Snippets.decodePageType)
-        case d if d.startsWith("decodePageType_Widgets :: ") => d should be (Snippets.decodePageType_Widgets)
-        case d if d.startsWith("decodePageType_Url :: ") => d should be (Snippets.decodePageType_Url)
-      }
+      val xs = res.decoders
+      xs(0) should be (Snippets.decodePush)
+      xs(1) should be (Snippets.decodeSiteOpt)
+      xs(2) should be (Snippets.decodeSiteOpts)
+      xs(3) should be (Snippets.decodePermissions)
+      xs(4) should be (Snippets.decodePageType)
+      xs(5) should be (Snippets.decodePageWidgets)
+      xs(6) should be (Snippets.decodePageUrl)
+      xs(7) should be (Snippets.decodePage)
     }
     "encoders" in {
       res.encoders.foreach{
@@ -57,6 +56,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
     }
     "print" in {
       println(Res.format(res))
+      Res.writeToFile("purs/test/src/Api.purs", res)
     }
   }
 }
@@ -68,8 +68,8 @@ sealed trait Push
 
 final case class SiteOpt(@N(1) id: String, @N(2) label: String)
 sealed trait PageType
-@N(1) final case class Widgets() extends PageType
-@N(2) final case class Url(@N(1) addr: String) extends PageType
+@N(1) final case class PageWidgets() extends PageType
+@N(2) final case class PageUrl(@N(1) addr: String) extends PageType
 
 sealed trait Pull
 @N(1000) final case class GetSites() extends Pull
@@ -81,214 +81,220 @@ sealed trait Pull
 
 object Snippets {
   val decodePush = """decodePush :: Uint8Array -> Decode.Result Push
-decodePush xs = do
-  { pos: pos1, val: tag } <- Decode.uint32 xs 0
+decodePush _xs_ = do
+  { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
   case tag `zshr` 3 of
     1 -> do
-      { pos: pos2, val } <- decodeSiteOpts xs pos1
+      { pos: pos2, val } <- decodeSiteOpts _xs_ pos1
       pure { pos: pos2, val: SiteOpts val }
     2 -> do
-      { pos: pos2, val } <- decodePermissions xs pos1
+      { pos: pos2, val } <- decodePermissions _xs_ pos1
       pure { pos: pos2, val: Permissions val }
     3 -> do
-      { pos: pos2, val } <- decodePage xs pos1
+      { pos: pos2, val } <- decodePage _xs_ pos1
       pure { pos: pos2, val: Page val }
     i ->
       Left $ Decode.BadType i"""
 
   val decodeSiteOpt = """decodeSiteOpt :: Uint8Array -> Int -> Decode.Result SiteOpt
-decodeSiteOpt xs pos0 = do
-  { pos, val: msglen } <- Decode.uint32 xs pos0
+decodeSiteOpt _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
   { pos: pos1, val } <- decode end { id: Nothing, label: Nothing } pos
   case val of
     { id: Just id, label: Just label } -> pure { pos: pos1, val: { id, label } }
-    _ -> Left $ Decode.Missing $ show val
+    _ -> Left $ Decode.MissingFields $ show val
     where
     decode :: Int -> SiteOpt' -> Int -> Decode.Result SiteOpt'
     decode end acc pos1 =
       if pos1 < end then
-        case Decode.uint32 xs pos1 of
+        case Decode.uint32 _xs_ pos1 of
           Left x -> Left x
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               1 ->
-                case Decode.string xs pos2 of
+                case Decode.string _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { id = Just val }) pos3
               2 ->
-                case Decode.string xs pos2 of
+                case Decode.string _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { label = Just val }) pos3
               _ ->
-                case Decode.skipType xs pos2 $ tag .&. 7 of
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
                   Right { pos: pos3 } ->
                     decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
   val decodeSiteOpts = """decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts
-decodeSiteOpts xs pos0 = do
-  { pos, val: msglen } <- Decode.uint32 xs pos0
+decodeSiteOpts _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
   { pos: pos1, val } <- decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
-    _ -> Left $ Decode.Missing $ show val
+    _ -> Left $ Decode.MissingFields $ show val
     where
     decode :: Int -> SiteOpts' -> Int -> Decode.Result SiteOpts'
     decode end acc pos1 =
       if pos1 < end then
-        case Decode.uint32 xs pos1 of
+        case Decode.uint32 _xs_ pos1 of
           Left x -> Left x
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               1 ->
-                case Decode.uint32 xs pos2 of
+                case Decode.uint32 _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val: msglen1 } ->
-                    case decodeSiteOpt xs pos3 msglen1 of
+                    case decodeSiteOpt _xs_ pos3 msglen1 of
                       Left x -> Left x
                       Right { pos: pos4, val } ->
                         decode end (acc { xs = snoc acc.xs val }) pos4
               _ ->
-                case Decode.skipType xs pos2 $ tag .&. 7 of
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
                   Right { pos: pos3 } ->
                     decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
   val decodePermissions = """decodePermissions :: Uint8Array -> Int -> Decode.Result Permissions
-decodePermissions xs pos0 = do
-  { pos, val: msglen } <- Decode.uint32 xs pos0
+decodePermissions _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
   { pos: pos1, val } <- decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
-    _ -> Left $ Decode.Missing $ show val
+    _ -> Left $ Decode.MissingFields $ show val
     where
     decode :: Int -> Permissions' -> Int -> Decode.Result Permissions'
     decode end acc pos1 =
       if pos1 < end then
-        case Decode.uint32 xs pos1 of
+        case Decode.uint32 _xs_ pos1 of
           Left x -> Left x
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               1 ->
-                case Decode.string xs pos2 of
+                case Decode.string _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { xs = snoc acc.xs val }) pos3
               _ ->
-                case Decode.skipType xs pos2 $ tag .&. 7 of
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
                   Right { pos: pos3 } ->
                     decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
   val decodePage = """decodePage :: Uint8Array -> Int -> Decode.Result Page
-decodePage xs pos0 = do
-  { pos, val: msglen } <- Decode.uint32 xs pos0
+decodePage _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
   { pos: pos1, val } <- decode end { tpe: Nothing } pos
   case val of
     { tpe: Just tpe } -> pure { pos: pos1, val: { tpe } }
-    _ -> Left $ Decode.Missing $ show val
+    _ -> Left $ Decode.MissingFields $ show val
     where
     decode :: Int -> Page' -> Int -> Decode.Result Page'
     decode end acc pos1 =
       if pos1 < end then
-        case Decode.uint32 xs pos1 of
+        case Decode.uint32 _xs_ pos1 of
           Left x -> Left x
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               1 ->
-                case decodePageType xs pos2 of
+                case decodePageType _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { tpe = Just val }) pos3
               _ ->
-                case Decode.skipType xs pos2 $ tag .&. 7 of
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
                   Right { pos: pos3 } ->
                     decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
   val decodePageType = """decodePageType :: Uint8Array -> Int -> Decode.Result PageType
-decodePageType xs pos0 = do
-  { pos, val: msglen } <- Decode.uin32 xs pos0
+decodePageType _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
   decode end Nothing pos
     where
     decode :: Int -> Maybe PageType -> Int -> Decode.Result PageType
     decode end acc pos1 =
       if pos1 < end then
-        case Decode.uint32 xs pos1 of
+        case Decode.uint32 _xs_ pos1 of
           Left x -> Left x
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               1 ->
-                case decodePageType_Widgets xs pos2 of
+                case decodePageWidgets _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (Just val) pos3
+                    decode end (Just $ PageWidgets val) pos3
               2 ->
-                case decodePageType_Url xs pos2 of
+                case decodePageUrl _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (Just val) pos3
+                    decode end (Just $ PageUrl val) pos3
               _ ->
-                case Decode.skipType xs pos2 $ tag .&. 7 of
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
                   Right { pos: pos3 } ->
                     decode end acc pos3
       else
         case acc of
           Just x -> pure { pos: pos1, val: acc }
-          Nothing -> Left $ Decode.Missing "PageType""""
+          Nothing -> Left $ Decode.MissingFields "PageType""""
 
-  val decodePageType_Url = """decodePageType_Url :: Uint8Array -> Int -> Decode.Result PageType
-decodePageType_Url xs pos = do
-  { pos: pos1, val: msglen } <- Decode.uint32 xs pos
+  val decodePageUrl = """decodePageUrl :: Uint8Array -> Int -> Decode.Result PageUrl
+decodePageUrl _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  decode end { addr: "" } pos
+  { pos: pos1, val } <- decode end { addr: Nothing } pos
+  case val of
+    { addr: Just addr } -> pure { pos: pos1, val: { addr } }
+    _ -> Left $ Decode.MissingFields $ show val
     where
-    decode :: Int -> PageType_Url -> Int -> Decode.Result PageType_Url
+    decode :: Int -> PageUrl' -> Int -> Decode.Result PageUrl'
     decode end acc pos1 =
       if pos1 < end then
-        case Decode.uin32 xs pos1 of
+        case Decode.uint32 _xs_ pos1 of
           Left x -> Left x
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               1 ->
-                case Decode.string xs pos2 of
+                case Decode.string _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { addr = val }) pos3
+                    decode end (acc { addr = Just val }) pos3
               _ ->
-                case Decode.skipType xs pos2 $ tag .&. 7 of
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
                   Right { pos: pos3 } ->
                     decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
-  val decodePageType_Widgets = """decodePageType_Widgets :: Uint8Array -> Int -> Decode.Result PageType
-decodePageType_Widgets xs pos = do
-  { pos: pos1, val: msglen } <- Decode.uint32 xs pos
+  val decodePageWidgets = """decodePageWidgets :: Uint8Array -> Int -> Decode.Result PageWidgets
+decodePageWidgets _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  decode end {  } pos
+  { pos: pos1, val } <- decode end {  } pos
+  case val of
+    {  } -> pure { pos: pos1, val: {  } }
+    _ -> Left $ Decode.MissingFields $ show val
     where
-    decode :: Int -> PageType_Widgets -> Int -> Decode.Result PageType_Widgets
+    decode :: Int -> PageWidgets' -> Int -> Decode.Result PageWidgets'
     decode end acc pos1 =
       if pos1 < end then
-        case Decode.uint32 xs pos1 of
+        case Decode.uint32 _xs_ pos1 of
           Left x -> Left x
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               _ ->
-                case Decode.skipType xs pos2 $ tag .&. 7 of
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
                   Right { pos: pos3 } ->
                     decode end acc pos3

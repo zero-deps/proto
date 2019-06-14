@@ -1,0 +1,12 @@
+{
+  "name": "purs",
+  "version": "1.0.0",
+  "dependencies": {
+    "purescript-arrays": "*",
+    "purescript-arraybuffer-types": "*",
+    "purescript-integers": "*"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "*"
+  }
+}

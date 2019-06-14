@@ -8,14 +8,12 @@ import scala.reflect.runtime.universe.definitions._
 final case class Res(prelude: String, decodeTypes: List[String], encodeTypes: List[String], decoders: List[String], encoders: List[String])
 object Res {
   def format(res: Res): String = {
-    res.prelude + "\n\n" +
+    res.prelude + "\n" +
     res.decodeTypes.mkString("\n") + "\n\n" + res.decoders.mkString("\n\n") + "\n\n" +
     res.encodeTypes.mkString("\n") + "\n\n" + res.encoders.mkString("\n\n") + "\n"
   }
-  def writeToFile[D, E](path: String, moduleName: String, res: Res)(implicit dtag: TypeTag[D], etag: TypeTag[E]): Unit = {
-    import zd.proto.Purescript.generate
+  def writeToFile(path: String, res: Res): Unit = {
     import java.io.{BufferedWriter, FileWriter}
-    val res = generate[D, E](moduleName)
     val w = new BufferedWriter(new FileWriter(path))
     w.write(format(res))
     w.close()
@@ -54,10 +52,10 @@ object Purescript {
       val aClass = x.typeSymbol.asClass
       val name = aClass.name.encodedName.toString
       val children = aClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, _) => (x.name.encodedName.toString, x.asType.toType.typeSymbol) }
-      val data = s"data ${name} = ${children.map{ case (name1, _) => s"${name}_${name1} ${name}_${name1}"}.mkString(" | ")}"
+      val data = s"data ${name} = ${children.map{ case (name1, _) => s"${name1} ${name1}"}.mkString(" | ")}"
       data :: children.flatMap{ case (name1, tpe) =>
         val fs = fields(tpe)
-        constructTypes(s"${name}_${name1}", fs)
+        constructTypes(s"${name1}", fs)
       }.sorted
     }
 
@@ -140,6 +138,8 @@ object Purescript {
       }
     }
 
+    def constructDecodeForTrait(tpe: Type): String = "???"
+
     def constructDecode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
       def defObj(fs: List[(String, Type, Int)]): String = fs.map{
         case (name, tpe, _) =>
@@ -177,7 +177,7 @@ object Purescript {
           if (tpe =:= StringClass.selfType || tpe =:= IntClass.selfType) {
             List(
               s"${n} ->"
-            , s"  case Decode.string xs pos2 of"
+            , s"  case Decode.string _xs_ pos2 of"
             , s"    Left x -> Left x"
             , s"    Right { pos: pos3, val } ->"
             , s"      decode end (acc { ${name} = Just val }) pos3"
@@ -189,7 +189,7 @@ object Purescript {
             if (typeArgType =:= StringClass.selfType) {
               List(
                 s"${n} ->"
-              , s"  case Decode.string xs pos2 of"
+              , s"  case Decode.string _xs_ pos2 of"
               , s"    Left x -> Left x"
               , s"    Right { pos: pos3, val } ->"
               , s"      decode end (acc { ${name} = snoc acc.${name} val }) pos3"
@@ -199,10 +199,10 @@ object Purescript {
               decoders += constructDecode(typeArgName, typeArgFields)
               List(
                 s"${n} ->"
-              , s"  case Decode.uint32 xs pos2 of"
+              , s"  case Decode.uint32 _xs_ pos2 of"
               , s"    Left x -> Left x"
               , s"    Right { pos: pos3, val: msglen1 } ->"
-              , s"      case decode${typeArgName} xs pos3 msglen1 of"
+              , s"      case decode${typeArgName} _xs_ pos3 msglen1 of"
               , s"        Left x -> Left x"
               , s"        Right { pos: pos4, val } ->"
               , s"          decode end (acc { ${name} = snoc acc.${name} val }) pos4"
@@ -211,9 +211,16 @@ object Purescript {
           } else if (isTrait(tpe)) {
             val symbol = tpe.typeSymbol
             val symbolName = symbol.name.encodedName.toString
+            decoders += constructDecodeForTrait(tpe)
+            val children = symbol.asClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2)
+            children.map{ case (x, _) =>
+              val name = x.name.encodedName.toString
+              val tpe = x.asType.toType.typeSymbol
+              decoders += constructDecode(name, fields(tpe))
+            }
             List(
               s"${n} ->"
-            , s"  case decode${symbolName} xs pos2 of"
+            , s"  case decode${symbolName} _xs_ pos2 of"
             , s"    Left x -> Left x"
             , s"    Right { pos: pos3, val } ->"
             , s"      decode end (acc { ${name} = Just val }) pos3"
@@ -224,10 +231,10 @@ object Purescript {
             decoders += constructDecode(symbolName, fields(symbol))
             List(
               s"${n} ->"
-            , s"  case Decode.uint32 xs pos2 of"
+            , s"  case Decode.uint32 _xs_ pos2 of"
             , s"    Left x -> Left x"
             , s"    Right { pos: pos3, val: msglen1 }) ->"
-            , s"      case decode${symbolName} xs pos3 msglen1 of"
+            , s"      case decode${symbolName} _xs_ pos3 msglen1 of"
             , s"        Left x -> Left x"
             , s"        Right { pos: pos4, val } ->"
             , s"          decode end (acc { ${name} = Just val }) pos4"
@@ -235,24 +242,23 @@ object Purescript {
           }
       }.flatten
       s"""|decode${name} :: Uint8Array -> Int -> Decode.Result ${name}
-          |decode${name} xs pos0 = do
-          |  { pos, val: msglen } <- Decode.uint32 xs pos0
+          |decode${name} _xs_ pos0 = do
+          |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
           |  let end = pos + msglen
           |  { pos: pos1, val } <- decode end ${defObj(fieldsOf)} pos
           |  case val of
           |    ${justObj(fieldsOf)} -> pure { pos: pos1, val: ${unObj(fieldsOf)} }
-          |    _ -> Left $$ Decode.Missing $$ show val
+          |    _ -> Left $$ Decode.MissingFields $$ show val
           |    where
           |    decode :: Int -> ${name}' -> Int -> Decode.Result ${name}'
           |    decode end acc pos1 =
           |      if pos1 < end then
-          |        case Decode.uint32 xs pos1 of
+          |        case Decode.uint32 _xs_ pos1 of
           |          Left x -> Left x
           |          Right { pos: pos2, val: tag } ->
-          |            case tag `zshr` 3 of
-          |${cases.map("              "+_).mkString("\n")}
+          |            case tag `zshr` 3 of${cases.map("\n              "+_).mkString("")}
           |              _ ->
-          |                case Decode.skipType xs pos2 $$ tag .&. 7 of
+          |                case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
           |                  Left x -> Left x
           |                  Right { pos: pos3 } ->
           |                    decode end acc pos3
@@ -269,15 +275,14 @@ object Purescript {
         val subclassName = x.name.encodedName.toString
         List(
           s"${n} -> do"
-        , s"  { pos: pos2, val } <- decode${subclassName} xs pos1"
+        , s"  { pos: pos2, val } <- decode${subclassName} _xs_ pos1"
         , s"  pure { pos: pos2, val: ${subclassName} val }"
         )
       }
       s"""|decode${decodeName} :: Uint8Array -> Decode.Result ${decodeName}
-          |decode${decodeName} xs = do
-          |  { pos: pos1, val: tag } <- Decode.uint32 xs 0
-          |  case tag `zshr` 3 of
-          |${cases.map(_.map("    "+_).mkString("\n")).mkString("\n")}
+          |decode${decodeName} _xs_ = do
+          |  { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
+          |  case tag `zshr` 3 of${cases.map(_.map("\n    "+_).mkString("")).mkString("")}
           |    i ->
           |      Left $$ Decode.BadType i""".stripMargin
     }
@@ -322,9 +327,11 @@ object Purescript {
 import Data.Array (snoc, concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
+import Data.Maybe (Maybe(Just, Nothing))
 import Data.Int.Bits (zshr, (.&.))
-import Prelude (bind, pure, ($$), (+), (<))
+import Prelude (show, bind, pure, ($$), (+), (<))
 import Proto.Encode as Encode
 import Proto.Decode as Decode
-import Uint8ArrayExt (length, concatAll)"""
+import Uint8ArrayExt (length, concatAll)
+"""
 }

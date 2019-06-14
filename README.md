@@ -105,7 +105,17 @@ not to generate anything but code tree.
 
 1. Add dependency `libraryDependencies += "io.github.zero-deps" %% "proto-purs" % "latest.integration"`
 1. Add resolver `resolvers += Resolver.jcenterRepo`
-1. Copy `purs/src/test/resources/*` to your project
+1. Copy `purs/test/src/Lib/*` to your project
 1. Run method `zd.proto.Purescript.generate[D, E](moduleName="N")` where `D`/`E` are types of your base trait for decode/encode and `N` is
    name to put at beginning of file. Method return string which you can save to file or print.
+
+### Test
+
+```bash
+sbt 'project purs' test
+cd purs/test
+npm i
+npm run dep
+npm run com
+```
 
