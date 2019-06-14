@@ -56,7 +56,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
       }
     }
     "print" in {
-      println(res.format)
+      println(Res.format(res))
     }
   }
 }

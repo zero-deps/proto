@@ -5,11 +5,21 @@ import scala.collection.mutable
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 
-final case class Res(prelude: String, decodeTypes: List[String], encodeTypes: List[String], decoders: List[String], encoders: List[String]) {
-  def format: String = prelude + "\n\n" +
-    decodeTypes.mkString("\n") + "\n\n" + decoders.mkString("\n\n") + "\n\n" +
-    encodeTypes.mkString("\n") + "\n\n" + encoders.mkString("\n\n") +
-    "\n"
+final case class Res(prelude: String, decodeTypes: List[String], encodeTypes: List[String], decoders: List[String], encoders: List[String])
+object Res {
+  def format(res: Res): String = {
+    res.prelude + "\n\n" +
+    res.decodeTypes.mkString("\n") + "\n\n" + res.decoders.mkString("\n\n") + "\n\n" +
+    res.encodeTypes.mkString("\n") + "\n\n" + res.encoders.mkString("\n\n") + "\n"
+  }
+  def writeToFile[D, E](path: String, moduleName: String, res: Res)(implicit dtag: TypeTag[D], etag: TypeTag[E]): Unit = {
+    import zd.proto.Purescript.generate
+    import java.io.{BufferedWriter, FileWriter}
+    val res = generate[D, E](moduleName)
+    val w = new BufferedWriter(new FileWriter(path))
+    w.write(format(res))
+    w.close()
+  }
 }
 
 object Purescript {
