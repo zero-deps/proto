@@ -134,34 +134,43 @@ object Purescript {
       def defObj(fs: List[(String, Type, Int)]): String = fs.map{
         case (name, tpe, _) =>
           if (tpe =:= StringClass.selfType) {
-            s"""${name}: """""
+            s"""${name}: Nothing"""
           } else if (tpe =:= IntClass.selfType) {
-            s"""${name}: 0"""
+            s"""${name}: Nothing"""
           } else if (isIterable(tpe)) {
             s"${name}: []"
           } else if (isTrait(tpe)) {
-            s"${name}: null"
+            s"${name}: Nothing"
           } else {
-            s"${name}: ${defObj(fields(tpe.typeSymbol))}"
+            s"${name}: Nothing"
           }
+      }.mkString("{ ", ", ", " }")
+      def justObj(fs: List[(String, Type, Int)]): String = fs.map{
+        case (name, tpe, _) =>
+          if (tpe =:= StringClass.selfType) {
+            s"""${name}: Just ${name}"""
+          } else if (tpe =:= IntClass.selfType) {
+            s"""${name}: Just ${name}"""
+          } else if (isIterable(tpe)) {
+            s"${name}"
+          } else if (isTrait(tpe)) {
+            s"${name}: Just ${name}"
+          } else {
+            s"${name}: Just ${name}"
+          }
+      }.mkString("{ ", ", ", " }")
+      def unObj(fs: List[(String, Type, Int)]): String = fs.map{
+        case (name, tpe, _) => name
       }.mkString("{ ", ", ", " }")
       val cases = fieldsOf.map{
         case (name, tpe, n) =>
-          if (tpe =:= StringClass.selfType) {
+          if (tpe =:= StringClass.selfType || tpe =:= IntClass.selfType) {
             List(
               s"${n} ->"
             , s"  case Decode.string xs pos2 of"
             , s"    Left x -> Left x"
             , s"    Right { pos: pos3, val } ->"
-            , s"      decode end (acc { ${name} = val }) pos3"
-            )
-          } else if (tpe =:= IntClass.selfType) {
-            List(
-              s"${n} ->"
-            , s"  case Decode.int32 xs pos2 of"
-            , s"    Left x -> Left x"
-            , s"    Right { pos: pos3, val } ->"
-            , s"      decode end (acc { ${name} = val }) pos3"
+            , s"      decode end (acc { ${name} = Just val }) pos3"
             )
           } else if (isIterable(tpe)) {
             val typeArg = tpe.typeArgs.head.typeSymbol
@@ -194,13 +203,10 @@ object Purescript {
             val symbolName = symbol.name.encodedName.toString
             List(
               s"${n} ->"
-            , s"  case Decode.uint32 xs pos2 of"
+            , s"  case decode${symbolName} xs pos2 of"
             , s"    Left x -> Left x"
-            , s"    Right { pos: pos3, val: msglen1 } ->"
-            , s"      case decode${symbolName} xs pos3 msglen1 of"
-            , s"        Left x -> Left x"
-            , s"        Right { pos: pos4, val } ->"
-            , s"          decode end (acc { ${name} = val }) pos4"
+            , s"    Right { pos: pos3, val } ->"
+            , s"      decode end (acc { ${name} = Just val }) pos3"
             )
           } else {
             val symbol = tpe.typeSymbol
@@ -214,16 +220,20 @@ object Purescript {
             , s"      case decode${symbolName} xs pos3 msglen1 of"
             , s"        Left x -> Left x"
             , s"        Right { pos: pos4, val } ->"
-            , s"          decode end (acc { ${name} = val }) pos4"
+            , s"          decode end (acc { ${name} = Just val }) pos4"
             )
           }
       }.flatten
-      s"""|decode${name} :: Uint8Array -> Int -> Int -> Decode.Result ${name}
-          |decode${name} xs pos msglen = do
+      s"""|decode${name} :: Uint8Array -> Int -> Decode.Result ${name}
+          |decode${name} xs pos0 = do
+          |  { pos, val: msglen } <- Decode.uint32 xs pos0
           |  let end = pos + msglen
-          |  decode end ${defObj(fieldsOf)} pos
+          |  { pos: pos1, val } <- decode end ${defObj(fieldsOf)} pos
+          |  case val of
+          |    ${justObj(fieldsOf)} -> pure { pos: pos1, val: ${unObj(fieldsOf)} }
+          |    _ -> Left $$ Decode.Missing $$ show val
           |    where
-          |    decode :: Int -> ${name} -> Int -> Decode.Result ${name}
+          |    decode :: Int -> ${name}' -> Int -> Decode.Result ${name}'
           |    decode end acc pos1 =
           |      if pos1 < end then
           |        case Decode.uint32 xs pos1 of
@@ -249,9 +259,8 @@ object Purescript {
         val subclassName = x.name.encodedName.toString
         List(
           s"${n} -> do"
-        , s"  { pos: pos2, val: msglen } <- Decode.uint32 xs pos1"
-        , s"  { pos: pos3, val } <- decode${subclassName} xs pos2 msglen"
-        , s"  pure { pos: pos3, val: ${subclassName} val }"
+        , s"  { pos: pos2, val } <- decode${subclassName} xs pos1"
+        , s"  pure { pos: pos2, val: ${subclassName} val }"
         )
       }
       s"""|decode${decodeName} :: Uint8Array -> Decode.Result ${decodeName}

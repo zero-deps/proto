@@ -85,26 +85,27 @@ decodePush xs = do
   { pos: pos1, val: tag } <- Decode.uint32 xs 0
   case tag `zshr` 3 of
     1 -> do
-      { pos: pos2, val: msglen } <- Decode.uint32 xs pos1
-      { pos: pos3, val } <- decodeSiteOpts xs pos2 msglen
-      pure { pos: pos3, val: SiteOpts val }
+      { pos: pos2, val } <- decodeSiteOpts xs pos1
+      pure { pos: pos2, val: SiteOpts val }
     2 -> do
-      { pos: pos2, val: msglen } <- Decode.uint32 xs pos1
-      { pos: pos3, val } <- decodePermissions xs pos2 msglen
-      pure { pos: pos3, val: Permissions val }
+      { pos: pos2, val } <- decodePermissions xs pos1
+      pure { pos: pos2, val: Permissions val }
     3 -> do
-      { pos: pos2, val: msglen } <- Decode.uint32 xs pos1
-      { pos: pos3, val } <- decodePage xs pos2 msglen
-      pure { pos: pos3, val: Page val }
+      { pos: pos2, val } <- decodePage xs pos1
+      pure { pos: pos2, val: Page val }
     i ->
       Left $ Decode.BadType i"""
 
-  val decodeSiteOpt = """decodeSiteOpt :: Uint8Array -> Int -> Int -> Decode.Result SiteOpt
-decodeSiteOpt xs pos msglen = do
+  val decodeSiteOpt = """decodeSiteOpt :: Uint8Array -> Int -> Decode.Result SiteOpt
+decodeSiteOpt xs pos0 = do
+  { pos, val: msglen } <- Decode.uint32 xs pos0
   let end = pos + msglen
-  decode end { id: "", label: "" } pos
+  { pos: pos1, val } <- decode end { id: Nothing, label: Nothing } pos
+  case val of
+    { id: Just id, label: Just label } -> pure { pos: pos1, val: { id, label } }
+    _ -> Left $ Decode.Missing $ show val
     where
-    decode :: Int -> SiteOpt -> Int -> Decode.Result SiteOpt
+    decode :: Int -> SiteOpt' -> Int -> Decode.Result SiteOpt'
     decode end acc pos1 =
       if pos1 < end then
         case Decode.uint32 xs pos1 of
@@ -115,12 +116,12 @@ decodeSiteOpt xs pos msglen = do
                 case Decode.string xs pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { id = val }) pos3
+                    decode end (acc { id = Just val }) pos3
               2 ->
                 case Decode.string xs pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { label = val }) pos3
+                    decode end (acc { label = Just val }) pos3
               _ ->
                 case Decode.skipType xs pos2 $ tag .&. 7 of
                   Left x -> Left x
@@ -128,12 +129,16 @@ decodeSiteOpt xs pos msglen = do
                     decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
-  val decodeSiteOpts = """decodeSiteOpts :: Uint8Array -> Int -> Int -> Decode.Result SiteOpts
-decodeSiteOpts xs pos msglen = do
+  val decodeSiteOpts = """decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts
+decodeSiteOpts xs pos0 = do
+  { pos, val: msglen } <- Decode.uint32 xs pos0
   let end = pos + msglen
-  decode end { xs: [] } pos
+  { pos: pos1, val } <- decode end { xs: [] } pos
+  case val of
+    { xs } -> pure { pos: pos1, val: { xs } }
+    _ -> Left $ Decode.Missing $ show val
     where
-    decode :: Int -> SiteOpts -> Int -> Decode.Result SiteOpts
+    decode :: Int -> SiteOpts' -> Int -> Decode.Result SiteOpts'
     decode end acc pos1 =
       if pos1 < end then
         case Decode.uint32 xs pos1 of
@@ -155,12 +160,16 @@ decodeSiteOpts xs pos msglen = do
                     decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
-  val decodePermissions = """decodePermissions :: Uint8Array -> Int -> Int -> Decode.Result Permissions
-decodePermissions xs pos msglen = do
+  val decodePermissions = """decodePermissions :: Uint8Array -> Int -> Decode.Result Permissions
+decodePermissions xs pos0 = do
+  { pos, val: msglen } <- Decode.uint32 xs pos0
   let end = pos + msglen
-  decode end { xs: [] } pos
+  { pos: pos1, val } <- decode end { xs: [] } pos
+  case val of
+    { xs } -> pure { pos: pos1, val: { xs } }
+    _ -> Left $ Decode.Missing $ show val
     where
-    decode :: Int -> Permissions -> Int -> Decode.Result Permissions
+    decode :: Int -> Permissions' -> Int -> Decode.Result Permissions'
     decode end acc pos1 =
       if pos1 < end then
         case Decode.uint32 xs pos1 of
@@ -179,18 +188,19 @@ decodePermissions xs pos msglen = do
                     decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
-  val decodePage = """decodePage :: Uint8Array -> Int -> Int -> Decode.Result Page
-decodePage xs pos msglen = do
+  val decodePage = """decodePage :: Uint8Array -> Int -> Decode.Result Page
+decodePage xs pos0 = do
+  { pos, val: msglen } <- Decode.uint32 xs pos0
   let end = pos + msglen
   { pos: pos1, val } <- decode end { tpe: Nothing } pos
   case val of
-    { tpe: Just tpe } -> pure { pos: pos1, val: { tpe }
+    { tpe: Just tpe } -> pure { pos: pos1, val: { tpe } }
     _ -> Left $ Decode.Missing $ show val
     where
     decode :: Int -> Page' -> Int -> Decode.Result Page'
     decode end acc pos1 =
       if pos1 < end then
-        case Decode.uin32 xs pos1 of
+        case Decode.uint32 xs pos1 of
           Left x -> Left x
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
@@ -198,11 +208,17 @@ decodePage xs pos msglen = do
                 case decodePageType xs pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { tpe = Just val }) pos3"""
+                    decode end (acc { tpe = Just val }) pos3
+              _ ->
+                case Decode.skipType xs pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }"""
 
   val decodePageType = """decodePageType :: Uint8Array -> Int -> Decode.Result PageType
-decodePageType xs pos = do
-  { pos: pos1, val: msglen } <- Decode.uin32 xs pos
+decodePageType xs pos0 = do
+  { pos, val: msglen } <- Decode.uin32 xs pos0
   let end = pos + msglen
   decode end Nothing pos
     where
