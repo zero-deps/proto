@@ -35,27 +35,26 @@ object Purescript {
         case _ => throw new Exception(s"multiple N on ${x}")
       }
     }
-
     def fields(tpe: Symbol): List[(String, Type, Int)] = {
       tpe.asClass.primaryConstructor.asMethod.paramLists.flatten.map{ x =>
         val term = x.asTerm
         (term.name.encodedName.toString, term.info, findN(x))
       }.collect{ case (a, b, Some(n)) => (a, b, n) }.sortBy(_._3)
     }
-
     def isIterable(tpe: Type): Boolean = {
       tpe.baseClasses.exists(_.asType.toType.typeConstructor <:< typeOf[scala.collection.TraversableOnce[Unit]].typeConstructor)
     }
     def isTrait(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
+    def findChildren(tpe: Type): List[(String, Symbol, Int)] = tpe.typeSymbol.asClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, n) => (x.name.encodedName.toString, x.asType.toType.typeSymbol, n) }
 
     def constructTypesForTrait(x: Type): List[String] = {
-      val aClass = x.typeSymbol.asClass
-      val name = aClass.name.encodedName.toString
-      val children = aClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, _) => (x.name.encodedName.toString, x.asType.toType.typeSymbol) }
-      val data = s"data ${name} = ${children.map{ case (name1, _) => s"${name1} ${name1}"}.mkString(" | ")}"
-      data :: children.flatMap{ case (name1, tpe) =>
+      val symbol = x.typeSymbol
+      val name = symbol.name.encodedName.toString
+      val children = findChildren(x)
+      val data = s"data ${name} = ${children.map{ case (name1,_,_) => s"${name1} ${name1}"}.mkString(" | ")}"
+      data :: children.flatMap{ case (name1, tpe,_) =>
         val fs = fields(tpe)
-        constructTypes(s"${name1}", fs)
+        constructTypes(name1, fs)
       }.sorted
     }
 
@@ -138,7 +137,35 @@ object Purescript {
       }
     }
 
-    def constructDecodeForTrait(tpe: Type): String = "???"
+    def constructDecodeForTrait(tpe: Type): String = {
+      val name = tpe.typeSymbol.name.encodedName.toString
+      val cases = findChildren(tpe).flatMap{ case (name, tpe, n) => List(
+        s"${n} ->"
+      , s"  case decode${name} _xs_ pos2 of"
+      , s"    Left x -> Left x"
+      , s"    Right { pos: pos3, val } ->"
+      , s"      decode end (Just $$ ${name} val) pos3"
+      ) }
+      s"""|decode${name} :: Uint8Array -> Int -> Decode.Result PageType
+          |decode${name} _xs_ pos0 = do
+          |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+          |  let end = pos + msglen
+          |  decode end Nothing pos
+          |    where
+          |    decode :: Int -> Maybe ${name} -> Int -> Decode.Result ${name}
+          |    decode end acc pos1 | pos1 < end =
+          |      case Decode.uint32 _xs_ pos1 of
+          |        Left x -> Left x
+          |        Right { pos: pos2, val: tag } ->
+          |          case tag `zshr` 3 of${cases.map("\n            "+_).mkString}
+          |            _ ->
+          |              case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
+          |                Left x -> Left x
+          |                Right { pos: pos3 } ->
+          |                  decode end acc pos3
+          |    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
+          |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "PageType"""".stripMargin
+    }
 
     def constructDecode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
       def defObj(fs: List[(String, Type, Int)]): String = fs.map{
@@ -194,9 +221,9 @@ object Purescript {
               , s"    Right { pos: pos3, val } ->"
               , s"      decode end (acc { ${name} = snoc acc.${name} val }) pos3"
               )
-            } else {
-              val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
-              decoders += constructDecode(typeArgName, typeArgFields)
+          } else {
+            val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
+            decoders += constructDecode(typeArgName, typeArgFields)
               List(
                 s"${n} ->"
               , s"  case Decode.uint32 _xs_ pos2 of"
@@ -212,11 +239,8 @@ object Purescript {
             val symbol = tpe.typeSymbol
             val symbolName = symbol.name.encodedName.toString
             decoders += constructDecodeForTrait(tpe)
-            val children = symbol.asClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2)
-            children.map{ case (x, _) =>
-              val name = x.name.encodedName.toString
-              val tpe = x.asType.toType.typeSymbol
-              decoders += constructDecode(name, fields(tpe))
+            findChildren(tpe).map{ case (name, tpe1,_) =>
+              decoders += constructDecode(name, fields(tpe1))
             }
             List(
               s"${n} ->"
@@ -269,14 +293,12 @@ object Purescript {
     val decodeTypes = constructTypesForTrait(decodeTpe)
     val decodeClass = decodeTpe.typeSymbol.asClass
     val decodeName = decodeClass.name.encodedName.toString
-    val decodeSubclasses = decodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2)
     decoders += {
-      val cases = decodeSubclasses.map{ case (x, n) =>
-        val subclassName = x.name.encodedName.toString
+      val cases = findChildren(decodeTpe).map{ case (name,_, n) =>
         List(
           s"${n} -> do"
-        , s"  { pos: pos2, val } <- decode${subclassName} _xs_ pos1"
-        , s"  pure { pos: pos2, val: ${subclassName} val }"
+        , s"  { pos: pos2, val } <- decode${name} _xs_ pos1"
+        , s"  pure { pos: pos2, val: ${name} val }"
         )
       }
       s"""|decode${decodeName} :: Uint8Array -> Decode.Result ${decodeName}
@@ -286,9 +308,7 @@ object Purescript {
           |    i ->
           |      Left $$ Decode.BadType i""".stripMargin
     }
-    decodeSubclasses.map{ case (x, _) =>
-      val name = x.name.encodedName.toString
-      val tpe = x.asType.toType.typeSymbol
+    findChildren(decodeTpe).map{ case (name, tpe, n) =>
       decoders += constructDecode(name, fields(tpe))
     }
 
@@ -296,20 +316,16 @@ object Purescript {
     val encodeTypes = constructTypesForTrait(encodeTpe)
     val encodeClass = encodeTpe.typeSymbol.asClass
     val encodeName = encodeClass.name.encodedName.toString
-    val encodeSubclasses = encodeClass.knownDirectSubclasses.toList.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2)
     encoders += {
-      val cases = encodeSubclasses.map{ case (x, n) =>
-        val subclassName = x.name.encodedName.toString
+      val cases = findChildren(encodeTpe).map{ case (name,_, n) =>
         List(
-          s"encode${encodeName} (${subclassName} x) = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode${subclassName} x ]"
+          s"encode${encodeName} (${name} x) = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode${name} x ]"
         )
       }
       s"""|encode${encodeName} :: ${encodeName} -> Uint8Array
           |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
     }
-    encodeSubclasses.map{ case (x, _) =>
-      val name = x.name.encodedName.toString
-      val tpe = x.asType.toType.typeSymbol
+    findChildren(encodeTpe).map{ case (name, tpe,_) =>
       encoders += constructEncode(name, fields(tpe))
     }
 

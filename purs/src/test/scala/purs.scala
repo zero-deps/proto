@@ -223,31 +223,28 @@ decodePageType _xs_ pos0 = do
   decode end Nothing pos
     where
     decode :: Int -> Maybe PageType -> Int -> Decode.Result PageType
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case decodePageWidgets _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (Just $ PageWidgets val) pos3
-              2 ->
-                case decodePageUrl _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (Just $ PageUrl val) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else
-        case acc of
-          Just x -> pure { pos: pos1, val: acc }
-          Nothing -> Left $ Decode.MissingFields "PageType""""
+    decode end acc pos1 | pos1 < end =
+      case Decode.uint32 _xs_ pos1 of
+        Left x -> Left x
+        Right { pos: pos2, val: tag } ->
+          case tag `zshr` 3 of
+            1 ->
+              case decodePageWidgets _xs_ pos2 of
+                Left x -> Left x
+                Right { pos: pos3, val } ->
+                  decode end (Just $ PageWidgets val) pos3
+            2 ->
+              case decodePageUrl _xs_ pos2 of
+                Left x -> Left x
+                Right { pos: pos3, val } ->
+                  decode end (Just $ PageUrl val) pos3
+            _ ->
+              case Decode.skipType _xs_ pos2 $ tag .&. 7 of
+                Left x -> Left x
+                Right { pos: pos3 } ->
+                  decode end acc pos3
+    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
+    decode end acc@Nothing pos1 = Left $ Decode.MissingFields "PageType""""
 
   val decodePageUrl = """decodePageUrl :: Uint8Array -> Int -> Decode.Result PageUrl
 decodePageUrl _xs_ pos0 = do
