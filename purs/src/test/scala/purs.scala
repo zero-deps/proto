@@ -11,28 +11,26 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.prelude.startsWith("module Api")
     }
     "types" in {
-      res.decodeTypes.toSet should be (Set(
-        "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page",
-        "data PageType = PageWidgets PageWidgets | PageUrl PageUrl",
-        "type PageUrl = { addr :: String }",
-        "type PageUrl' = { addr :: Maybe (String) }",
-        "type PageWidgets = {  }",
-        "type PageWidgets' = {  }",
-        "type Page = { tpe :: tpe }",
-        "type Page' = { tpe :: Maybe (tpe) }",
-        "type Permissions = { xs :: Array String }",
-        "type Permissions' = { xs :: Maybe (Array String) }",
-        "type SiteOpts = { xs :: Array SiteOpt }",
-        "type SiteOpts' = { xs :: Maybe (Array SiteOpt) }",
-        "type SiteOpt = { id :: String, label :: String }",
-        "type SiteOpt' = { id :: Maybe (String), label :: Maybe (String) }",
-      ))
+      res.decodeTypes(0) shouldBe "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page"
+      res.decodeTypes(1) shouldBe "type SiteOpts = { xs :: Array SiteOpt }"
+      res.decodeTypes(2) shouldBe "type SiteOpts' = { xs :: Array SiteOpt }"
+      res.decodeTypes(3) shouldBe "type SiteOpt = { id :: String, label :: String }"
+      res.decodeTypes(4) shouldBe "type SiteOpt' = { id :: Maybe String, label :: Maybe String }"
+      res.decodeTypes(5) shouldBe "type Permissions = { xs :: Array String }"
+      res.decodeTypes(6) shouldBe "type Permissions' = { xs :: Array String }"
+      res.decodeTypes(7) shouldBe "type Page = { tpe :: PageType }"
+      res.decodeTypes(8) shouldBe "type Page' = { tpe :: Maybe PageType }"
+      res.decodeTypes(9) shouldBe "data PageType = PageWidgets PageWidgets | PageUrl PageUrl"
+      res.decodeTypes(10) shouldBe "type PageWidgets = {  }"
+      res.decodeTypes(11) shouldBe "type PageWidgets' = {  }"
+      res.decodeTypes(12) shouldBe "type PageUrl = { addr :: String }"
+      res.decodeTypes(13) shouldBe "type PageUrl' = { addr :: Maybe String }"
       res.encodeTypes.toSet should be (Set(
         "data Pull = GetSites GetSites | UploadChunk UploadChunk",
         "type GetSites = {  }",
         "type GetSites' = {  }",
         "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }",
-        "type UploadChunk' = { path :: Maybe (Array String), id :: Maybe (String), chunk :: Maybe (Uint8Array) }",
+        "type UploadChunk' = { path :: Array String, id :: Maybe String, chunk :: Maybe Uint8Array }",
       ))
       ()
     }
@@ -146,13 +144,10 @@ decodeSiteOpts _xs_ pos0 = do
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               1 ->
-                case Decode.uint32 _xs_ pos2 of
+                case decodeSiteOpt _xs_ pos2 of
                   Left x -> Left x
-                  Right { pos: pos3, val: msglen1 } ->
-                    case decodeSiteOpt _xs_ pos3 msglen1 of
-                      Left x -> Left x
-                      Right { pos: pos4, val } ->
-                        decode end (acc { xs = snoc acc.xs val }) pos4
+                  Right { pos: pos3, val } ->
+                    decode end (acc { xs = snoc acc.xs val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x

@@ -11,19 +11,19 @@ import Proto.Decode as Decode
 import Uint8ArrayExt (length, concatAll)
 
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page
+type SiteOpts = { xs :: Array SiteOpt }
+type SiteOpts' = { xs :: Array SiteOpt }
+type SiteOpt = { id :: String, label :: String }
+type SiteOpt' = { id :: Maybe String, label :: Maybe String }
+type Permissions = { xs :: Array String }
+type Permissions' = { xs :: Array String }
+type Page = { tpe :: PageType }
+type Page' = { tpe :: Maybe PageType }
 data PageType = PageWidgets PageWidgets | PageUrl PageUrl
-type Page = { tpe :: tpe }
-type Page' = { tpe :: Maybe (tpe) }
-type PageUrl = { addr :: String }
-type PageUrl' = { addr :: Maybe (String) }
 type PageWidgets = {  }
 type PageWidgets' = {  }
-type Permissions = { xs :: Array String }
-type Permissions' = { xs :: Maybe (Array String) }
-type SiteOpt = { id :: String, label :: String }
-type SiteOpt' = { id :: Maybe (String), label :: Maybe (String) }
-type SiteOpts = { xs :: Array SiteOpt }
-type SiteOpts' = { xs :: Maybe (Array SiteOpt) }
+type PageUrl = { addr :: String }
+type PageUrl' = { addr :: Maybe String }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
@@ -91,13 +91,10 @@ decodeSiteOpts _xs_ pos0 = do
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               1 ->
-                case Decode.uint32 _xs_ pos2 of
+                case decodeSiteOpt _xs_ pos2 of
                   Left x -> Left x
-                  Right { pos: pos3, val: msglen1 } ->
-                    case decodeSiteOpt _xs_ pos3 msglen1 of
-                      Left x -> Left x
-                      Right { pos: pos4, val } ->
-                        decode end (acc { xs = snoc acc.xs val }) pos4
+                  Right { pos: pos3, val } ->
+                    decode end (acc { xs = snoc acc.xs val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
@@ -246,7 +243,7 @@ data Pull = GetSites GetSites | UploadChunk UploadChunk
 type GetSites = {  }
 type GetSites' = {  }
 type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }
-type UploadChunk' = { path :: Maybe (Array String), id :: Maybe (String), chunk :: Maybe (Uint8Array) }
+type UploadChunk' = { path :: Array String, id :: Maybe String, chunk :: Maybe Uint8Array }
 
 encodePull :: Pull -> Uint8Array
 encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]
