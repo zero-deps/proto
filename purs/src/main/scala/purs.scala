@@ -293,7 +293,7 @@ object Purescript {
           |  { pos: pos1, val } <- decode end ${defObj(fieldsOf)} pos
           |  case val of
           |    ${justObj(fieldsOf)} -> pure { pos: pos1, val: ${unObj(fieldsOf)} }
-          |    _ -> Left $$ Decode.MissingFields $$ show val
+          |    _ -> Left $$ Decode.MissingFields "${name}"
           |    where
           |    decode :: Int -> ${name}' -> Int -> Decode.Result ${name}'
           |    decode end acc pos1 =
@@ -366,7 +366,7 @@ import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Int.Bits (zshr, (.&.))
-import Prelude (show, bind, pure, ($$), (+), (<))
+import Prelude (bind, pure, ($$), (+), (<))
 import Proto.Encode as Encode
 import Proto.Decode as Decode
 import Uint8ArrayExt (length, concatAll)

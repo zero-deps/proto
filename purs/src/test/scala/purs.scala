@@ -101,7 +101,7 @@ decodeSiteOpt _xs_ pos0 = do
   { pos: pos1, val } <- decode end { id: Nothing, label: Nothing } pos
   case val of
     { id: Just id, label: Just label } -> pure { pos: pos1, val: { id, label } }
-    _ -> Left $ Decode.MissingFields $ show val
+    _ -> Left $ Decode.MissingFields "SiteOpt"
     where
     decode :: Int -> SiteOpt' -> Int -> Decode.Result SiteOpt'
     decode end acc pos1 =
@@ -134,7 +134,7 @@ decodeSiteOpts _xs_ pos0 = do
   { pos: pos1, val } <- decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
-    _ -> Left $ Decode.MissingFields $ show val
+    _ -> Left $ Decode.MissingFields "SiteOpts"
     where
     decode :: Int -> SiteOpts' -> Int -> Decode.Result SiteOpts'
     decode end acc pos1 =
@@ -162,7 +162,7 @@ decodePermissions _xs_ pos0 = do
   { pos: pos1, val } <- decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
-    _ -> Left $ Decode.MissingFields $ show val
+    _ -> Left $ Decode.MissingFields "Permissions"
     where
     decode :: Int -> Permissions' -> Int -> Decode.Result Permissions'
     decode end acc pos1 =
@@ -190,7 +190,7 @@ decodePage _xs_ pos0 = do
   { pos: pos1, val } <- decode end { tpe: Nothing } pos
   case val of
     { tpe: Just tpe } -> pure { pos: pos1, val: { tpe } }
-    _ -> Left $ Decode.MissingFields $ show val
+    _ -> Left $ Decode.MissingFields "Page"
     where
     decode :: Int -> Page' -> Int -> Decode.Result Page'
     decode end acc pos1 =
@@ -248,7 +248,7 @@ decodePageUrl _xs_ pos0 = do
   { pos: pos1, val } <- decode end { addr: Nothing } pos
   case val of
     { addr: Just addr } -> pure { pos: pos1, val: { addr } }
-    _ -> Left $ Decode.MissingFields $ show val
+    _ -> Left $ Decode.MissingFields "PageUrl"
     where
     decode :: Int -> PageUrl' -> Int -> Decode.Result PageUrl'
     decode end acc pos1 =
@@ -276,7 +276,7 @@ decodePageWidgets _xs_ pos0 = do
   { pos: pos1, val } <- decode end {  } pos
   case val of
     {  } -> pure { pos: pos1, val: {  } }
-    _ -> Left $ Decode.MissingFields $ show val
+    _ -> Left $ Decode.MissingFields "PageWidgets"
     where
     decode :: Int -> PageWidgets' -> Int -> Decode.Result PageWidgets'
     decode end acc pos1 =
