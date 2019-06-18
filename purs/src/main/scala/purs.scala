@@ -225,10 +225,18 @@ object Purescript {
       }.mkString("{ ", ", ", " }")
       val cases = fieldsOf.map{
         case (name, tpe, n) =>
-          if (tpe =:= StringClass.selfType || tpe =:= IntClass.selfType) {
+          if (tpe =:= StringClass.selfType) {
             List(
               s"${n} ->"
             , s"  case Decode.string _xs_ pos2 of"
+            , s"    Left x -> Left x"
+            , s"    Right { pos: pos3, val } ->"
+            , s"      decode end (acc { ${name} = Just val }) pos3"
+            )
+          } else if (tpe =:= IntClass.selfType) {
+            List(
+              s"${n} ->"
+            , s"  case Decode.int32 _xs_ pos2 of"
             , s"    Left x -> Left x"
             , s"    Right { pos: pos3, val } ->"
             , s"      decode end (acc { ${name} = Just val }) pos3"

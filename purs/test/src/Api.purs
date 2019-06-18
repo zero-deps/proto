@@ -10,7 +10,7 @@ import Proto.Encode as Encode
 import Proto.Decode as Decode
 import Uint8ArrayExt (length, concatAll)
 
-data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page
+data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem
 type SiteOpts = { xs :: Array SiteOpt }
 type SiteOpts' = { xs :: Array SiteOpt }
 type SiteOpt = { id :: String, label :: String }
@@ -24,6 +24,8 @@ type PageWidgets = {  }
 type PageWidgets' = {  }
 type PageUrl = { addr :: String }
 type PageUrl' = { addr :: Maybe String }
+type PageTreeItem = { priority :: Int }
+type PageTreeItem' = { priority :: Maybe Int }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
@@ -38,6 +40,9 @@ decodePush _xs_ = do
     3 -> do
       { pos: pos2, val } <- decodePage _xs_ pos1
       pure { pos: pos2, val: Page val }
+    4 -> do
+      { pos: pos2, val } <- decodePageTreeItem _xs_ pos1
+      pure { pos: pos2, val: PageTreeItem val }
     i ->
       Left $ Decode.BadType i
 
@@ -232,6 +237,34 @@ decodePage _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { tpe = Just val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }
+
+decodePageTreeItem :: Uint8Array -> Int -> Decode.Result PageTreeItem
+decodePageTreeItem _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { priority: Nothing } pos
+  case val of
+    { priority: Just priority } -> pure { pos: pos1, val: { priority } }
+    _ -> Left $ Decode.MissingFields "PageTreeItem"
+    where
+    decode :: Int -> PageTreeItem' -> Int -> Decode.Result PageTreeItem'
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.int32 _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { priority = Just val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
