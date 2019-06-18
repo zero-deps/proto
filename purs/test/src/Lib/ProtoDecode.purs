@@ -46,6 +46,29 @@ uint32 xs pos = do
           let val4 = (val3 .|. ((x4 .&. 15) `shl` 28)) `zshr` 0
           if x4 < 128 then pure { pos: pos+5, val: val4 } else Left $ UnexpectedCase x4 (pos+4)
 
+int32 :: Uint8Array -> Pos -> Result Int
+int32 xs pos = do
+  x <- index xs pos
+  let val = (x .&. 127) `zshr` 0
+  if x < 128 then pure { pos: pos+1, val: val } else do
+    x1 <- index xs (pos+1)
+    let val1 = (val .|. ((x1 .&. 127) `shl` 7)) `zshr` 0
+    if x1 < 128 then pure { pos: pos+2, val: val1 } else do
+      x2 <- index xs (pos+2)
+      let val2 = (val1 .|. ((x2 .&. 127) `shl` 14)) `zshr` 0
+      if x2 < 128 then pure { pos: pos+3, val: val2 } else do
+        x3 <- index xs (pos+3)
+        let val3 = (val2 .|. ((x3 .&. 127) `shl` 21)) `zshr` 0
+        if x3 < 128 then pure { pos: pos+4, val: val3 } else do
+          x4 <- index xs (pos+4)
+          let val4 = (val3 .|. ((x4 .&. 15) `shl` 28)) `zshr` 0
+          if x4 < 128 then pure { pos: pos+5, val: val4 } else do
+            let len = length xs
+            if pos+10 > len
+              then Left $ OutOfBound (pos+10) len
+              else do
+                pure { pos: pos+10, val: val4 .|. 0 }
+
 bytes :: Uint8Array -> Pos -> Result Uint8Array
 bytes xs pos0 = do
   { pos, val: res_len } <- uint32 xs pos0
