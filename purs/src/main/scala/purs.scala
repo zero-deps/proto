@@ -23,9 +23,6 @@ object Res {
 
 object Purescript {
   def generate[D, E](moduleName: String)(implicit dtag: TypeTag[D], etag: TypeTag[E]): Res = {
-    val decoders = mutable.ListBuffer.empty[String]
-    val encoders = mutable.ListBuffer.empty[String]
-
     def findN(x: Symbol): Option[Int] = {
       x.annotations.filter(_.tree.tpe == typeOf[zd.proto.api.N]) match {
         case List(x1) => x1.tree.children.tail match {
@@ -36,6 +33,7 @@ object Purescript {
         case _ => throw new Exception(s"multiple N on ${x}")
       }
     }
+    def fields1(tpe: Type): List[(String, Type, Int)] = fields(tpe.typeSymbol)
     def fields(tpe: Symbol): List[(String, Type, Int)] = {
       tpe.asClass.primaryConstructor.asMethod.paramLists.flatten.map{ x =>
         val term = x.asTerm
@@ -50,24 +48,22 @@ object Purescript {
     def findChildren1(tpe: Type): Seq[(Type, Int)] = tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, n) => (x.asType.toType, n) }
 
     sealed trait PursType
-    final case class PursDataType(tpe: Type, children: Seq[Type]) extends PursType
+    final case class PursDataType(tpe: Type, children: Seq[(Type,Int)], firstLevel: Boolean) extends PursType
     final case class PursSimpleType(tpe: Type) extends PursType
 
-    def makeEncodePursType(x: Type): Seq[String] = makePursType(x, genMaybe=false)
-    def makeDecodePursType(x: Type): Seq[String] = makePursType(x, genMaybe=true)
-    def makePursType(x: Type, genMaybe: Boolean): Seq[String] = {
-      def complexType: Type => Boolean = {
+    def collectTypes(tpe: Type): Seq[PursType] = {
+      val complexType: Type => Boolean = {
         case tpe if tpe =:= StringClass.selfType => false
         case tpe if tpe =:= IntClass.selfType => false
         case tpe if tpe =:= BooleanClass.selfType => false
         case tpe if tpe =:= typeOf[Array[Byte]] => false
         case _ => true
       }
-      @tailrec def collectTypes(head: Type, tail: Seq[Type], acc: Seq[PursType]): Seq[PursType] = {
+      @tailrec def loop(head: Type, tail: Seq[Type], acc: Seq[PursType], firstLevel: Boolean): Seq[PursType] = {
         val (tail1, acc1) =
           if (isTrait(head)) {
-            val children = findChildren1(head).map(_._1)
-            (children++tail, acc:+PursDataType(head, children))
+            val children = findChildren1(head)
+            (children.map(_._1)++tail, acc:+PursDataType(head, children, firstLevel))
           } else if (head.typeConstructor =:= OptionClass.selfType.typeConstructor) {
             val typeArg = head.typeArgs.head.typeSymbol
             val typeArgType = typeArg.asType.toType
@@ -83,15 +79,20 @@ object Purescript {
             (fs++tail, acc:+PursSimpleType(head))
           }
         tail1 match {
-          case h +: t => collectTypes(h, t, acc1)
+          case h +: t => loop(h, t, acc1, false)
           case _ => acc1
         }
       }
-      val xs = collectTypes(x, tail=Vector.empty, acc=Vector.empty)
-      xs.flatMap{
-        case PursDataType(tpe, children) =>
+      loop(tpe, Nil, Nil, true)
+    }
+
+    def makeEncodePursType(x: Type): Seq[String] = makePursType(x, genMaybe=false)
+    def makeDecodePursType(x: Type): Seq[String] = makePursType(x, genMaybe=true)
+    def makePursType(x: Type, genMaybe: Boolean): Seq[String] = {
+      collectTypes(x).flatMap{
+        case PursDataType(tpe, children,_) =>
           val name = tpe.typeSymbol.name.encodedName.toString
-          s"data ${name} = ${children.map(_.typeSymbol.name.encodedName.toString).map(x => s"${x} ${x}").mkString(" | ")}" +: Vector.empty
+          s"data ${name} = ${children.map(_._1.typeSymbol.name.encodedName.toString).map(x => s"${x} ${x}").mkString(" | ")}" +: Vector.empty
         case PursSimpleType(tpe) =>
           val name = tpe.typeSymbol.name.encodedName.toString
           val fieldsOf = fields(tpe.typeSymbol)
@@ -126,6 +127,162 @@ object Purescript {
       }
     }
 
+    def makeDecoders(tpe: Type): Seq[String] = {
+      collectTypes(tpe).map{
+        case PursDataType(tpe, children, true) =>
+          val cases = children.map{ case (tpe, n) =>
+            val name = tpe.typeSymbol.name.encodedName.toString
+            List(
+              s"${n} -> do"
+            , s"  { pos: pos2, val } <- decode${name} _xs_ pos1"
+            , s"  pure { pos: pos2, val: ${name} val }"
+            )
+          }
+          val name = tpe.typeSymbol.name.encodedName.toString
+          s"""|decode${name} :: Uint8Array -> Decode.Result ${name}
+              |decode${name} _xs_ = do
+              |  { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
+              |  case tag `zshr` 3 of${cases.map(_.map("\n    "+_).mkString("")).mkString("")}
+              |    i ->
+              |      Left $$ Decode.BadType i""".stripMargin
+        case PursDataType(tpe, children, false) =>
+          val name = tpe.typeSymbol.name.encodedName.toString
+          val cases = children.flatMap{ case (tpe, n) =>
+            val name = tpe.typeSymbol.name.encodedName.toString
+            List(
+              s"${n} ->"
+            , s"  case decode${name} _xs_ pos2 of"
+            , s"    Left x -> Left x"
+            , s"    Right { pos: pos3, val } ->"
+            , s"      decode end (Just $$ ${name} val) pos3"
+            )
+          }
+          s"""|decode${name} :: Uint8Array -> Int -> Decode.Result ${name}
+              |decode${name} _xs_ pos0 = do
+              |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+              |  let end = pos + msglen
+              |  decode end Nothing pos
+              |    where
+              |    decode :: Int -> Maybe ${name} -> Int -> Decode.Result ${name}
+              |    decode end acc pos1 | pos1 < end =
+              |      case Decode.uint32 _xs_ pos1 of
+              |        Left x -> Left x
+              |        Right { pos: pos2, val: tag } ->
+              |          case tag `zshr` 3 of${cases.map("\n            "+_).mkString}
+              |            _ ->
+              |              case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
+              |                Left x -> Left x
+              |                Right { pos: pos3 } ->
+              |                  decode end acc pos3
+              |    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
+              |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "${name}"""".stripMargin
+        case PursSimpleType(tpe) =>
+          val fs = fields1(tpe)
+          val defObj: String = fs.map{
+            case (name, tpe, _) =>
+              if (tpe =:= StringClass.selfType) {
+                s"""${name}: Nothing"""
+              } else if (tpe =:= IntClass.selfType) {
+                s"""${name}: Nothing"""
+              } else if (tpe =:= OptionClass.selfType.typeConstructor) {
+                s"""${name}: Nothing"""
+              } else if (isIterable(tpe)) {
+                s"${name}: []"
+              } else if (isTrait(tpe)) {
+                s"${name}: Nothing"
+              } else {
+                s"${name}: Nothing"
+              }
+          }.mkString("{ ", ", ", " }")
+          val justObj: String = fs.map{
+            case (name, tpe, _) =>
+              if (tpe =:= StringClass.selfType) {
+                s"""${name}: Just ${name}"""
+              } else if (tpe =:= IntClass.selfType) {
+                s"""${name}: Just ${name}"""
+              } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+                name
+              } else if (isIterable(tpe)) {
+                name
+              } else if (isTrait(tpe)) {
+                s"${name}: Just ${name}"
+              } else {
+                s"${name}: Just ${name}"
+              }
+          }.mkString("{ ", ", ", " }")
+          val unObj: String = fs.map{
+            case (name,_,_) => name
+          }.mkString("{ ", ", ", " }")
+          def decodeTmpl(n: Int, fun: String, mod: String): Seq[String] = {
+            List(
+              s"${n} ->"
+            , s"  case ${fun} _xs_ pos2 of"
+            , s"    Left x -> Left x"
+            , s"    Right { pos: pos3, val } ->"
+            , s"      decode end (acc { ${mod} }) pos3"
+            )
+          }
+          val cases = fields1(tpe).map{ case (name, tpe, n) =>
+            if (tpe =:= StringClass.selfType) {
+              decodeTmpl(n, "Decode.string", s"${name} = Just val")
+            } else if (tpe =:= IntClass.selfType) {
+              decodeTmpl(n, "Decode.int32", s"${name} = Just val")
+            } else if (tpe =:= BooleanClass.selfType) {
+              decodeTmpl(n, "Decode.boolean", s"${name} = Just val")
+            } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+              val typeArg = tpe.typeArgs.head.typeSymbol
+              val typeArgType = typeArg.asType.toType
+              if (typeArgType =:= StringClass.selfType) {
+                decodeTmpl(n, "Decode.string", s"${name} = Just val")
+              } else {
+                val typeArgName = typeArg.asClass.name.encodedName.toString
+                decodeTmpl(n, s"decode${typeArgName}", s"${name} = Just val")
+              }
+            } else if (isIterable(tpe)) {
+              val typeArg = tpe.typeArgs.head.typeSymbol
+              val typeArgType = typeArg.asType.toType
+              if (typeArgType =:= StringClass.selfType) {
+                decodeTmpl(n, "Decode.string", s"${name} = snoc acc.${name} val")
+              } else {
+                val typeArgName = typeArg.asClass.name.encodedName.toString
+                decodeTmpl(n, s"decode${typeArgName}", s"${name} = snoc acc.${name} val")
+              }
+            } else {
+              val symbol = tpe.typeSymbol
+              val symbolName = symbol.name.encodedName.toString
+              decodeTmpl(n, s"decode${symbolName}", s"${name} = Just val")
+            }
+          }.flatten
+          val name = tpe.typeSymbol.name.encodedName.toString
+          s"""|decode${name} :: Uint8Array -> Int -> Decode.Result ${name}
+              |decode${name} _xs_ pos0 = do
+              |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+              |  let end = pos + msglen
+              |  { pos: pos1, val } <- decode end ${defObj} pos
+              |  case val of
+              |    ${justObj} -> pure { pos: pos1, val: ${unObj} }
+              |    _ -> Left $$ Decode.MissingFields "${name}"
+              |    where
+              |    decode :: Int -> ${name}' -> Int -> Decode.Result ${name}'
+              |    decode end acc pos1 =
+              |      if pos1 < end then
+              |        case Decode.uint32 _xs_ pos1 of
+              |          Left x -> Left x
+              |          Right { pos: pos2, val: tag } ->
+              |            case tag `zshr` 3 of${cases.map("\n              "+_).mkString("")}
+              |              _ ->
+              |                case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
+              |                  Left x -> Left x
+              |                  Right { pos: pos3 } ->
+              |                    decode end acc pos3
+              |      else pure { pos: pos1, val: acc }""".stripMargin
+      }
+    }
+
+    val decodeTypes = makeDecodePursType(typeOf[D])
+    val decoders = makeDecoders(typeOf[D])
+
+    val encoders = mutable.ListBuffer.empty[String]
     def constructEncode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
       val encodeFields = fieldsOf.flatMap{ case (name, tpe, n) => 
         if (tpe =:= StringClass.selfType) {
@@ -171,173 +328,6 @@ object Purescript {
       }
     }
 
-    def constructDecodeForTrait(tpe: Type): String = {
-      val name = tpe.typeSymbol.name.encodedName.toString
-      val cases = findChildren(tpe).flatMap{ case (name, tpe, n) => List(
-        s"${n} ->"
-      , s"  case decode${name} _xs_ pos2 of"
-      , s"    Left x -> Left x"
-      , s"    Right { pos: pos3, val } ->"
-      , s"      decode end (Just $$ ${name} val) pos3"
-      ) }
-      s"""|decode${name} :: Uint8Array -> Int -> Decode.Result ${name}
-          |decode${name} _xs_ pos0 = do
-          |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-          |  let end = pos + msglen
-          |  decode end Nothing pos
-          |    where
-          |    decode :: Int -> Maybe ${name} -> Int -> Decode.Result ${name}
-          |    decode end acc pos1 | pos1 < end =
-          |      case Decode.uint32 _xs_ pos1 of
-          |        Left x -> Left x
-          |        Right { pos: pos2, val: tag } ->
-          |          case tag `zshr` 3 of${cases.map("\n            "+_).mkString}
-          |            _ ->
-          |              case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
-          |                Left x -> Left x
-          |                Right { pos: pos3 } ->
-          |                  decode end acc pos3
-          |    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
-          |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "${name}"""".stripMargin
-    }
-
-    def constructDecode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
-      def defObj(fs: List[(String, Type, Int)]): String = fs.map{
-        case (name, tpe, _) =>
-          if (tpe =:= StringClass.selfType) {
-            s"""${name}: Nothing"""
-          } else if (tpe =:= IntClass.selfType) {
-            s"""${name}: Nothing"""
-          } else if (tpe =:= OptionClass.selfType.typeConstructor) {
-            s"""${name}: Nothing"""
-          } else if (isIterable(tpe)) {
-            s"${name}: []"
-          } else if (isTrait(tpe)) {
-            s"${name}: Nothing"
-          } else {
-            s"${name}: Nothing"
-          }
-      }.mkString("{ ", ", ", " }")
-      def justObj(fs: List[(String, Type, Int)]): String = fs.map{
-        case (name, tpe, _) =>
-          if (tpe =:= StringClass.selfType) {
-            s"""${name}: Just ${name}"""
-          } else if (tpe =:= IntClass.selfType) {
-            s"""${name}: Just ${name}"""
-          } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
-            name
-          } else if (isIterable(tpe)) {
-            name
-          } else if (isTrait(tpe)) {
-            s"${name}: Just ${name}"
-          } else {
-            s"${name}: Just ${name}"
-          }
-      }.mkString("{ ", ", ", " }")
-      def unObj(fs: List[(String, Type, Int)]): String = fs.map{
-        case (name, tpe, _) => name
-      }.mkString("{ ", ", ", " }")
-      def decodeTmpl(n: Int, fun: String, mod: String): Seq[String] = {
-        List(
-          s"${n} ->"
-        , s"  case ${fun} _xs_ pos2 of"
-        , s"    Left x -> Left x"
-        , s"    Right { pos: pos3, val } ->"
-        , s"      decode end (acc { ${mod} }) pos3"
-        )
-      }
-      val cases = fieldsOf.map{
-        case (name, tpe, n) =>
-          if (tpe =:= StringClass.selfType) {
-            decodeTmpl(n, "Decode.string", s"${name} = Just val")
-          } else if (tpe =:= IntClass.selfType) {
-            decodeTmpl(n, "Decode.int32", s"${name} = Just val")
-          } else if (tpe =:= BooleanClass.selfType) {
-            decodeTmpl(n, "Decode.boolean", s"${name} = Just val")
-          } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
-            val typeArg = tpe.typeArgs.head.typeSymbol
-            val typeArgName = typeArg.asClass.name.encodedName.toString
-            val typeArgType = typeArg.asType.toType
-            if (typeArgType =:= StringClass.selfType) {
-              decodeTmpl(n, "Decode.string", s"${name} = Just val")
-            } else {
-              val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
-              decoders += constructDecode(typeArgName, typeArgFields)
-              decodeTmpl(n, s"decode${typeArgName}", s"${name} = Just val")
-            }
-          } else if (isIterable(tpe)) {
-            val typeArg = tpe.typeArgs.head.typeSymbol
-            val typeArgName = typeArg.asClass.name.encodedName.toString
-            val typeArgType = typeArg.asType.toType
-            if (typeArgType =:= StringClass.selfType) {
-              decodeTmpl(n, "Decode.string", s"${name} = snoc acc.${name} val")
-            } else {
-              val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
-              decoders += constructDecode(typeArgName, typeArgFields)
-              decodeTmpl(n, s"decode${typeArgName}", s"${name} = snoc acc.${name} val")
-            }
-          } else if (isTrait(tpe)) {
-            val symbol = tpe.typeSymbol
-            val symbolName = symbol.name.encodedName.toString
-            decoders += constructDecodeForTrait(tpe)
-            findChildren(tpe).map{ case (name, tpe1,_) =>
-              decoders += constructDecode(name, fields(tpe1))
-            }
-            decodeTmpl(n, s"decode${symbolName}", s"${name} = Just val")
-          } else {
-            val symbol = tpe.typeSymbol
-            val symbolName = symbol.name.encodedName.toString
-            decoders += constructDecode(symbolName, fields(symbol))
-            decodeTmpl(n, s"decode${symbolName}", s"${name} = Just val")
-          }
-      }.flatten
-      s"""|decode${name} :: Uint8Array -> Int -> Decode.Result ${name}
-          |decode${name} _xs_ pos0 = do
-          |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-          |  let end = pos + msglen
-          |  { pos: pos1, val } <- decode end ${defObj(fieldsOf)} pos
-          |  case val of
-          |    ${justObj(fieldsOf)} -> pure { pos: pos1, val: ${unObj(fieldsOf)} }
-          |    _ -> Left $$ Decode.MissingFields "${name}"
-          |    where
-          |    decode :: Int -> ${name}' -> Int -> Decode.Result ${name}'
-          |    decode end acc pos1 =
-          |      if pos1 < end then
-          |        case Decode.uint32 _xs_ pos1 of
-          |          Left x -> Left x
-          |          Right { pos: pos2, val: tag } ->
-          |            case tag `zshr` 3 of${cases.map("\n              "+_).mkString("")}
-          |              _ ->
-          |                case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
-          |                  Left x -> Left x
-          |                  Right { pos: pos3 } ->
-          |                    decode end acc pos3
-          |      else pure { pos: pos1, val: acc }""".stripMargin
-    }
-
-    val decodeTpe = typeOf[D]
-    val decodeTypes = makeDecodePursType(decodeTpe)
-    val decodeClass = decodeTpe.typeSymbol.asClass
-    val decodeName = decodeClass.name.encodedName.toString
-    decoders += {
-      val cases = findChildren(decodeTpe).map{ case (name,_, n) =>
-        List(
-          s"${n} -> do"
-        , s"  { pos: pos2, val } <- decode${name} _xs_ pos1"
-        , s"  pure { pos: pos2, val: ${name} val }"
-        )
-      }
-      s"""|decode${decodeName} :: Uint8Array -> Decode.Result ${decodeName}
-          |decode${decodeName} _xs_ = do
-          |  { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
-          |  case tag `zshr` 3 of${cases.map(_.map("\n    "+_).mkString("")).mkString("")}
-          |    i ->
-          |      Left $$ Decode.BadType i""".stripMargin
-    }
-    findChildren(decodeTpe).map{ case (name, tpe, n) =>
-      decoders += constructDecode(name, fields(tpe))
-    }
-
     val encodeTpe = typeOf[E]
     val encodeTypes = makeEncodePursType(encodeTpe)
     val encodeClass = encodeTpe.typeSymbol.asClass
@@ -359,7 +349,7 @@ object Purescript {
       prelude(moduleName),
       decodeTypes.distinct,
       encodeTypes.distinct,
-      decoders.toList.distinct,
+      decoders.distinct,
       encoders.toList.distinct,
     )
   }

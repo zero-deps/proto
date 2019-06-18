@@ -41,13 +41,13 @@ class PurescriptSpec extends FreeSpec with Matchers {
     "decoders" in {
       val xs = res.decoders
       xs(0) should be (Snippets.decodePush)
-      xs(1) should be (Snippets.decodeSiteOpt)
-      xs(2) should be (Snippets.decodeSiteOpts)
+      xs(2) should be (Snippets.decodeSiteOpt)
+      xs(1) should be (Snippets.decodeSiteOpts)
       xs(3) should be (Snippets.decodePermissions)
-      xs(4) should be (Snippets.decodePageType)
-      xs(5) should be (Snippets.decodePageWidgets)
-      xs(6) should be (Snippets.decodePageUrl)
-      xs(8) should be (Snippets.decodePage)
+      xs(5) should be (Snippets.decodePageType)
+      xs(6) should be (Snippets.decodePageWidgets)
+      xs(7) should be (Snippets.decodePageUrl)
+      xs(4) should be (Snippets.decodePage)
       xs(9) should be (Snippets.decodePageTreeItem)
     }
     "encoders" in {

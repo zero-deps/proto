@@ -48,6 +48,34 @@ decodePush _xs_ = do
     i ->
       Left $ Decode.BadType i
 
+decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts
+decodeSiteOpts _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { xs: [] } pos
+  case val of
+    { xs } -> pure { pos: pos1, val: { xs } }
+    _ -> Left $ Decode.MissingFields "SiteOpts"
+    where
+    decode :: Int -> SiteOpts' -> Int -> Decode.Result SiteOpts'
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case decodeSiteOpt _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { xs = snoc acc.xs val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }
+
 decodeSiteOpt :: Uint8Array -> Int -> Decode.Result SiteOpt
 decodeSiteOpt _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
@@ -81,34 +109,6 @@ decodeSiteOpt _xs_ pos0 = do
                     decode end acc pos3
       else pure { pos: pos1, val: acc }
 
-decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts
-decodeSiteOpts _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- decode end { xs: [] } pos
-  case val of
-    { xs } -> pure { pos: pos1, val: { xs } }
-    _ -> Left $ Decode.MissingFields "SiteOpts"
-    where
-    decode :: Int -> SiteOpts' -> Int -> Decode.Result SiteOpts'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case decodeSiteOpt _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { xs = snoc acc.xs val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
-
 decodePermissions :: Uint8Array -> Int -> Decode.Result Permissions
 decodePermissions _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
@@ -130,6 +130,49 @@ decodePermissions _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { xs = snoc acc.xs val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }
+
+decodePage :: Uint8Array -> Int -> Decode.Result Page
+decodePage _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing } pos
+  case val of
+    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo } }
+    _ -> Left $ Decode.MissingFields "Page"
+    where
+    decode :: Int -> Page' -> Int -> Decode.Result Page'
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case decodePageType _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { tpe = Just val }) pos3
+              2 ->
+                case Decode.boolean _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { guest = Just val }) pos3
+              3 ->
+                case decodePageSeo _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { seo = Just val }) pos3
+              4 ->
+                case decodePageSeo _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { mobileSeo = Just val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
@@ -239,49 +282,6 @@ decodePageSeo _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { descr = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
-
-decodePage :: Uint8Array -> Int -> Decode.Result Page
-decodePage _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing } pos
-  case val of
-    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo } }
-    _ -> Left $ Decode.MissingFields "Page"
-    where
-    decode :: Int -> Page' -> Int -> Decode.Result Page'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case decodePageType _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { tpe = Just val }) pos3
-              2 ->
-                case Decode.boolean _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { guest = Just val }) pos3
-              3 ->
-                case decodePageSeo _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { seo = Just val }) pos3
-              4 ->
-                case decodePageSeo _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { mobileSeo = Just val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
