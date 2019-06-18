@@ -57,6 +57,7 @@ object Purescript {
       def complexType: Type => Boolean = {
         case tpe if tpe =:= StringClass.selfType => false
         case tpe if tpe =:= IntClass.selfType => false
+        case tpe if tpe =:= BooleanClass.selfType => false
         case tpe if tpe =:= typeOf[Array[Byte]] => false
         case tpe if isIterable(tpe) => true
         case tpe if isTrait(tpe) => true
@@ -97,6 +98,8 @@ object Purescript {
             "String" -> "Maybe String"
           } else if (tpe =:= IntClass.selfType) {
             "Int" -> "Maybe Int"
+          } else if (tpe =:= BooleanClass.selfType) {
+            "Boolean" -> "Maybe Boolean"
           } else if (tpe =:= typeOf[Array[Byte]]) {
             "Uint8Array" -> "Maybe Uint8Array"
           } else if (isIterable(tpe)) {
@@ -237,6 +240,14 @@ object Purescript {
             List(
               s"${n} ->"
             , s"  case Decode.int32 _xs_ pos2 of"
+            , s"    Left x -> Left x"
+            , s"    Right { pos: pos3, val } ->"
+            , s"      decode end (acc { ${name} = Just val }) pos3"
+            )
+          } else if (tpe =:= BooleanClass.selfType) {
+            List(
+              s"${n} ->"
+            , s"  case Decode.boolean _xs_ pos2 of"
             , s"    Left x -> Left x"
             , s"    Right { pos: pos3, val } ->"
             , s"      decode end (acc { ${name} = Just val }) pos3"

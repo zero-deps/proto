@@ -17,8 +17,8 @@ type SiteOpt = { id :: String, label :: String }
 type SiteOpt' = { id :: Maybe String, label :: Maybe String }
 type Permissions = { xs :: Array String }
 type Permissions' = { xs :: Array String }
-type Page = { tpe :: PageType }
-type Page' = { tpe :: Maybe PageType }
+type Page = { tpe :: PageType, guest :: Boolean }
+type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean }
 data PageType = PageWidgets PageWidgets | PageUrl PageUrl
 type PageWidgets = {  }
 type PageWidgets' = {  }
@@ -220,9 +220,9 @@ decodePage :: Uint8Array -> Int -> Decode.Result Page
 decodePage _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { tpe: Nothing } pos
+  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing } pos
   case val of
-    { tpe: Just tpe } -> pure { pos: pos1, val: { tpe } }
+    { tpe: Just tpe, guest: Just guest } -> pure { pos: pos1, val: { tpe, guest } }
     _ -> Left $ Decode.MissingFields "Page"
     where
     decode :: Int -> Page' -> Int -> Decode.Result Page'
@@ -237,6 +237,11 @@ decodePage _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { tpe = Just val }) pos3
+              2 ->
+                case Decode.boolean _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { guest = Just val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
