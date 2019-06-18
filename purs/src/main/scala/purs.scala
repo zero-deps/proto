@@ -295,13 +295,10 @@ object Purescript {
             decoders += constructDecode(symbolName, fields(symbol))
             List(
               s"${n} ->"
-            , s"  case Decode.uint32 _xs_ pos2 of"
+            , s"  case decode${symbolName} _xs_ pos2 of"
             , s"    Left x -> Left x"
-            , s"    Right { pos: pos3, val: msglen1 }) ->"
-            , s"      case decode${symbolName} _xs_ pos3 msglen1 of"
-            , s"        Left x -> Left x"
-            , s"        Right { pos: pos4, val } ->"
-            , s"          decode end (acc { ${name} = Just val }) pos4"
+            , s"    Right { pos: pos3, val } ->"
+            , s"      decode end (acc { ${name} = Just val }) pos3"
             )
           }
       }.flatten
