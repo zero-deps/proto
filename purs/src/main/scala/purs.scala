@@ -61,23 +61,27 @@ object Purescript {
         case tpe if tpe =:= IntClass.selfType => false
         case tpe if tpe =:= BooleanClass.selfType => false
         case tpe if tpe =:= typeOf[Array[Byte]] => false
-        case tpe if isIterable(tpe) => true
-        case tpe if isTrait(tpe) => true
         case _ => true
       }
       @tailrec def collectTypes(head: Type, tail: Seq[Type], acc: Seq[PursType]): Seq[PursType] = {
-        val (tail1, acc1) = if (isTrait(head)) {
-          val children = findChildren1(head).map(_._1)
-          (children++tail, acc:+PursDataType(head, children))
-        } else if (isIterable(head)) {
-          val typeArg = head.typeArgs.head.typeSymbol
-          val typeArgType = typeArg.asType.toType
-          if (complexType(typeArgType)) (typeArgType+:tail, acc)
-          else (tail, acc)
-        } else {
-          val fs = fields(head.typeSymbol).map(_._2).filter(complexType)
-          (fs++tail, acc:+PursSimpleType(head))
-        }
+        val (tail1, acc1) =
+          if (isTrait(head)) {
+            val children = findChildren1(head).map(_._1)
+            (children++tail, acc:+PursDataType(head, children))
+          } else if (head.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+            val typeArg = head.typeArgs.head.typeSymbol
+            val typeArgType = typeArg.asType.toType
+            if (complexType(typeArgType)) (typeArgType+:tail, acc)
+            else (tail, acc)
+          } else if (isIterable(head)) {
+            val typeArg = head.typeArgs.head.typeSymbol
+            val typeArgType = typeArg.asType.toType
+            if (complexType(typeArgType)) (typeArgType+:tail, acc)
+            else (tail, acc)
+          } else {
+            val fs = fields(head.typeSymbol).map(_._2).filter(complexType)
+            (fs++tail, acc:+PursSimpleType(head))
+          }
         tail1 match {
           case h +: t => collectTypes(h, t, acc1)
           case _ => acc1
@@ -101,6 +105,10 @@ object Purescript {
               "Boolean" -> "Maybe Boolean"
             } else if (tpe =:= typeOf[Array[Byte]]) {
               "Uint8Array" -> "Maybe Uint8Array"
+            } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+              val typeArg = tpe.typeArgs.head.typeSymbol
+              val typeArgName = typeArg.asClass.name.encodedName.toString
+              s"Maybe ${typeArgName}" -> s"Maybe ${typeArgName}"
             } else if (isIterable(tpe)) {
               val typeArg = tpe.typeArgs.head.typeSymbol
               val typeArgName = typeArg.asClass.name.encodedName.toString
@@ -200,6 +208,8 @@ object Purescript {
             s"""${name}: Nothing"""
           } else if (tpe =:= IntClass.selfType) {
             s"""${name}: Nothing"""
+          } else if (tpe =:= OptionClass.selfType.typeConstructor) {
+            s"""${name}: Nothing"""
           } else if (isIterable(tpe)) {
             s"${name}: []"
           } else if (isTrait(tpe)) {
@@ -214,8 +224,10 @@ object Purescript {
             s"""${name}: Just ${name}"""
           } else if (tpe =:= IntClass.selfType) {
             s"""${name}: Just ${name}"""
+          } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+            name
           } else if (isIterable(tpe)) {
-            s"${name}"
+            name
           } else if (isTrait(tpe)) {
             s"${name}: Just ${name}"
           } else {
@@ -251,6 +263,16 @@ object Purescript {
             , s"    Right { pos: pos3, val } ->"
             , s"      decode end (acc { ${name} = Just val }) pos3"
             )
+          } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+            val typeArg = tpe.typeArgs.head.typeSymbol
+            val typeArgName = typeArg.asClass.name.encodedName.toString
+            List(
+              s"${n} ->"
+            , s"  case decode${typeArgName} _xs_ pos2 of"
+            , s"    Left x -> Left x"
+            , s"    Right { pos: pos3, val } ->"
+            , s"      decode end (acc { ${name} = Just val }) pos3"
+            )
           } else if (isIterable(tpe)) {
             val typeArg = tpe.typeArgs.head.typeSymbol
             val typeArgName = typeArg.asClass.name.encodedName.toString
@@ -263,9 +285,9 @@ object Purescript {
               , s"    Right { pos: pos3, val } ->"
               , s"      decode end (acc { ${name} = snoc acc.${name} val }) pos3"
               )
-          } else {
-            val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
-            decoders += constructDecode(typeArgName, typeArgFields)
+            } else {
+              val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
+              decoders += constructDecode(typeArgName, typeArgFields)
               List(
                 s"${n} ->"
               , s"  case decode${typeArgName} _xs_ pos2 of"

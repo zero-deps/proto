@@ -17,7 +17,7 @@ type SiteOpt = { id :: String, label :: String }
 type SiteOpt' = { id :: Maybe String, label :: Maybe String }
 type Permissions = { xs :: Array String }
 type Permissions' = { xs :: Array String }
-type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: PageSeo }
+type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo }
 type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo }
 data PageType = PageWidgets PageWidgets | PageUrl PageUrl
 type PageWidgets = {  }
@@ -252,7 +252,7 @@ decodePage _xs_ pos0 = do
   let end = pos + msglen
   { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing } pos
   case val of
-    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo: Just mobileSeo } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo } }
+    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo } }
     _ -> Left $ Decode.MissingFields "Page"
     where
     decode :: Int -> Page' -> Int -> Decode.Result Page'

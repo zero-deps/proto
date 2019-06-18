@@ -19,7 +19,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.decodeTypes(4) shouldBe "type SiteOpt' = { id :: Maybe String, label :: Maybe String }"
       res.decodeTypes(5) shouldBe "type Permissions = { xs :: Array String }"
       res.decodeTypes(6) shouldBe "type Permissions' = { xs :: Array String }"
-      res.decodeTypes(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: PageSeo }"
+      res.decodeTypes(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo }"
       res.decodeTypes(8) shouldBe "type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo }"
       res.decodeTypes(9) shouldBe "data PageType = PageWidgets PageWidgets | PageUrl PageUrl"
       res.decodeTypes(10) shouldBe "type PageWidgets = {  }"
@@ -67,7 +67,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
 sealed trait Push
 @N(1) final case class SiteOpts(@N(1) xs: Stream[SiteOpt]) extends Push
 @N(2) final case class Permissions(@N(1) xs: List[String]) extends Push
-@N(3) final case class Page(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: PageSeo) extends Push
+@N(3) final case class Page(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo]) extends Push
 final case class PageSeo(@N(1) descr: String) extends Push
 @N(4) final case class PageTreeItem(@N(1) priority: Int) extends Push
 
@@ -199,7 +199,7 @@ decodePage _xs_ pos0 = do
   let end = pos + msglen
   { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing } pos
   case val of
-    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo: Just mobileSeo } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo } }
+    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo } }
     _ -> Left $ Decode.MissingFields "Page"
     where
     decode :: Int -> Page' -> Int -> Decode.Result Page'
