@@ -319,9 +319,7 @@ decodePageTreeItem _xs_ pos0 = do
 
 data Pull = GetSites GetSites | UploadChunk UploadChunk
 type GetSites = {  }
-type GetSites' = {  }
 type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }
-type UploadChunk' = { path :: Array String, id :: Maybe String, chunk :: Maybe Uint8Array }
 
 encodePull :: Pull -> Uint8Array
 encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]

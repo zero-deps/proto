@@ -11,6 +11,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.prelude.startsWith("module Api")
     }
     "types" in {
+      res.decodeTypes.length shouldBe 18
       res.decodeTypes(0) shouldBe "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem"
       res.decodeTypes(1) shouldBe "type SiteOpts = { xs :: Array SiteOpt }"
       res.decodeTypes(2) shouldBe "type SiteOpts' = { xs :: Array SiteOpt }"
@@ -29,12 +30,11 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.decodeTypes(15) shouldBe "type PageSeo' = { descr :: Maybe String }"
       res.decodeTypes(16) shouldBe "type PageTreeItem = { priority :: Int }"
       res.decodeTypes(17) shouldBe "type PageTreeItem' = { priority :: Maybe Int }"
+      res.encodeTypes.length shouldBe 3
       res.encodeTypes.toSet should be (Set(
         "data Pull = GetSites GetSites | UploadChunk UploadChunk",
         "type GetSites = {  }",
-        "type GetSites' = {  }",
         "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }",
-        "type UploadChunk' = { path :: Array String, id :: Maybe String, chunk :: Maybe Uint8Array }",
       ))
       ()
     }

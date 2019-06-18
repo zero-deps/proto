@@ -53,7 +53,9 @@ object Purescript {
     final case class PursDataType(tpe: Type, children: Seq[Type]) extends PursType
     final case class PursSimpleType(tpe: Type) extends PursType
 
-    def makePursType(x: Type): Seq[String] = {
+    def makeEncodePursType(x: Type): Seq[String] = makePursType(x, genMaybe=false)
+    def makeDecodePursType(x: Type): Seq[String] = makePursType(x, genMaybe=true)
+    def makePursType(x: Type, genMaybe: Boolean): Seq[String] = {
       def complexType: Type => Boolean = {
         case tpe if tpe =:= StringClass.selfType => false
         case tpe if tpe =:= IntClass.selfType => false
@@ -87,36 +89,33 @@ object Purescript {
           val name = tpe.typeSymbol.name.encodedName.toString
           s"data ${name} = ${children.map(_.typeSymbol.name.encodedName.toString).map(x => s"${x} ${x}").mkString(" | ")}" +: Vector.empty
         case PursSimpleType(tpe) =>
-          makeType(tpe.typeSymbol.name.encodedName.toString, fields(tpe.typeSymbol))
+          val name = tpe.typeSymbol.name.encodedName.toString
+          val fieldsOf = fields(tpe.typeSymbol)
+          val fs = fieldsOf.map{ case (name1, tpe, _) =>
+          val pursType =
+            if (tpe =:= StringClass.selfType) {
+              "String" -> "Maybe String"
+            } else if (tpe =:= IntClass.selfType) {
+              "Int" -> "Maybe Int"
+            } else if (tpe =:= BooleanClass.selfType) {
+              "Boolean" -> "Maybe Boolean"
+            } else if (tpe =:= typeOf[Array[Byte]]) {
+              "Uint8Array" -> "Maybe Uint8Array"
+            } else if (isIterable(tpe)) {
+              val typeArg = tpe.typeArgs.head.typeSymbol
+              val typeArgName = typeArg.asClass.name.encodedName.toString
+              s"Array ${typeArgName}" -> s"Array ${typeArgName}"
+            } else {
+              val symbol = tpe.typeSymbol
+              val name = symbol.name.encodedName.toString
+              name -> s"Maybe ${name}"
+            }
+          name1 -> pursType
+        }
+        val x = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._1}" }.mkString(s"type ${name} = { ", ", ", " }")
+        val x1 = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._2}" }.mkString(s"type ${name}' = { ", ", ", " }")
+        if (genMaybe) Vector(x, x1) else Vector(x)
       }
-    }
-
-    def makeType(name: String, fieldsOf: List[(String, Type, Any)]): Seq[String] = {
-      val fs = fieldsOf.map{ case (name1, tpe, _) =>
-        val pursType =
-          if (tpe =:= StringClass.selfType) {
-            "String" -> "Maybe String"
-          } else if (tpe =:= IntClass.selfType) {
-            "Int" -> "Maybe Int"
-          } else if (tpe =:= BooleanClass.selfType) {
-            "Boolean" -> "Maybe Boolean"
-          } else if (tpe =:= typeOf[Array[Byte]]) {
-            "Uint8Array" -> "Maybe Uint8Array"
-          } else if (isIterable(tpe)) {
-            val typeArg = tpe.typeArgs.head.typeSymbol
-            val typeArgName = typeArg.asClass.name.encodedName.toString
-            s"Array ${typeArgName}" -> s"Array ${typeArgName}"
-          } else {
-            val symbol = tpe.typeSymbol
-            val name = symbol.name.encodedName.toString
-            name -> s"Maybe ${name}"
-          }
-        name1 -> pursType
-      }
-      Vector(
-        fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._1}" }.mkString(s"type ${name} = { ", ", ", " }")
-      , fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._2}" }.mkString(s"type ${name}' = { ", ", ", " }")
-      )
     }
 
     def constructEncode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
@@ -327,7 +326,7 @@ object Purescript {
     }
 
     val decodeTpe = typeOf[D]
-    val decodeTypes = makePursType(decodeTpe)
+    val decodeTypes = makeDecodePursType(decodeTpe)
     val decodeClass = decodeTpe.typeSymbol.asClass
     val decodeName = decodeClass.name.encodedName.toString
     decoders += {
@@ -350,7 +349,7 @@ object Purescript {
     }
 
     val encodeTpe = typeOf[E]
-    val encodeTypes = makePursType(encodeTpe)
+    val encodeTypes = makeEncodePursType(encodeTpe)
     val encodeClass = encodeTpe.typeSymbol.asClass
     val encodeName = encodeClass.name.encodedName.toString
     encoders += {
