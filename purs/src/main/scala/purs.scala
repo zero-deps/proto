@@ -368,10 +368,10 @@ object Purescript {
 
     Res(
       prelude(moduleName),
-      decodeTypes,
-      encodeTypes,
-      decoders.toList,
-      encoders.toList,
+      decodeTypes.distinct,
+      encodeTypes.distinct,
+      decoders.toList.distinct,
+      encoders.toList.distinct,
     )
   }
 

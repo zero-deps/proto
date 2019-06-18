@@ -17,8 +17,8 @@ type SiteOpt = { id :: String, label :: String }
 type SiteOpt' = { id :: Maybe String, label :: Maybe String }
 type Permissions = { xs :: Array String }
 type Permissions' = { xs :: Array String }
-type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo }
-type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo }
+type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: PageSeo }
+type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo }
 data PageType = PageWidgets PageWidgets | PageUrl PageUrl
 type PageWidgets = {  }
 type PageWidgets' = {  }
@@ -250,9 +250,9 @@ decodePage :: Uint8Array -> Int -> Decode.Result Page
 decodePage _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing } pos
+  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing } pos
   case val of
-    { tpe: Just tpe, guest: Just guest, seo: Just seo } -> pure { pos: pos1, val: { tpe, guest, seo } }
+    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo: Just mobileSeo } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo } }
     _ -> Left $ Decode.MissingFields "Page"
     where
     decode :: Int -> Page' -> Int -> Decode.Result Page'
@@ -277,6 +277,11 @@ decodePage _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { seo = Just val }) pos3
+              4 ->
+                case decodePageSeo _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { mobileSeo = Just val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
