@@ -173,7 +173,7 @@ object Purescript {
       , s"    Right { pos: pos3, val } ->"
       , s"      decode end (Just $$ ${name} val) pos3"
       ) }
-      s"""|decode${name} :: Uint8Array -> Int -> Decode.Result PageType
+      s"""|decode${name} :: Uint8Array -> Int -> Decode.Result ${name}
           |decode${name} _xs_ pos0 = do
           |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
           |  let end = pos + msglen
@@ -191,7 +191,7 @@ object Purescript {
           |                Right { pos: pos3 } ->
           |                  decode end acc pos3
           |    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
-          |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "PageType"""".stripMargin
+          |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "${name}"""".stripMargin
     }
 
     def constructDecode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
