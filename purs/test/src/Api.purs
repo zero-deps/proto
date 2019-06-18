@@ -13,7 +13,7 @@ import Uint8ArrayExt (length, concatAll)
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem
 type SiteOpts = { xs :: Array SiteOpt }
 type SiteOpts' = { xs :: Array SiteOpt }
-type SiteOpt = { id :: String, label :: String }
+type SiteOpt = { id :: String, label :: Maybe String }
 type SiteOpt' = { id :: Maybe String, label :: Maybe String }
 type Permissions = { xs :: Array String }
 type Permissions' = { xs :: Array String }
@@ -54,7 +54,7 @@ decodeSiteOpt _xs_ pos0 = do
   let end = pos + msglen
   { pos: pos1, val } <- decode end { id: Nothing, label: Nothing } pos
   case val of
-    { id: Just id, label: Just label } -> pure { pos: pos1, val: { id, label } }
+    { id: Just id, label } -> pure { pos: pos1, val: { id, label } }
     _ -> Left $ Decode.MissingFields "SiteOpt"
     where
     decode :: Int -> SiteOpt' -> Int -> Decode.Result SiteOpt'

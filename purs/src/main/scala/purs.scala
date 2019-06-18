@@ -237,64 +237,44 @@ object Purescript {
       def unObj(fs: List[(String, Type, Int)]): String = fs.map{
         case (name, tpe, _) => name
       }.mkString("{ ", ", ", " }")
+      def decodeTmpl(n: Int, fun: String, mod: String): Seq[String] = {
+        List(
+          s"${n} ->"
+        , s"  case ${fun} _xs_ pos2 of"
+        , s"    Left x -> Left x"
+        , s"    Right { pos: pos3, val } ->"
+        , s"      decode end (acc { ${mod} }) pos3"
+        )
+      }
       val cases = fieldsOf.map{
         case (name, tpe, n) =>
           if (tpe =:= StringClass.selfType) {
-            List(
-              s"${n} ->"
-            , s"  case Decode.string _xs_ pos2 of"
-            , s"    Left x -> Left x"
-            , s"    Right { pos: pos3, val } ->"
-            , s"      decode end (acc { ${name} = Just val }) pos3"
-            )
+            decodeTmpl(n, "Decode.string", s"${name} = Just val")
           } else if (tpe =:= IntClass.selfType) {
-            List(
-              s"${n} ->"
-            , s"  case Decode.int32 _xs_ pos2 of"
-            , s"    Left x -> Left x"
-            , s"    Right { pos: pos3, val } ->"
-            , s"      decode end (acc { ${name} = Just val }) pos3"
-            )
+            decodeTmpl(n, "Decode.int32", s"${name} = Just val")
           } else if (tpe =:= BooleanClass.selfType) {
-            List(
-              s"${n} ->"
-            , s"  case Decode.boolean _xs_ pos2 of"
-            , s"    Left x -> Left x"
-            , s"    Right { pos: pos3, val } ->"
-            , s"      decode end (acc { ${name} = Just val }) pos3"
-            )
+            decodeTmpl(n, "Decode.boolean", s"${name} = Just val")
           } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
             val typeArg = tpe.typeArgs.head.typeSymbol
             val typeArgName = typeArg.asClass.name.encodedName.toString
-            List(
-              s"${n} ->"
-            , s"  case decode${typeArgName} _xs_ pos2 of"
-            , s"    Left x -> Left x"
-            , s"    Right { pos: pos3, val } ->"
-            , s"      decode end (acc { ${name} = Just val }) pos3"
-            )
+            val typeArgType = typeArg.asType.toType
+            if (typeArgType =:= StringClass.selfType) {
+              decodeTmpl(n, "Decode.string", s"${name} = Just val")
+            } else {
+              val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
+              decoders += constructDecode(typeArgName, typeArgFields)
+              decodeTmpl(n, s"decode${typeArgName}", s"${name} = Just val")
+            }
           } else if (isIterable(tpe)) {
             val typeArg = tpe.typeArgs.head.typeSymbol
             val typeArgName = typeArg.asClass.name.encodedName.toString
             val typeArgType = typeArg.asType.toType
             if (typeArgType =:= StringClass.selfType) {
-              List(
-                s"${n} ->"
-              , s"  case Decode.string _xs_ pos2 of"
-              , s"    Left x -> Left x"
-              , s"    Right { pos: pos3, val } ->"
-              , s"      decode end (acc { ${name} = snoc acc.${name} val }) pos3"
-              )
+              decodeTmpl(n, "Decode.string", s"${name} = snoc acc.${name} val")
             } else {
               val typeArgFields = fields(typeArg.asType.toType.typeSymbol)
               decoders += constructDecode(typeArgName, typeArgFields)
-              List(
-                s"${n} ->"
-              , s"  case decode${typeArgName} _xs_ pos2 of"
-              , s"    Left x -> Left x"
-              , s"    Right { pos: pos3, val } ->"
-              , s"      decode end (acc { ${name} = snoc acc.${name} val }) pos3"
-              )
+              decodeTmpl(n, s"decode${typeArgName}", s"${name} = snoc acc.${name} val")
             }
           } else if (isTrait(tpe)) {
             val symbol = tpe.typeSymbol
@@ -303,24 +283,12 @@ object Purescript {
             findChildren(tpe).map{ case (name, tpe1,_) =>
               decoders += constructDecode(name, fields(tpe1))
             }
-            List(
-              s"${n} ->"
-            , s"  case decode${symbolName} _xs_ pos2 of"
-            , s"    Left x -> Left x"
-            , s"    Right { pos: pos3, val } ->"
-            , s"      decode end (acc { ${name} = Just val }) pos3"
-            )
+            decodeTmpl(n, s"decode${symbolName}", s"${name} = Just val")
           } else {
             val symbol = tpe.typeSymbol
             val symbolName = symbol.name.encodedName.toString
             decoders += constructDecode(symbolName, fields(symbol))
-            List(
-              s"${n} ->"
-            , s"  case decode${symbolName} _xs_ pos2 of"
-            , s"    Left x -> Left x"
-            , s"    Right { pos: pos3, val } ->"
-            , s"      decode end (acc { ${name} = Just val }) pos3"
-            )
+            decodeTmpl(n, s"decode${symbolName}", s"${name} = Just val")
           }
       }.flatten
       s"""|decode${name} :: Uint8Array -> Int -> Decode.Result ${name}

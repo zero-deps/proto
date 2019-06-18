@@ -15,7 +15,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.decodeTypes(0) shouldBe "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem"
       res.decodeTypes(1) shouldBe "type SiteOpts = { xs :: Array SiteOpt }"
       res.decodeTypes(2) shouldBe "type SiteOpts' = { xs :: Array SiteOpt }"
-      res.decodeTypes(3) shouldBe "type SiteOpt = { id :: String, label :: String }"
+      res.decodeTypes(3) shouldBe "type SiteOpt = { id :: String, label :: Maybe String }"
       res.decodeTypes(4) shouldBe "type SiteOpt' = { id :: Maybe String, label :: Maybe String }"
       res.decodeTypes(5) shouldBe "type Permissions = { xs :: Array String }"
       res.decodeTypes(6) shouldBe "type Permissions' = { xs :: Array String }"
@@ -71,7 +71,7 @@ sealed trait Push
 final case class PageSeo(@N(1) descr: String) extends Push
 @N(4) final case class PageTreeItem(@N(1) priority: Int) extends Push
 
-final case class SiteOpt(@N(1) id: String, @N(2) label: String)
+final case class SiteOpt(@N(1) id: String, @N(2) label: Option[String])
 sealed trait PageType
 @N(1) final case class PageWidgets() extends PageType
 @N(2) final case class PageUrl(@N(1) addr: String) extends PageType
@@ -110,7 +110,7 @@ decodeSiteOpt _xs_ pos0 = do
   let end = pos + msglen
   { pos: pos1, val } <- decode end { id: Nothing, label: Nothing } pos
   case val of
-    { id: Just id, label: Just label } -> pure { pos: pos1, val: { id, label } }
+    { id: Just id, label } -> pure { pos: pos1, val: { id, label } }
     _ -> Left $ Decode.MissingFields "SiteOpt"
     where
     decode :: Int -> SiteOpt' -> Int -> Decode.Result SiteOpt'
