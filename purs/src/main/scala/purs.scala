@@ -1,7 +1,6 @@
 package zd
 package proto
 
-import scala.collection.mutable
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 import scala.annotation.tailrec
@@ -282,75 +281,74 @@ object Purescript {
     val decodeTypes = makeDecodePursType(typeOf[D])
     val decoders = makeDecoders(typeOf[D])
 
-    val encoders = mutable.ListBuffer.empty[String]
-    def constructEncode(name: String, fieldsOf: List[(String, Type, Int)]): String = {
-      val encodeFields = fieldsOf.flatMap{ case (name, tpe, n) => 
-        if (tpe =:= StringClass.selfType) {
-          List(
-            s"""Encode.uint32 ${(n<<3)+2}"""
-          , s"""Encode.string msg.${name}"""
-          )
-        } else if (tpe =:= IntClass.selfType) {
-          List(
-            s"""Encode.uint32 ${(n<<3)+0}"""
-          , s"""Encode.uint32 msg.${name}"""
-          )
-        } else if (tpe =:= typeOf[Array[Byte]]) {
-          List(
-            s"""Encode.uint32 ${(n<<3)+2}"""
-          , s"""Encode.bytes msg.${name}"""
-          )
-        } else if (isIterable(tpe)) {
-          val typeArg = tpe.typeArgs.head.typeSymbol
-          val typeArgName = typeArg.asClass.name.encodedName.toString
-          val typeArgType = typeArg.asType.toType
-          if (typeArgType =:= StringClass.selfType) {
+    def makeEncoders(tpe: Type): Seq[String] = {
+      collectTypes(tpe).map{
+        case PursDataType(tpe, children,_) =>
+          val name = tpe.typeSymbol.name.encodedName.toString
+          val cases = children.map{ case (tpe, n) =>
+            val name1 = tpe.typeSymbol.name.encodedName.toString
             List(
-              s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.${name}""",
+              s"encode${name} (${name1} x) = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode${name1} x ]"
             )
-          } else {
-            s"?unknown_typearg_${typeArgName}_for_encoder_${name}" :: Nil
           }
-        } else {
-          "?"+tpe.toString :: Nil
-        }
-      }
-      if (encodeFields.nonEmpty) {
-        s"""|encode${name} :: ${name} -> Uint8Array
-            |encode${name} msg = do
-            |  let xs = concatAll
-            |  ${encodeFields.mkString("      [ ", "\n        , ", "\n        ]")}
-            |  let len = length xs
-            |  concatAll [ Encode.uint32 len, xs ]""".stripMargin
-      } else {
-        s"""|encode${name} :: ${name} -> Uint8Array
-            |encode${name} _ = Encode.uint32 0""".stripMargin
+          s"""|encode${name} :: ${name} -> Uint8Array
+              |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
+        case PursSimpleType(tpe) =>
+          val encodeFields = fields1(tpe).flatMap{ case (name, tpe, n) =>
+            if (tpe =:= StringClass.selfType) {
+              List(
+                s"""Encode.uint32 ${(n<<3)+2}"""
+              , s"""Encode.string msg.${name}"""
+              )
+            } else if (tpe =:= IntClass.selfType) {
+              List(
+                s"""Encode.uint32 ${(n<<3)+0}"""
+              , s"""Encode.uint32 msg.${name}"""
+              )
+            } else if (tpe =:= typeOf[Array[Byte]]) {
+              List(
+                s"""Encode.uint32 ${(n<<3)+2}"""
+              , s"""Encode.bytes msg.${name}"""
+              )
+            } else if (isIterable(tpe)) {
+              val typeArg = tpe.typeArgs.head.typeSymbol
+              val typeArgName = typeArg.asClass.name.encodedName.toString
+              val typeArgType = typeArg.asType.toType
+              if (typeArgType =:= StringClass.selfType) {
+                List(
+                  s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.${name}""",
+                )
+              } else {
+                s"?unknown_typearg_${typeArgName}_for_encoder_${name}" :: Nil
+              }
+            } else {
+              "?"+tpe.toString :: Nil
+            }
+          }
+          val name = tpe.typeSymbol.name.encodedName.toString
+          if (encodeFields.nonEmpty) {
+            s"""|encode${name} :: ${name} -> Uint8Array
+                |encode${name} msg = do
+                |  let xs = concatAll
+                |  ${encodeFields.mkString("      [ ", "\n        , ", "\n        ]")}
+                |  let len = length xs
+                |  concatAll [ Encode.uint32 len, xs ]""".stripMargin
+          } else {
+            s"""|encode${name} :: ${name} -> Uint8Array
+                |encode${name} _ = Encode.uint32 0""".stripMargin
+          }
       }
     }
 
-    val encodeTpe = typeOf[E]
-    val encodeTypes = makeEncodePursType(encodeTpe)
-    val encodeClass = encodeTpe.typeSymbol.asClass
-    val encodeName = encodeClass.name.encodedName.toString
-    encoders += {
-      val cases = findChildren(encodeTpe).map{ case (name,_, n) =>
-        List(
-          s"encode${encodeName} (${name} x) = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode${name} x ]"
-        )
-      }
-      s"""|encode${encodeName} :: ${encodeName} -> Uint8Array
-          |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
-    }
-    findChildren(encodeTpe).map{ case (name, tpe,_) =>
-      encoders += constructEncode(name, fields(tpe))
-    }
+    val encodeTypes = makeEncodePursType(typeOf[E])
+    val encoders = makeEncoders(typeOf[E])
 
     Res(
       prelude(moduleName),
       decodeTypes.distinct,
       encodeTypes.distinct,
       decoders.distinct,
-      encoders.toList.distinct,
+      encoders.distinct,
     )
   }
 
