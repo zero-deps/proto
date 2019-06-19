@@ -1,10 +1,12 @@
 module Proto.Decode where
 
 import Data.ArrayBuffer.Types (Uint8Array)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(Left, Right))
 import Data.Int.Bits (shl, zshr, (.&.), (.|.))
 import Prelude
-import Uint8ArrayExt (indexUnsafe, length, slice)
+import Uint8ArrayExt (length, slice)
+import Uint8ArrayExt as Uint8Array
 import Utf8 as Utf8
 
 type Pos = Int
@@ -17,6 +19,8 @@ data Error
   | IntTooLong
 type Result a = Either Error { pos :: Int, val :: a }
 
+foreign import joinFloat64 :: Int -> Int -> Number
+
 instance showError :: Show Error where
   show (OutOfBound i l) = "index="<>show i<>" out of bound="<>show l
   show (BadWireType x) = "bad wire type="<>show x
@@ -26,9 +30,7 @@ instance showError :: Show Error where
   show (IntTooLong) = "varint32 too long"
 
 index :: Uint8Array -> Int -> Either Error Int
-index xs i =
-  let len = length xs
-  in if 0 <= i && i < len then Right (indexUnsafe xs i) else Left (OutOfBound i len)
+index xs pos = lmap (\x -> OutOfBound x.pos x.len) $ Uint8Array.index xs pos
 
 int32 :: Uint8Array -> Pos -> Result Int
 int32 = uint32
@@ -53,29 +55,43 @@ uint32 xs pos = do
             let len = length xs
             x5 <- index xs (pos+5)
             if x5 < 128
-              then (if pos+6 <= len then pure { pos: pos+6, val } else Left $ OutOfBound (pos+6) len)
+              then pure { pos: pos+6, val }
               else do
                 x6 <- index xs (pos+6)
                 if x6 < 128
-                  then (if pos+7<=len then pure { pos: pos+7, val } else Left $ OutOfBound (pos+7) len)
+                  then pure { pos: pos+7, val }
                   else do
                     x7 <- index xs (pos+7)
                     if x7 < 128
-                      then (if pos+8<=len then pure { pos: pos+8, val } else Left $ OutOfBound (pos+8) len)
+                      then pure { pos: pos+8, val }
                       else do
                         x8 <- index xs (pos+8)
                         if x8 < 128
-                          then (if pos+9<=len then pure { pos: pos+9, val } else Left $ OutOfBound (pos+9) len)
+                          then pure { pos: pos+9, val }
                           else do
                             x9 <- index xs (pos+9)
                             if x9 < 128
-                              then (if pos+10<=len then pure { pos: pos+10, val } else Left $ OutOfBound (pos+10) len)
+                              then pure { pos: pos+10, val }
                               else Left $ IntTooLong
 
 boolean :: Uint8Array -> Pos -> Result Boolean
 boolean xs pos = do
   x <- index xs pos
   if x == 0 then pure { pos: pos+1, val: false } else pure { pos: pos+1, val: true }
+
+double :: Uint8Array -> Pos -> Result Number
+double xs pos = do
+  { pos: pos2, val: bitsLow } <- fixedUint32 pos
+  { pos: pos3, val: bitsHigh } <- fixedUint32 pos2
+  pure { pos: pos3, val: joinFloat64 bitsLow bitsHigh }
+  where
+  fixedUint32 :: Pos -> Result Int
+  fixedUint32 pos1 = do
+    a <- index xs (pos1+0)
+    b <- index xs (pos1+1)
+    c <- index xs (pos1+2)
+    d <- index xs (pos1+3)
+    pure { pos: pos1+4, val: ((a `shl` 0) .|. (b `shl` 8) .|. (c `shl` 16) .|. (d `shl` 24)) `zshr` 0 }
 
 bytes :: Uint8Array -> Pos -> Result Uint8Array
 bytes xs pos0 = do
@@ -93,13 +109,11 @@ string xs pos0 = do
   pure { pos, val: Utf8.toString ys }
 
 skip' :: Uint8Array -> Pos -> Result Unit
-skip' xs pos0 = let len = length xs in loop pos0 len
-  where
-  loop :: Pos -> Int -> Result Unit
-  loop pos len =
-    if pos >= len then Left (OutOfBound pos len)
-    else if ((indexUnsafe xs pos) .&. 128) == 0 then pure { pos: pos+1, val: unit }
-    else loop (pos+1) len
+skip' xs pos =
+  case index xs pos of
+    Left x -> Left x
+    Right x | x .&. 128 == 0 -> pure { pos: pos+1, val: unit }
+    Right _ -> skip' xs (pos+1)
 
 skip :: Int -> Uint8Array -> Pos -> Result Unit
 skip n xs pos0 = let len = length xs in if pos0 + n > len then Left (OutOfBound (pos0+n) len) else pure { pos: pos0+n, val: unit }

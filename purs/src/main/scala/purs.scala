@@ -32,9 +32,8 @@ object Purescript {
         case _ => throw new Exception(s"multiple N on ${x}")
       }
     }
-    def fields1(tpe: Type): List[(String, Type, Int)] = fields(tpe.typeSymbol)
-    def fields(tpe: Symbol): List[(String, Type, Int)] = {
-      tpe.asClass.primaryConstructor.asMethod.paramLists.flatten.map{ x =>
+    def fields(tpe: Type): List[(String, Type, Int)] = {
+      tpe.typeSymbol.asClass.primaryConstructor.asMethod.paramLists.flatten.map{ x =>
         val term = x.asTerm
         (term.name.encodedName.toString, term.info, findN(x))
       }.collect{ case (a, b, Some(n)) => (a, b, n) }.sortBy(_._3)
@@ -43,26 +42,26 @@ object Purescript {
       tpe.baseClasses.exists(_.asType.toType.typeConstructor <:< typeOf[scala.collection.TraversableOnce[Unit]].typeConstructor)
     }
     def isTrait(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
-    def findChildren(tpe: Type): Seq[(String, Symbol, Int)] = tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, n) => (x.name.encodedName.toString, x.asType.toType.typeSymbol, n) }
-    def findChildren1(tpe: Type): Seq[(Type, Int)] = tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, n) => (x.asType.toType, n) }
+    def findChildren(tpe: Type): Seq[(Type, Int)] = tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, n) => (x.asType.toType, n) }
 
-    sealed trait PursType
-    final case class PursDataType(tpe: Type, children: Seq[(Type,Int)], firstLevel: Boolean) extends PursType
-    final case class PursSimpleType(tpe: Type) extends PursType
+    sealed trait Tpe
+    final case class TraitType(tpe: Type, children: Seq[(Type,Int)], firstLevel: Boolean) extends Tpe
+    final case class SimpleType(tpe: Type) extends Tpe
 
-    def collectTypes(tpe: Type): Seq[PursType] = {
+    def collectTypes(tpe: Type): Seq[Tpe] = {
       val complexType: Type => Boolean = {
         case tpe if tpe =:= StringClass.selfType => false
         case tpe if tpe =:= IntClass.selfType => false
         case tpe if tpe =:= BooleanClass.selfType => false
+        case tpe if tpe =:= DoubleClass.selfType => false
         case tpe if tpe =:= typeOf[Array[Byte]] => false
         case _ => true
       }
-      @tailrec def loop(head: Type, tail: Seq[Type], acc: Seq[PursType], firstLevel: Boolean): Seq[PursType] = {
+      @tailrec def loop(head: Type, tail: Seq[Type], acc: Seq[Tpe], firstLevel: Boolean): Seq[Tpe] = {
         val (tail1, acc1) =
           if (isTrait(head)) {
-            val children = findChildren1(head)
-            (children.map(_._1)++tail, acc:+PursDataType(head, children, firstLevel))
+            val children = findChildren(head)
+            (children.map(_._1)++tail, acc:+TraitType(head, children, firstLevel))
           } else if (head.typeConstructor =:= OptionClass.selfType.typeConstructor) {
             val typeArg = head.typeArgs.head.typeSymbol
             val typeArgType = typeArg.asType.toType
@@ -74,8 +73,8 @@ object Purescript {
             if (complexType(typeArgType)) (typeArgType+:tail, acc)
             else (tail, acc)
           } else {
-            val fs = fields(head.typeSymbol).map(_._2).filter(complexType)
-            (fs++tail, acc:+PursSimpleType(head))
+            val fs = fields(head).map(_._2).filter(complexType)
+            (fs++tail, acc:+SimpleType(head))
           }
         tail1 match {
           case h +: t => loop(h, t, acc1, false)
@@ -85,16 +84,16 @@ object Purescript {
       loop(tpe, Nil, Nil, true)
     }
 
-    def makeEncodePursType(x: Type): Seq[String] = makePursType(x, genMaybe=false)
-    def makeDecodePursType(x: Type): Seq[String] = makePursType(x, genMaybe=true)
-    def makePursType(x: Type, genMaybe: Boolean): Seq[String] = {
+    def makeEncodeTpe(x: Type): Seq[String] = makeTpe(x, genMaybe=false)
+    def makeDecodeTpe(x: Type): Seq[String] = makeTpe(x, genMaybe=true)
+    def makeTpe(x: Type, genMaybe: Boolean): Seq[String] = {
       collectTypes(x).flatMap{
-        case PursDataType(tpe, children,_) =>
+        case TraitType(tpe, children,_) =>
           val name = tpe.typeSymbol.name.encodedName.toString
           s"data ${name} = ${children.map(_._1.typeSymbol.name.encodedName.toString).map(x => s"${x} ${x}").mkString(" | ")}" +: Vector.empty
-        case PursSimpleType(tpe) =>
+        case SimpleType(tpe) =>
           val name = tpe.typeSymbol.name.encodedName.toString
-          val fieldsOf = fields(tpe.typeSymbol)
+          val fieldsOf = fields(tpe)
           val fs = fieldsOf.map{ case (name1, tpe, _) =>
           val pursType =
             if (tpe =:= StringClass.selfType) {
@@ -103,6 +102,8 @@ object Purescript {
               "Int" -> "Maybe Int"
             } else if (tpe =:= BooleanClass.selfType) {
               "Boolean" -> "Maybe Boolean"
+            } else if (tpe =:= DoubleClass.selfType) {
+              "Number" -> "Maybe Number"
             } else if (tpe =:= typeOf[Array[Byte]]) {
               "Uint8Array" -> "Maybe Uint8Array"
             } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
@@ -128,7 +129,7 @@ object Purescript {
 
     def makeDecoders(tpe: Type): Seq[String] = {
       collectTypes(tpe).map{
-        case PursDataType(tpe, children, true) =>
+        case TraitType(tpe, children, true) =>
           val cases = children.map{ case (tpe, n) =>
             val name = tpe.typeSymbol.name.encodedName.toString
             List(
@@ -144,7 +145,7 @@ object Purescript {
               |  case tag `zshr` 3 of${cases.map(_.map("\n    "+_).mkString("")).mkString("")}
               |    i ->
               |      Left $$ Decode.BadType i""".stripMargin
-        case PursDataType(tpe, children, false) =>
+        case TraitType(tpe, children, false) =>
           val name = tpe.typeSymbol.name.encodedName.toString
           val cases = children.flatMap{ case (tpe, n) =>
             val name = tpe.typeSymbol.name.encodedName.toString
@@ -175,36 +176,22 @@ object Purescript {
               |                  decode end acc pos3
               |    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
               |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "${name}"""".stripMargin
-        case PursSimpleType(tpe) =>
-          val fs = fields1(tpe)
+        case SimpleType(tpe) =>
+          val fs = fields(tpe)
           val defObj: String = fs.map{
             case (name, tpe, _) =>
-              if (tpe =:= StringClass.selfType) {
-                s"""${name}: Nothing"""
-              } else if (tpe =:= IntClass.selfType) {
-                s"""${name}: Nothing"""
-              } else if (tpe =:= OptionClass.selfType.typeConstructor) {
-                s"""${name}: Nothing"""
-              } else if (isIterable(tpe)) {
+              if (isIterable(tpe)) {
                 s"${name}: []"
-              } else if (isTrait(tpe)) {
-                s"${name}: Nothing"
               } else {
                 s"${name}: Nothing"
               }
           }.mkString("{ ", ", ", " }")
           val justObj: String = fs.map{
             case (name, tpe, _) =>
-              if (tpe =:= StringClass.selfType) {
-                s"""${name}: Just ${name}"""
-              } else if (tpe =:= IntClass.selfType) {
-                s"""${name}: Just ${name}"""
-              } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+              if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
                 name
               } else if (isIterable(tpe)) {
                 name
-              } else if (isTrait(tpe)) {
-                s"${name}: Just ${name}"
               } else {
                 s"${name}: Just ${name}"
               }
@@ -221,13 +208,15 @@ object Purescript {
             , s"      decode end (acc { ${mod} }) pos3"
             )
           }
-          val cases = fields1(tpe).map{ case (name, tpe, n) =>
+          val cases = fields(tpe).map{ case (name, tpe, n) =>
             if (tpe =:= StringClass.selfType) {
               decodeTmpl(n, "Decode.string", s"${name} = Just val")
             } else if (tpe =:= IntClass.selfType) {
               decodeTmpl(n, "Decode.int32", s"${name} = Just val")
             } else if (tpe =:= BooleanClass.selfType) {
               decodeTmpl(n, "Decode.boolean", s"${name} = Just val")
+            } else if (tpe =:= DoubleClass.selfType) {
+              decodeTmpl(n, "Decode.double", s"${name} = Just val")
             } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
               val typeArg = tpe.typeArgs.head.typeSymbol
               val typeArgType = typeArg.asType.toType
@@ -278,12 +267,12 @@ object Purescript {
       }
     }
 
-    val decodeTypes = makeDecodePursType(typeOf[D])
+    val decodeTypes = makeDecodeTpe(typeOf[D])
     val decoders = makeDecoders(typeOf[D])
 
     def makeEncoders(tpe: Type): Seq[String] = {
       collectTypes(tpe).map{
-        case PursDataType(tpe, children,_) =>
+        case TraitType(tpe, children,_) =>
           val name = tpe.typeSymbol.name.encodedName.toString
           val cases = children.map{ case (tpe, n) =>
             val name1 = tpe.typeSymbol.name.encodedName.toString
@@ -293,8 +282,8 @@ object Purescript {
           }
           s"""|encode${name} :: ${name} -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
-        case PursSimpleType(tpe) =>
-          val encodeFields = fields1(tpe).flatMap{ case (name, tpe, n) =>
+        case SimpleType(tpe) =>
+          val encodeFields = fields(tpe).flatMap{ case (name, tpe, n) =>
             if (tpe =:= StringClass.selfType) {
               List(
                 s"""Encode.uint32 ${(n<<3)+2}"""
@@ -340,7 +329,7 @@ object Purescript {
       }
     }
 
-    val encodeTypes = makeEncodePursType(typeOf[E])
+    val encodeTypes = makeEncodeTpe(typeOf[E])
     val encoders = makeEncoders(typeOf[E])
 
     Res(

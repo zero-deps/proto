@@ -26,8 +26,8 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.decodeTypes(11) shouldBe "type PageWidgets' = {  }"
       res.decodeTypes(12) shouldBe "type PageUrl = { addr :: String }"
       res.decodeTypes(13) shouldBe "type PageUrl' = { addr :: Maybe String }"
-      res.decodeTypes(14) shouldBe "type PageSeo = { descr :: String }"
-      res.decodeTypes(15) shouldBe "type PageSeo' = { descr :: Maybe String }"
+      res.decodeTypes(14) shouldBe "type PageSeo = { descr :: String, order :: Number }"
+      res.decodeTypes(15) shouldBe "type PageSeo' = { descr :: Maybe String, order :: Maybe Number }"
       res.decodeTypes(16) shouldBe "type PageTreeItem = { priority :: Int }"
       res.decodeTypes(17) shouldBe "type PageTreeItem' = { priority :: Maybe Int }"
       res.encodeTypes.length shouldBe 3
@@ -68,7 +68,7 @@ sealed trait Push
 @N(1) final case class SiteOpts(@N(1) xs: Stream[SiteOpt]) extends Push
 @N(2) final case class Permissions(@N(1) xs: List[String]) extends Push
 @N(3) final case class Page(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo]) extends Push
-final case class PageSeo(@N(1) descr: String) extends Push
+final case class PageSeo(@N(1) descr: String, @N(2) order: Double) extends Push
 @N(4) final case class PageTreeItem(@N(1) priority: Int) extends Push
 
 final case class SiteOpt(@N(1) id: String, @N(2) label: Option[String])

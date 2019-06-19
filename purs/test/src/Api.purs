@@ -24,8 +24,8 @@ type PageWidgets = {  }
 type PageWidgets' = {  }
 type PageUrl = { addr :: String }
 type PageUrl' = { addr :: Maybe String }
-type PageSeo = { descr :: String }
-type PageSeo' = { descr :: Maybe String }
+type PageSeo = { descr :: String, order :: Number }
+type PageSeo' = { descr :: Maybe String, order :: Maybe Number }
 type PageTreeItem = { priority :: Int }
 type PageTreeItem' = { priority :: Maybe Int }
 
@@ -265,9 +265,9 @@ decodePageSeo :: Uint8Array -> Int -> Decode.Result PageSeo
 decodePageSeo _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { descr: Nothing } pos
+  { pos: pos1, val } <- decode end { descr: Nothing, order: Nothing } pos
   case val of
-    { descr: Just descr } -> pure { pos: pos1, val: { descr } }
+    { descr: Just descr, order: Just order } -> pure { pos: pos1, val: { descr, order } }
     _ -> Left $ Decode.MissingFields "PageSeo"
     where
     decode :: Int -> PageSeo' -> Int -> Decode.Result PageSeo'
@@ -282,6 +282,11 @@ decodePageSeo _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { descr = Just val }) pos3
+              2 ->
+                case Decode.double _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { order = Just val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
