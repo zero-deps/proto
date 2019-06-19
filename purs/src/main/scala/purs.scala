@@ -107,13 +107,17 @@ object Purescript {
             } else if (tpe =:= typeOf[Array[Byte]]) {
               "Uint8Array" -> "Maybe Uint8Array"
             } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
-              val typeArg = tpe.typeArgs.head.typeSymbol
-              val typeArgName = typeArg.asClass.name.encodedName.toString
-              s"Maybe ${typeArgName}" -> s"Maybe ${typeArgName}"
+              val typeArg = tpe.typeArgs.head
+              if (typeArg =:= DoubleClass.selfType) {
+                "Maybe Number" -> "Maybe Number"
+              } else {
+                val name = typeArg.typeSymbol.name.encodedName.toString
+                s"Maybe ${name}" -> s"Maybe ${name}"
+              }
             } else if (isIterable(tpe)) {
               val typeArg = tpe.typeArgs.head.typeSymbol
-              val typeArgName = typeArg.asClass.name.encodedName.toString
-              s"Array ${typeArgName}" -> s"Array ${typeArgName}"
+              val name = typeArg.asClass.name.encodedName.toString
+              s"Array ${name}" -> s"Array ${name}"
             } else {
               val symbol = tpe.typeSymbol
               val name = symbol.name.encodedName.toString
@@ -219,11 +223,17 @@ object Purescript {
               decodeTmpl(n, "Decode.double", s"${name} = Just val")
             } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
               val typeArg = tpe.typeArgs.head.typeSymbol
-              val typeArgType = typeArg.asType.toType
-              if (typeArgType =:= StringClass.selfType) {
+              val tpe1 = typeArg.asType.toType
+              if (tpe1 =:= StringClass.selfType) {
                 decodeTmpl(n, "Decode.string", s"${name} = Just val")
+              } else if (tpe1 =:= IntClass.selfType) {
+                decodeTmpl(n, "Decode.int32", s"${name} = Just val")
+              } else if (tpe1 =:= BooleanClass.selfType) {
+                decodeTmpl(n, "Decode.boolean", s"${name} = Just val")
+              } else if (tpe1 =:= DoubleClass.selfType) {
+                decodeTmpl(n, "Decode.double", s"${name} = Just val")
               } else {
-                val typeArgName = typeArg.asClass.name.encodedName.toString
+                val typeArgName = typeArg.name.encodedName.toString
                 decodeTmpl(n, s"decode${typeArgName}", s"${name} = Just val")
               }
             } else if (isIterable(tpe)) {
@@ -236,9 +246,8 @@ object Purescript {
                 decodeTmpl(n, s"decode${typeArgName}", s"${name} = snoc acc.${name} val")
               }
             } else {
-              val symbol = tpe.typeSymbol
-              val symbolName = symbol.name.encodedName.toString
-              decodeTmpl(n, s"decode${symbolName}", s"${name} = Just val")
+              val name1 = tpe.typeSymbol.name.encodedName.toString
+              decodeTmpl(n, s"decode${name1}", s"${name} = Just val")
             }
           }.flatten
           val name = tpe.typeSymbol.name.encodedName.toString
