@@ -4,7 +4,8 @@
   "dependencies": {
     "purescript-arrays": "*",
     "purescript-arraybuffer-types": "*",
-    "purescript-integers": "*"
+    "purescript-integers": "*",
+    "purescript-ordered-collections": "*"
   },
   "devDependencies": {
     "purescript-psci-support": "*"

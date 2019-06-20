@@ -67,6 +67,8 @@ object Purescript {
             val typeArgType = typeArg.asType.toType
             if (complexType(typeArgType)) (typeArgType+:tail, acc)
             else (tail, acc)
+          } else if (head =:= typeOf[Map[String,String]]) {
+            (tail, acc)
           } else if (isIterable(head)) {
             val typeArg = head.typeArgs.head.typeSymbol
             val typeArgType = typeArg.asType.toType
@@ -106,6 +108,8 @@ object Purescript {
               "Number" -> "Maybe Number"
             } else if (tpe =:= typeOf[Array[Byte]]) {
               "Uint8Array" -> "Maybe Uint8Array"
+            } else if (tpe =:= typeOf[Map[String,String]]) {
+              "Map String String" -> "Map String String"
             } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
               val typeArg = tpe.typeArgs.head
               if (typeArg =:= DoubleClass.selfType) {
@@ -119,8 +123,7 @@ object Purescript {
               val name = typeArg.asClass.name.encodedName.toString
               s"Array ${name}" -> s"Array ${name}"
             } else {
-              val symbol = tpe.typeSymbol
-              val name = symbol.name.encodedName.toString
+              val name = tpe.typeSymbol.name.encodedName.toString
               name -> s"Maybe ${name}"
             }
           name1 -> pursType
@@ -184,7 +187,9 @@ object Purescript {
           val fs = fields(tpe)
           val defObj: String = fs.map{
             case (name, tpe, _) =>
-              if (isIterable(tpe)) {
+              if (tpe =:= typeOf[Map[String,String]]) {
+                s"${name}: Map.empty"
+              } else if (isIterable(tpe)) {
                 s"${name}: []"
               } else {
                 s"${name}: Nothing"
@@ -236,6 +241,8 @@ object Purescript {
                 val typeArgName = typeArg.name.encodedName.toString
                 decodeTmpl(n, s"decode${typeArgName}", s"${name} = Just val")
               }
+            } else if (tpe =:= typeOf[Map[String,String]]) {
+              decodeTmpl(n, "decodeStringString", s"${name} = Map.insert val.first val.second acc.${name}")
             } else if (isIterable(tpe)) {
               val typeArg = tpe.typeArgs.head.typeSymbol
               val typeArgType = typeArg.asType.toType
@@ -355,11 +362,47 @@ object Purescript {
 import Data.Array (snoc, concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
+import Data.Map as Map
+import Data.Map (Map)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Int.Bits (zshr, (.&.))
 import Prelude (bind, pure, ($$), (+), (<))
 import Proto.Encode as Encode
 import Proto.Decode as Decode
 import Uint8ArrayExt (length, concatAll)
+
+decodeStringString :: Uint8Array -> Int -> Decode.Result { first :: String, second :: String }
+decodeStringString _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
+  case val of
+    { first: Just first, second: Just second } -> pure { pos: pos1, val: { first, second } }
+    _ -> Left $$ Decode.MissingFields "StringString"
+    where
+    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { first = Just val }) pos3
+              2 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { second = Just val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }
+
 """
 }

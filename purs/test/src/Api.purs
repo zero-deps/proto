@@ -3,12 +3,48 @@ module Api where
 import Data.Array (snoc, concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
+import Data.Map as Map
+import Data.Map (Map)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Int.Bits (zshr, (.&.))
 import Prelude (bind, pure, ($), (+), (<))
 import Proto.Encode as Encode
 import Proto.Decode as Decode
 import Uint8ArrayExt (length, concatAll)
+
+decodeStringString :: Uint8Array -> Int -> Decode.Result { first :: String, second :: String }
+decodeStringString _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
+  case val of
+    { first: Just first, second: Just second } -> pure { pos: pos1, val: { first, second } }
+    _ -> Left $ Decode.MissingFields "StringString"
+    where
+    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { first = Just val }) pos3
+              2 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { second = Just val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }
+
 
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem
 type SiteOpts = { xs :: Array SiteOpt }
@@ -17,8 +53,8 @@ type SiteOpt = { id :: String, label :: Maybe String }
 type SiteOpt' = { id :: Maybe String, label :: Maybe String }
 type Permissions = { xs :: Array String }
 type Permissions' = { xs :: Array String }
-type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo }
-type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo }
+type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
+type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
 data PageType = PageWidgets PageWidgets | PageUrl PageUrl
 type PageWidgets = {  }
 type PageWidgets' = {  }
@@ -141,9 +177,9 @@ decodePage :: Uint8Array -> Int -> Decode.Result Page
 decodePage _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing } pos
+  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: Map.empty } pos
   case val of
-    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo } }
+    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo, name } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo, name } }
     _ -> Left $ Decode.MissingFields "Page"
     where
     decode :: Int -> Page' -> Int -> Decode.Result Page'
@@ -173,6 +209,11 @@ decodePage _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { mobileSeo = Just val }) pos3
+              5 ->
+                case decodeStringString _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { name = Map.insert val.first val.second acc.name }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x

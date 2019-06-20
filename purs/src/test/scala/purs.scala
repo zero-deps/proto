@@ -2,7 +2,7 @@ package zd
 package proto
 
 import org.scalatest.{FreeSpec, Matchers}
-import zd.proto.api.N
+import zd.proto.api.{N}
 
 class PurescriptSpec extends FreeSpec with Matchers {
   val res = Purescript.generate[Push, Pull](moduleName="Api")
@@ -19,8 +19,8 @@ class PurescriptSpec extends FreeSpec with Matchers {
       res.decodeTypes(4) shouldBe "type SiteOpt' = { id :: Maybe String, label :: Maybe String }"
       res.decodeTypes(5) shouldBe "type Permissions = { xs :: Array String }"
       res.decodeTypes(6) shouldBe "type Permissions' = { xs :: Array String }"
-      res.decodeTypes(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo }"
-      res.decodeTypes(8) shouldBe "type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo }"
+      res.decodeTypes(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
+      res.decodeTypes(8) shouldBe "type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
       res.decodeTypes(9) shouldBe "data PageType = PageWidgets PageWidgets | PageUrl PageUrl"
       res.decodeTypes(10) shouldBe "type PageWidgets = {  }"
       res.decodeTypes(11) shouldBe "type PageWidgets' = {  }"
@@ -67,7 +67,7 @@ class PurescriptSpec extends FreeSpec with Matchers {
 sealed trait Push
 @N(1) final case class SiteOpts(@N(1) xs: Stream[SiteOpt]) extends Push
 @N(2) final case class Permissions(@N(1) xs: List[String]) extends Push
-@N(3) final case class Page(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo]) extends Push
+@N(3) final case class Page(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo], @N(5) name: Map[String,String]) extends Push
 final case class PageSeo(@N(1) descr: String, @N(2) order: Double) extends Push
 @N(4) final case class PageTreeItem(@N(1) priority: Int) extends Push
 
@@ -197,9 +197,9 @@ decodePermissions _xs_ pos0 = do
 decodePage _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing } pos
+  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: Map.empty } pos
   case val of
-    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo } }
+    { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo, name } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo, name } }
     _ -> Left $ Decode.MissingFields "Page"
     where
     decode :: Int -> Page' -> Int -> Decode.Result Page'
@@ -229,6 +229,11 @@ decodePage _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { mobileSeo = Just val }) pos3
+              5 ->
+                case decodeStringString _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { name = Map.insert val.first val.second acc.name }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
