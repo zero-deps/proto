@@ -1,6 +1,6 @@
-module Api where
+module Push where
 
-import Data.Array (snoc, concatMap)
+import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
 import Data.Map as Map
@@ -8,9 +8,8 @@ import Data.Map (Map)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Int.Bits (zshr, (.&.))
 import Prelude (bind, pure, ($), (+), (<))
-import Proto.Encode as Encode
 import Proto.Decode as Decode
-import Uint8ArrayExt (length, concatAll)
+import Common
 
 decodeStringString :: Uint8Array -> Int -> Decode.Result { first :: String, second :: String }
 decodeStringString _xs_ pos0 = do
@@ -45,7 +44,6 @@ decodeStringString _xs_ pos0 = do
                     decode end acc pos3
       else pure { pos: pos1, val: acc }
 
-
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem
 type SiteOpts = { xs :: Array SiteOpt }
 type SiteOpts' = { xs :: Array SiteOpt }
@@ -55,12 +53,8 @@ type Permissions = { xs :: Array String }
 type Permissions' = { xs :: Array String }
 type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
 type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
-data PageType = PageWidgets PageWidgets | PageUrl PageUrl
-type PageWidgets = {  }
 type PageWidgets' = {  }
-type PageUrl = { addr :: String }
 type PageUrl' = { addr :: Maybe String }
-type PageSeo = { descr :: String, order :: Number }
 type PageSeo' = { descr :: Maybe String, order :: Maybe Number }
 type PageTreeItem = { priority :: Int }
 type PageTreeItem' = { priority :: Maybe Int }
@@ -91,7 +85,6 @@ decodeSiteOpts _xs_ pos0 = do
   { pos: pos1, val } <- decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
-    _ -> Left $ Decode.MissingFields "SiteOpts"
     where
     decode :: Int -> SiteOpts' -> Int -> Decode.Result SiteOpts'
     decode end acc pos1 =
@@ -152,7 +145,6 @@ decodePermissions _xs_ pos0 = do
   { pos: pos1, val } <- decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
-    _ -> Left $ Decode.MissingFields "Permissions"
     where
     decode :: Int -> Permissions' -> Int -> Decode.Result Permissions'
     decode end acc pos1 =
@@ -258,7 +250,6 @@ decodePageWidgets _xs_ pos0 = do
   { pos: pos1, val } <- decode end {  } pos
   case val of
     {  } -> pure { pos: pos1, val: {  } }
-    _ -> Left $ Decode.MissingFields "PageWidgets"
     where
     decode :: Int -> PageWidgets' -> Int -> Decode.Result PageWidgets'
     decode end acc pos1 =
@@ -362,26 +353,3 @@ decodePageTreeItem _xs_ pos0 = do
                   Right { pos: pos3 } ->
                     decode end acc pos3
       else pure { pos: pos1, val: acc }
-
-data Pull = GetSites GetSites | UploadChunk UploadChunk
-type GetSites = {  }
-type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }
-
-encodePull :: Pull -> Uint8Array
-encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]
-encodePull (UploadChunk x) = concatAll [ Encode.uint32 8010, encodeUploadChunk x ]
-
-encodeGetSites :: GetSites -> Uint8Array
-encodeGetSites _ = Encode.uint32 0
-
-encodeUploadChunk :: UploadChunk -> Uint8Array
-encodeUploadChunk msg = do
-  let xs = concatAll
-        [ concatAll $ concatMap (\x -> [ Encode.uint32 10, Encode.string x ]) msg.path
-        , Encode.uint32 18
-        , Encode.string msg.id
-        , Encode.uint32 26
-        , Encode.bytes msg.chunk
-        ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]

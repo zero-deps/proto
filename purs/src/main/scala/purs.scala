@@ -5,12 +5,12 @@ import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 import scala.annotation.tailrec
 
-final case class Res(prelude: String, decodeTypes: Seq[String], encodeTypes: Seq[String], decoders: Seq[String], encoders: Seq[String])
+final case class Res2(common: Res, encode: Res, decode: Res)
+final case class Res(prelude: String, types: Seq[String], coders: Seq[String])
 object Res {
   def format(res: Res): String = {
     res.prelude + "\n" +
-    res.decodeTypes.mkString("\n") + "\n\n" + res.decoders.mkString("\n\n") + "\n\n" +
-    res.encodeTypes.mkString("\n") + "\n\n" + res.encoders.mkString("\n\n") + "\n"
+    res.types.mkString("\n") + "\n\n" + res.coders.mkString("\n\n") + "\n"
   }
   def writeToFile(path: String, res: Res): Unit = {
     import java.io.{BufferedWriter, FileWriter}
@@ -21,7 +21,76 @@ object Res {
 }
 
 object Purescript {
-  def generate[D, E](moduleName: String)(implicit dtag: TypeTag[D], etag: TypeTag[E]): Res = {
+  def generate[D, E](moduleEncodeName: String, moduleDecodeName: String, commonModule: String)(implicit dtag: TypeTag[D], etag: TypeTag[E]): Res2 = {
+    val preludeCommon = s"""module ${commonModule} where
+
+import Data.Map (Map)
+import Data.Maybe (Maybe)
+"""
+    val preludeEncode = s"""module ${moduleEncodeName} where
+
+import Data.Array (concatMap)
+import Data.ArrayBuffer.Types (Uint8Array)
+import Data.Map as Map
+import Data.Map (Map)
+import Data.Maybe (Maybe, fromMaybe)
+import Data.Tuple (Tuple(Tuple))
+import Prelude (map, ($$))
+import Proto.Encode as Encode
+import Uint8ArrayExt (length, concatAll, fromArray)
+import ${commonModule}
+
+encodeStringString :: Tuple String String -> Uint8Array
+encodeStringString (Tuple k v) = concatAll [ Encode.uint32 10, Encode.string k, Encode.uint32 18, Encode.string v ]
+"""
+
+    val preludeDecode = s"""module ${moduleDecodeName} where
+
+import Data.Array (snoc)
+import Data.ArrayBuffer.Types (Uint8Array)
+import Data.Either (Either(Left, Right))
+import Data.Map as Map
+import Data.Map (Map)
+import Data.Maybe (Maybe(Just, Nothing))
+import Data.Int.Bits (zshr, (.&.))
+import Prelude (bind, pure, ($$), (+), (<))
+import Proto.Decode as Decode
+import ${commonModule}
+
+decodeStringString :: Uint8Array -> Int -> Decode.Result { first :: String, second :: String }
+decodeStringString _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
+  case val of
+    { first: Just first, second: Just second } -> pure { pos: pos1, val: { first, second } }
+    _ -> Left $$ Decode.MissingFields "StringString"
+    where
+    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { first = Just val }) pos3
+              2 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { second = Just val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }
+"""
+
     def findN(x: Symbol): Option[Int] = {
       x.annotations.filter(_.tree.tpe == typeOf[zd.proto.api.N]) match {
         case List(x1) => x1.tree.children.tail match {
@@ -264,8 +333,7 @@ object Purescript {
               |  let end = pos + msglen
               |  { pos: pos1, val } <- decode end ${defObj} pos
               |  case val of
-              |    ${justObj} -> pure { pos: pos1, val: ${unObj} }
-              |    _ -> Left $$ Decode.MissingFields "${name}"
+              |    ${justObj} -> pure { pos: pos1, val: ${unObj} }${if (justObj==unObj) "" else s"""\n    _ -> Left $$ Decode.MissingFields "${name}""""}
               |    where
               |    decode :: Int -> ${name}' -> Int -> Decode.Result ${name}'
               |    decode end acc pos1 =
@@ -283,8 +351,8 @@ object Purescript {
       }
     }
 
-    val decodeTypes = makeDecodeTpe(typeOf[D])
-    val decoders = makeDecoders(typeOf[D])
+    val decodeTypes = makeDecodeTpe(typeOf[D]).distinct
+    val decoders = makeDecoders(typeOf[D]).distinct
 
     def makeEncoders(tpe: Type): Seq[String] = {
       collectTypes(tpe).map{
@@ -310,11 +378,38 @@ object Purescript {
                 s"""Encode.uint32 ${(n<<3)+0}"""
               , s"""Encode.uint32 msg.${name}"""
               )
+            } else if (tpe =:= BooleanClass.selfType) {
+              List(
+                s"""Encode.uint32 ${(n<<3)+0}"""
+              , s"""Encode.boolean msg.${name}"""
+              )
+            } else if (tpe =:= DoubleClass.selfType) {
+              List(
+                s"""Encode.uint32 ${(n<<3)+1}"""
+              , s"""Encode.double msg.${name}"""
+              )
+            } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+              val typeArg = tpe.typeArgs.head.typeSymbol
+              val tpe1 = typeArg.asType.toType
+              if (tpe1 =:= StringClass.selfType) {
+                s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.${name}""" :: Nil
+              } else if (tpe1 =:= IntClass.selfType) {
+                s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.uint32 x ]) msg.${name}""" :: Nil
+              } else if (tpe1 =:= BooleanClass.selfType) {
+                s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.boolean x ]) msg.${name}""" :: Nil
+              } else if (tpe1 =:= DoubleClass.selfType) {
+                s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+1}, Encode.double x ]) msg.${name}""" :: Nil
+              } else {
+                val typeArgName = typeArg.name.encodedName.toString
+                s"""fromMaybe (fromArray []) $$ map encode${typeArgName} msg.${name}""" :: Nil
+              }
             } else if (tpe =:= typeOf[Array[Byte]]) {
               List(
                 s"""Encode.uint32 ${(n<<3)+2}"""
               , s"""Encode.bytes msg.${name}"""
               )
+            } else if (tpe =:= typeOf[Map[String,String]]) {
+              s"concatAll $$ map encodeStringString $$ Map.toUnfoldableUnordered msg.${name}" :: Nil
             } else if (isIterable(tpe)) {
               val typeArg = tpe.typeArgs.head.typeSymbol
               val typeArgName = typeArg.asClass.name.encodedName.toString
@@ -324,10 +419,11 @@ object Purescript {
                   s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.${name}""",
                 )
               } else {
-                s"?unknown_typearg_${typeArgName}_for_encoder_${name}" :: Nil
+                s"""concatAll $$ map encode${typeArgName} msg.${name}""" :: Nil
               }
             } else {
-              "?"+tpe.toString :: Nil
+              val tpeName = tpe.typeSymbol.name.encodedName.toString
+              s"encode${tpeName} msg.${name}" :: Nil
             }
           }
           val name = tpe.typeSymbol.name.encodedName.toString
@@ -345,64 +441,21 @@ object Purescript {
       }
     }
 
-    val encodeTypes = makeEncodeTpe(typeOf[E])
-    val encoders = makeEncoders(typeOf[E])
+    val encodeTypes = makeEncodeTpe(typeOf[E]).distinct
+    val encoders = makeEncoders(typeOf[E]).distinct
 
-    Res(
-      prelude(moduleName),
-      decodeTypes.distinct,
-      encodeTypes.distinct,
-      decoders.distinct,
-      encoders.distinct,
-    )
+    val commonTypes = encodeTypes.intersect(decodeTypes)
+    Res2(
+      common=Res(preludeCommon, commonTypes, Nil)
+    , encode=Res(
+      preludeEncode,
+      encodeTypes.diff(commonTypes),
+      encoders,
+    ), decode=Res(
+      preludeDecode,
+      decodeTypes.diff(commonTypes),
+      decoders,
+    ))
   }
 
-  def prelude(moduleName: String): String = s"""module ${moduleName} where
-
-import Data.Array (snoc, concatMap)
-import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Either (Either(Left, Right))
-import Data.Map as Map
-import Data.Map (Map)
-import Data.Maybe (Maybe(Just, Nothing))
-import Data.Int.Bits (zshr, (.&.))
-import Prelude (bind, pure, ($$), (+), (<))
-import Proto.Encode as Encode
-import Proto.Decode as Decode
-import Uint8ArrayExt (length, concatAll)
-
-decodeStringString :: Uint8Array -> Int -> Decode.Result { first :: String, second :: String }
-decodeStringString _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
-  case val of
-    { first: Just first, second: Just second } -> pure { pos: pos1, val: { first, second } }
-    _ -> Left $$ Decode.MissingFields "StringString"
-    where
-    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { first = Just val }) pos3
-              2 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { second = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
-
-"""
 }

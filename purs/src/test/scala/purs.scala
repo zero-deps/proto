@@ -5,41 +5,40 @@ import org.scalatest.{FreeSpec, Matchers}
 import zd.proto.api.{N}
 
 class PurescriptSpec extends FreeSpec with Matchers {
-  val res = Purescript.generate[Push, Pull](moduleName="Api")
+  val res2 = Purescript.generate[Push, Pull](moduleEncodeName="Pull", moduleDecodeName="Push", "Common")
   "purs has" - {
     "module name" in {
-      res.prelude.startsWith("module Api")
+      res2.encode.prelude.startsWith("module Pull")
+      res2.decode.prelude.startsWith("module Push")
     }
-    "types" in {
-      res.decodeTypes.length shouldBe 18
-      res.decodeTypes(0) shouldBe "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem"
-      res.decodeTypes(1) shouldBe "type SiteOpts = { xs :: Array SiteOpt }"
-      res.decodeTypes(2) shouldBe "type SiteOpts' = { xs :: Array SiteOpt }"
-      res.decodeTypes(3) shouldBe "type SiteOpt = { id :: String, label :: Maybe String }"
-      res.decodeTypes(4) shouldBe "type SiteOpt' = { id :: Maybe String, label :: Maybe String }"
-      res.decodeTypes(5) shouldBe "type Permissions = { xs :: Array String }"
-      res.decodeTypes(6) shouldBe "type Permissions' = { xs :: Array String }"
-      res.decodeTypes(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
-      res.decodeTypes(8) shouldBe "type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
-      res.decodeTypes(9) shouldBe "data PageType = PageWidgets PageWidgets | PageUrl PageUrl"
-      res.decodeTypes(10) shouldBe "type PageWidgets = {  }"
-      res.decodeTypes(11) shouldBe "type PageWidgets' = {  }"
-      res.decodeTypes(12) shouldBe "type PageUrl = { addr :: String }"
-      res.decodeTypes(13) shouldBe "type PageUrl' = { addr :: Maybe String }"
-      res.decodeTypes(14) shouldBe "type PageSeo = { descr :: String, order :: Number }"
-      res.decodeTypes(15) shouldBe "type PageSeo' = { descr :: Maybe String, order :: Maybe Number }"
-      res.decodeTypes(16) shouldBe "type PageTreeItem = { priority :: Int }"
-      res.decodeTypes(17) shouldBe "type PageTreeItem' = { priority :: Maybe Int }"
-      res.encodeTypes.length shouldBe 3
-      res.encodeTypes.toSet should be (Set(
-        "data Pull = GetSites GetSites | UploadChunk UploadChunk",
-        "type GetSites = {  }",
-        "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }",
-      ))
+    "types decode" in {
+      val res = res2.decode
+      res.types.length shouldBe 14
+      res.types(0) shouldBe "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem"
+      res.types(1) shouldBe "type SiteOpts = { xs :: Array SiteOpt }"
+      res.types(2) shouldBe "type SiteOpts' = { xs :: Array SiteOpt }"
+      res.types(3) shouldBe "type SiteOpt = { id :: String, label :: Maybe String }"
+      res.types(4) shouldBe "type SiteOpt' = { id :: Maybe String, label :: Maybe String }"
+      res.types(5) shouldBe "type Permissions = { xs :: Array String }"
+      res.types(6) shouldBe "type Permissions' = { xs :: Array String }"
+      res.types(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
+      res.types(8) shouldBe "type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
+      res.types(9) shouldBe "type PageWidgets' = {  }"
+      res.types(10) shouldBe "type PageUrl' = { addr :: Maybe String }"
+      res.types(11) shouldBe "type PageSeo' = { descr :: Maybe String, order :: Maybe Number }"
+      res.types(12) shouldBe "type PageTreeItem = { priority :: Int }"
+      res.types(13) shouldBe "type PageTreeItem' = { priority :: Maybe Int }"
+    }
+    "types encode" in {
+      val res = res2.encode
+      res.types.length shouldBe 4
+      res.types(0) shouldBe "data Pull = GetSites GetSites | UploadChunk UploadChunk | SavePage SavePage"
+      res.types(1) shouldBe "type GetSites = {  }"
+      res.types(2) shouldBe "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }"
       ()
     }
     "decoders" in {
-      val xs = res.decoders
+      val xs = res2.decode.coders
       xs(0) should be (Snippets.decodePush)
       xs(2) should be (Snippets.decodeSiteOpt)
       xs(1) should be (Snippets.decodeSiteOpts)
@@ -51,15 +50,20 @@ class PurescriptSpec extends FreeSpec with Matchers {
       xs(9) should be (Snippets.decodePageTreeItem)
     }
     "encoders" in {
-      res.encoders.foreach{
+      res2.encode.coders.foreach{
         case e if e.startsWith("encodePull :: ") => e should be (Snippets.encodePull)
         case e if e.startsWith("encodeGetSites :: ") => e should be (Snippets.encodeGetSites)
         case e if e.startsWith("encodeUploadChunk :: ") => e should be (Snippets.encodeUploadChunk)
+        case _ =>
       }
     }
     "print" in {
-      println(Res.format(res))
-      Res.writeToFile("purs/test/src/Api.purs", res)
+      println(Res.format(res2.common))
+      Res.writeToFile("purs/test/src/Common.purs", res2.common)
+      println(Res.format(res2.decode))
+      Res.writeToFile("purs/test/src/Push.purs", res2.decode)
+      println(Res.format(res2.encode))
+      Res.writeToFile("purs/test/src/Pull.purs", res2.encode)
     }
   }
 }
@@ -68,7 +72,7 @@ sealed trait Push
 @N(1) final case class SiteOpts(@N(1) xs: Stream[SiteOpt]) extends Push
 @N(2) final case class Permissions(@N(1) xs: List[String]) extends Push
 @N(3) final case class Page(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo], @N(5) name: Map[String,String]) extends Push
-final case class PageSeo(@N(1) descr: String, @N(2) order: Double) extends Push
+final case class PageSeo(@N(1) descr: String, @N(2) order: Double)
 @N(4) final case class PageTreeItem(@N(1) priority: Int) extends Push
 
 final case class SiteOpt(@N(1) id: String, @N(2) label: Option[String])
@@ -83,6 +87,7 @@ sealed trait Pull
   , @N(2) id: String
   , @N(3) chunk: Array[Byte]
   ) extends Pull
+@N(1002) final case class SavePage(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo], @N(5) name: Map[String,String]) extends Pull
 
 object Snippets {
   val decodePush = """decodePush :: Uint8Array -> Decode.Result Push
@@ -144,7 +149,6 @@ decodeSiteOpts _xs_ pos0 = do
   { pos: pos1, val } <- decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
-    _ -> Left $ Decode.MissingFields "SiteOpts"
     where
     decode :: Int -> SiteOpts' -> Int -> Decode.Result SiteOpts'
     decode end acc pos1 =
@@ -172,7 +176,6 @@ decodePermissions _xs_ pos0 = do
   { pos: pos1, val } <- decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
-    _ -> Left $ Decode.MissingFields "Permissions"
     where
     decode :: Int -> Permissions' -> Int -> Decode.Result Permissions'
     decode end acc pos1 =
@@ -306,7 +309,6 @@ decodePageWidgets _xs_ pos0 = do
   { pos: pos1, val } <- decode end {  } pos
   case val of
     {  } -> pure { pos: pos1, val: {  } }
-    _ -> Left $ Decode.MissingFields "PageWidgets"
     where
     decode :: Int -> PageWidgets' -> Int -> Decode.Result PageWidgets'
     decode end acc pos1 =
@@ -352,7 +354,8 @@ decodePageTreeItem _xs_ pos0 = do
 
   val encodePull = """encodePull :: Pull -> Uint8Array
 encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]
-encodePull (UploadChunk x) = concatAll [ Encode.uint32 8010, encodeUploadChunk x ]"""
+encodePull (UploadChunk x) = concatAll [ Encode.uint32 8010, encodeUploadChunk x ]
+encodePull (SavePage x) = concatAll [ Encode.uint32 8018, encodeSavePage x ]"""
 
   val encodeGetSites = """encodeGetSites :: GetSites -> Uint8Array
 encodeGetSites _ = Encode.uint32 0"""
