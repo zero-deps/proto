@@ -415,11 +415,9 @@ decodeStringString _xs_ pos0 = do
               val typeArgName = typeArg.asClass.name.encodedName.toString
               val typeArgType = typeArg.asType.toType
               if (typeArgType =:= StringClass.selfType) {
-                List(
-                  s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.${name}""",
-                )
+                s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.${name}""" :: Nil
               } else {
-                s"""concatAll $$ map encode${typeArgName} msg.${name}""" :: Nil
+                s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, encode${typeArgName} x ]) msg.${name}""" :: Nil
               }
             } else {
               val tpeName = tpe.typeSymbol.name.encodedName.toString
