@@ -421,7 +421,10 @@ decodeStringString _xs_ pos0 = do
               }
             } else {
               val tpeName = tpe.typeSymbol.name.encodedName.toString
-              s"encode${tpeName} msg.${name}" :: Nil
+              List(
+                s"""Encode.uint32 ${(n<<3)+2}"""
+              , s"""encode${tpeName} msg.${name}"""
+              )
             }
           }
           val name = tpe.typeSymbol.name.encodedName.toString
