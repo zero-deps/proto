@@ -356,12 +356,27 @@ decodeStringString _xs_ pos0 = do
 
     def makeEncoders(tpe: Type): Seq[String] = {
       collectTypes(tpe).map{
-        case TraitType(tpe, children,_) =>
+        case TraitType(tpe, children,true) =>
           val name = tpe.typeSymbol.name.encodedName.toString
           val cases = children.map{ case (tpe, n) =>
             val name1 = tpe.typeSymbol.name.encodedName.toString
             List(
               s"encode${name} (${name1} x) = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode${name1} x ]"
+            )
+          }
+          s"""|encode${name} :: ${name} -> Uint8Array
+              |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
+        case TraitType(tpe, children,false) =>
+          val name = tpe.typeSymbol.name.encodedName.toString
+          val cases = children.map{ case (tpe, n) =>
+            val name1 = tpe.typeSymbol.name.encodedName.toString
+            List(
+              List(
+                s"encode${name} (${name1} x) = do"
+              , s"  let xs = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode${name1} x ]"
+              , s"  let len = length xs"
+              , s"  concatAll [ Encode.uint32 len, xs ]"
+              ).mkString("\n")
             )
           }
           s"""|encode${name} :: ${name} -> Uint8Array
