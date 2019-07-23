@@ -65,8 +65,37 @@ class PurescriptSpec extends FreeSpec with Matchers {
       println(Res.format(res2.encode))
       Res.writeToFile("purs/test/src/Pull.purs", res2.encode)
     }
+    "purs tests" in {
+      val testres = Purescript.generate[TestSchema, TestSchema](moduleEncodeName="SchemaPull", moduleDecodeName="SchemaPush", "SchemaCommon")
+      Res.writeToFile("purs/test/test/SchemaCommon.purs", testres.common)
+      Res.writeToFile("purs/test/test/SchemaPull.purs", testres.encode)
+      Res.writeToFile("purs/test/test/SchemaPush.purs", testres.decode)
+
+      import zd.proto.api.{MessageCodec, encode}
+      import zd.proto.macrosapi.{caseCodecIdx, caseCodecAuto, sealedTraitCodecAuto}
+      implicit val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
+      implicit val ac: MessageCodec[ClassWithMap] = caseCodecAuto[ClassWithMap]
+      implicit val cwmc: MessageCodec[TestSchema] = sealedTraitCodecAuto[TestSchema]
+      val r1 = encode[TestSchema](new ClassWithMap(Map("en_GB"->"Name", "ro_RO"->"Nome")))
+      val exp =
+        s"""|module Cases where
+            |
+            |import SchemaCommon
+            |import Data.Map as Map
+            |import Data.Tuple (Tuple(Tuple))
+            |
+            |c1 :: TestSchema
+            |c1 = ClassWithMap { m: Map.fromFoldable [ Tuple "en_GB" "Name", Tuple "ro_RO" "Nome" ] }
+            |
+            |r1 :: String
+            |r1 = "${r1.mkString(" ")}"""".stripMargin
+      Res.writeToFile("purs/test/test/Cases.purs", exp)
+    }
   }
 }
+
+sealed trait TestSchema
+@N(1) final case class ClassWithMap(@N(1) m: Map[String,String]) extends TestSchema
 
 sealed trait Push
 @N(1) final case class SiteOpts(@N(1) xs: Stream[SiteOpt]) extends Push
@@ -236,7 +265,7 @@ decodePage _xs_ pos0 = do
                 case decodeStringString _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { name = Map.insert val.first val.second acc.name }) pos3
+                    decode end (acc { name = Map.insert (fst val) (snd val) acc.name }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x

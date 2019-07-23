@@ -113,5 +113,6 @@ cd purs/test
 npm i
 npm run dep
 npm run com
+npm run tes
 ```
 

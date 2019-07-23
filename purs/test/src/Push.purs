@@ -3,21 +3,22 @@ module Push where
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
-import Data.Map as Map
-import Data.Map (Map)
-import Data.Maybe (Maybe(Just, Nothing))
 import Data.Int.Bits (zshr, (.&.))
+import Data.Map (Map)
+import Data.Map as Map
+import Data.Maybe (Maybe(Just, Nothing))
+import Data.Tuple (Tuple(Tuple), fst, snd)
 import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import Common
 
-decodeStringString :: Uint8Array -> Int -> Decode.Result { first :: String, second :: String }
+decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
 decodeStringString _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
   { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
   case val of
-    { first: Just first, second: Just second } -> pure { pos: pos1, val: { first, second } }
+    { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
     _ -> Left $ Decode.MissingFields "StringString"
     where
     decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
@@ -205,7 +206,7 @@ decodePage _xs_ pos0 = do
                 case decodeStringString _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { name = Map.insert val.first val.second acc.name }) pos3
+                    decode end (acc { name = Map.insert (fst val) (snd val) acc.name }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x

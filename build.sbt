@@ -41,7 +41,7 @@ lazy val purs = project.in(file("purs")).settings(
   name := "proto-purs",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.7" % Test,
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-).dependsOn(runtime)
+).dependsOn(runtime, macros % Test)
 
 lazy val benchmark = project.in(file("benchmark")).settings(
   libraryDependencies += "com.twitter" %% "chill" % "0.9.3",
