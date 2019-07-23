@@ -37,7 +37,7 @@ import Data.Maybe (Maybe, fromMaybe)
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($$))
 import Proto.Encode as Encode
-import Uint8ArrayExt (length, concatAll, fromArray)
+import Proto.Uint8ArrayExt (length, concatAll, fromArray)
 import ${commonModule}
 
 encodeStringString :: Tuple String String -> Uint8Array

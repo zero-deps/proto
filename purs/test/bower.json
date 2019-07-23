@@ -2,6 +2,7 @@
   "name": "purs",
   "version": "1.0.0",
   "dependencies": {
+    "purescript-protobuf": "https://github.com/zero-deps/purescript-protobuf.git",
     "purescript-arrays": "*",
     "purescript-arraybuffer-types": "*",
     "purescript-integers": "*",

@@ -1,4 +1,8 @@
 module Common where
+
+import Data.Map (Map)
+import Data.Maybe (Maybe)
+
 data PageType = PageWidgets PageWidgets | PageUrl PageUrl
 type PageWidgets = {  }
 type PageUrl = { addr :: String }

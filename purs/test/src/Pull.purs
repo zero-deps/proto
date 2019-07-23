@@ -8,7 +8,7 @@ import Data.Maybe (Maybe, fromMaybe)
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($))
 import Proto.Encode as Encode
-import Uint8ArrayExt (length, concatAll, fromArray)
+import Proto.Uint8ArrayExt (length, concatAll, fromArray)
 import Common
 
 encodeStringString :: Tuple String String -> Uint8Array
@@ -42,9 +42,11 @@ encodeUploadChunk msg = do
 encodeSavePage :: SavePage -> Uint8Array
 encodeSavePage msg = do
   let xs = concatAll
-        [ encodePageType msg.tpe
+        [ Encode.uint32 10
+        , encodePageType msg.tpe
         , Encode.uint32 16
         , Encode.boolean msg.guest
+        , Encode.uint32 26
         , encodePageSeo msg.seo
         , fromMaybe (fromArray []) $ map encodePageSeo msg.mobileSeo
         , concatAll $ map encodeStringString $ Map.toUnfoldableUnordered msg.name
@@ -53,8 +55,14 @@ encodeSavePage msg = do
   concatAll [ Encode.uint32 len, xs ]
 
 encodePageType :: PageType -> Uint8Array
-encodePageType (PageWidgets x) = concatAll [ Encode.uint32 10, encodePageWidgets x ]
-encodePageType (PageUrl x) = concatAll [ Encode.uint32 18, encodePageUrl x ]
+encodePageType (PageWidgets x) = do
+  let xs = concatAll [ Encode.uint32 10, encodePageWidgets x ]
+  let len = length xs
+  concatAll [ Encode.uint32 len, xs ]
+encodePageType (PageUrl x) = do
+  let xs = concatAll [ Encode.uint32 18, encodePageUrl x ]
+  let len = length xs
+  concatAll [ Encode.uint32 len, xs ]
 
 encodePageWidgets :: PageWidgets -> Uint8Array
 encodePageWidgets _ = Encode.uint32 0
