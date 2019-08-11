@@ -18,6 +18,7 @@ object macrosapi {
   def caseCodecNums[A](nums: (Symbol, Int)*): MessageCodec[A] = macro Impl.caseCodecSymbol[A]
   def caseCodecIdx[A]: MessageCodec[A] = macro Impl.caseCodecIdx[A]
 
+  def classCodecAuto[A]: MessageCodec[A] = macro Impl.classCodecAuto[A]
   def classCodecNums[A](nums: (String, Int)*)(constructor: Any): MessageCodec[A] = macro Impl.classCodecString[A]
   def classCodecNums[A](nums: (Symbol, Int)*)(constructor: Any): MessageCodec[A] = macro Impl.classCodecSymbol[A]
 
@@ -68,6 +69,21 @@ class Impl(val c: Context) extends BuildCodec {
     messageCodec(aType=aType, nums=nums, cParams=cParams)
   }
 
+  def classCodecAuto[A:c.WeakTypeTag]: c.Tree = {
+    val aType: c.Type = c.weakTypeOf[A]
+    val nums: List[(String, Int)] = constructorParams(aType).map(p =>
+      p.annotations.filter(_.tree.tpe =:= NType) match {
+        case List(a) =>
+          a.tree.children.tail match {
+            case List(Literal(Constant(n: Int))) => p.name.decodedName.toString -> n
+            case _ => error(s"wrong annotation=${a} for `${p.name}: ${p.info}`")
+          }
+        case Nil => error(s"missing ${NType} annotation for `${p.name}: ${p.info}`")
+        case _ => error(s"multiple ${NType} annotations applied for `${p.name}: ${p.info}`")
+      }
+    )
+    messageCodec(aType=aType, nums=nums, cParams=constructorParams(aType))
+  }
   def classCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*)(constructor: Impl.this.c.Expr[Any]): c.Tree =
     classCodec(aType=c.weakTypeOf[A], nums=nums.map(evalTyped), constructor=constructor.tree)
   def classCodecSymbol[A:c.WeakTypeTag](nums: c.Expr[(scala.Symbol, Int)]*)(constructor: Impl.this.c.Expr[Any]): c.Tree =

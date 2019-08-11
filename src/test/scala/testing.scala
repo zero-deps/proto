@@ -2,7 +2,7 @@ package zd.proto.test
 
 import org.scalatest.FreeSpec
 import zd.proto.api.{MessageCodec, encode, decode, N}
-import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto, sealedTraitCodecAuto, sealedTraitCodecNums, classCodecNums}
+import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto, sealedTraitCodecAuto, sealedTraitCodecNums, classCodecNums, classCodecAuto}
 
 object models {
   case class Basic(
@@ -45,7 +45,14 @@ object models {
   sealed trait Vehicle
   @N(21) final case class Car(@N(21) id: String) extends Vehicle
   @N(22) final case class Bus(@N(21) id: String) extends Vehicle
+  @N(23) final class Teleport(@N(21) val id: String) extends Vehicle
   @N(50) final case object Unknown extends Vehicle
+
+  object Teleport {
+    def apply(id: String): Teleport = {
+      new Teleport(id)
+    }
+  }
 
   final case class Parking(@N(21) place1: Option[Vehicle], @N(22) place2: Option[Vehicle], @N(23) other: List[Vehicle], @N(50) reserved: Vehicle)
 
@@ -170,18 +177,20 @@ class testing extends FreeSpec {
       implicit val vehicleCodec: MessageCodec[Vehicle] = {
         implicit val carCodec = caseCodecAuto[Car]
         implicit val busCodec = caseCodecAuto[Bus]
-        implicit val unknownCodec = caseCodecAuto[Unknown.type]
+        implicit val teleportCodec: MessageCodec[Teleport] = classCodecAuto[Teleport]
+        implicit val unknownCodec: MessageCodec[Unknown.type] = caseCodecAuto[Unknown.type]
         sealedTraitCodecAuto[Vehicle]
       }
-      implicit val parkingCodec = caseCodecAuto[Parking]
-      implicit val shoppingMallCodec = caseCodecAuto[ShoppingMall]
+      implicit val parkingCodec: MessageCodec[Parking] = caseCodecAuto[Parking]
+      implicit val shoppingMallCodec: MessageCodec[ShoppingMall] = caseCodecAuto[ShoppingMall]
     }
     object numscodec {
       implicit val vehicleCodec: MessageCodec[Vehicle] = {
         implicit val carCodec = caseCodecNums[Car]('id->2)
         implicit val busCodec = caseCodecNums[Bus]('id->2)
+        implicit val teleportCodec = classCodecNums[Teleport]('id->2)(Teleport.apply(_))
         implicit val unknownCodec = caseCodecNums[Unknown.type]()
-        sealedTraitCodecNums[Vehicle]('Car->10, 'Bus->22, 'Unknown->51)
+        sealedTraitCodecNums[Vehicle]('Car->10, 'Bus->22, 'Teleport->23, 'Unknown->51)
       }
       implicit val parkingCodec = caseCodecNums[Parking]('place1->1, 'place2->2, 'other->3, 'reserved->4)
       implicit val shoppingMallCodec = caseCodecNums[ShoppingMall]('parking1->1, 'parking2->2)
@@ -190,8 +199,9 @@ class testing extends FreeSpec {
       implicit val vehicleCodec: MessageCodec[Vehicle] = {
         implicit val carCodec = caseCodecIdx[Car]
         implicit val busCodec = caseCodecIdx[Bus]
+        implicit val teleportCodec = classCodecNums[Teleport]('id->2)(Teleport.apply(_))
         implicit val unknownCodec = caseCodecIdx[Unknown.type]
-        sealedTraitCodecNums[Vehicle]('Car->10, 'Bus->22, 'Unknown->51)
+        sealedTraitCodecNums[Vehicle]('Car->10, 'Bus->22, 'Teleport->23, 'Unknown->51)
       }
       implicit val parkingCodec = caseCodecIdx[Parking]
       implicit val shoppingMallCodec = caseCodecIdx[ShoppingMall]
