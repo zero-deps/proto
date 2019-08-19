@@ -1,6 +1,6 @@
 ThisBuild / organization := "io.github.zero-deps"
 ThisBuild / version := zd.gs.git.GitOps.version(tags=true)
-ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / scalaVersion := "2.13.0"
 ThisBuild / scalacOptions ++= Seq(
   "-Ywarn-extra-implicit",
   "-Xfatal-warnings",
@@ -18,7 +18,7 @@ ThisBuild / isSnapshot := true
 
 lazy val root = project.in(file(".")).settings(
   name := "proto",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.7" % Test,
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-SNAP13" % Test,
   skip in publish := true,
 ).dependsOn(macros).aggregate(macros, runtime, purs)
 
@@ -34,7 +34,7 @@ lazy val runtime = project.in(file("runtime")).settings(
 
 lazy val purs = project.in(file("purs")).settings(
   name := "proto-purs",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.7" % Test,
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-SNAP13" % Test,
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
 ).dependsOn(runtime, macros % Test)
 

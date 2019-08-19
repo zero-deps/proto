@@ -1,10 +1,11 @@
 package zd
 package proto
 
-import org.scalatest.{FreeSpec, Matchers}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.{Matchers}
 import zd.proto.api.{N}
 
-class PurescriptSpec extends FreeSpec with Matchers {
+class PurescriptSpec extends AnyFreeSpec with Matchers {
   val res2 = Purescript.generate[Push, Pull](moduleEncodeName="Pull", moduleDecodeName="Push", "Common")
   "purs has" - {
     "module name" in {
@@ -58,11 +59,11 @@ class PurescriptSpec extends FreeSpec with Matchers {
       }
     }
     "print" in {
-      println(Res.format(res2.common))
+      // println(Res.format(res2.common))
       Res.writeToFile("purs/test/src/Common.purs", res2.common)
-      println(Res.format(res2.decode))
+      // println(Res.format(res2.decode))
       Res.writeToFile("purs/test/src/Push.purs", res2.decode)
-      println(Res.format(res2.encode))
+      // println(Res.format(res2.encode))
       Res.writeToFile("purs/test/src/Pull.purs", res2.encode)
     }
     "purs tests" in {
@@ -98,7 +99,7 @@ sealed trait TestSchema
 @N(1) final case class ClassWithMap(@N(1) m: Map[String,String]) extends TestSchema
 
 sealed trait Push
-@N(1) final case class SiteOpts(@N(1) xs: Stream[SiteOpt]) extends Push
+@N(1) final case class SiteOpts(@N(1) xs: LazyList[SiteOpt]) extends Push
 @N(2) final case class Permissions(@N(1) xs: List[String]) extends Push
 @N(3) final case class Page(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo], @N(5) name: Map[String,String]) extends Push
 final case class PageSeo(@N(1) descr: String, @N(2) order: Double)

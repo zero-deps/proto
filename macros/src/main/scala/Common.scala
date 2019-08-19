@@ -20,7 +20,7 @@ trait Common {
   val CodedInputStreamType: c.Type = typeOf[CodedInputStream]
   val ArrayByteType: c.Type = typeOf[Array[Byte]]
   val NType: c.Type = c.typeOf[N]
-  val ItetableType: c.Type = typeOf[scala.collection.TraversableOnce[Unit]]
+  val ItetableType: c.Type = typeOf[scala.collection.Iterable[Unit]]
   
   def isIterable(t: c.Type): Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ItetableType.typeConstructor)
   def isTrait(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed

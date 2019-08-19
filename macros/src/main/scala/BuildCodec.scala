@@ -215,7 +215,7 @@ trait BuildCodec extends Common {
         case Some(fun1) => q"${fun1}"
         case None =>
           if (isTrait(t)) {
-            val err: String = s"missing one of required field ${params.map(field => field.name + ": " + field.tpe).mkString("`", "` or `", "`")}"
+            val err: String = s"missing one of required field ${params.map(field => field.name.toString + ": " + field.tpe).mkString("`", "` or `", "`")}"
             q"readRes.getOrElse(throw new RuntimeException(${err}))"
           } else if (t.typeSymbol.companion == NoSymbol) {
             q"${t.typeSymbol.owner.asClass.selfType.member(TermName(t.typeSymbol.name.encodedName.toString))}"
