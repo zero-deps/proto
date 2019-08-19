@@ -16,6 +16,10 @@ ThisBuild / scalacOptions ++= Seq(
 ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 ThisBuild / isSnapshot := true
 
+ThisBuild / turbo := true
+ThisBuild / useCoursier := true
+Global / onChangedBuildSource := ReloadOnSourceChanges
+
 lazy val root = project.in(file(".")).settings(
   name := "proto",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-SNAP13" % Test,
