@@ -94,6 +94,15 @@ class testing extends AnyFreeSpec {
     assert(Arrays.equals(decode[ClassWithArray](encode[ClassWithArraySeq](ClassWithArraySeq(y=ArraySeq.unsafeWrapArray[Byte](Array[Byte](1,2,3))))).x, Array[Byte](1,2,3)))
   }
 
+  "array byte wrapper" - {
+    "encode" in {
+      implicit val arrayByteWrapperCodec = caseCodecAuto[ClassWithArray]
+      val data = ClassWithArray(Array(6, 7, 8, 9, 0))
+      val encoded: Array[Byte] = encode(data)
+      assert(Array[Byte](10,5, 6,7,8,9,0) === encoded)
+    }
+  }
+
   "basic" - {
     def test(implicit codec: MessageCodec[Basic]): Unit = {
       (for {
