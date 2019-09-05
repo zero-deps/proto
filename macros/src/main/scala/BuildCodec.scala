@@ -41,6 +41,7 @@ trait BuildCodec extends Common {
       common.sizeFun(field1).map{ v =>
         if ( field1.tpe =:= StringClass.selfType
           || field1.tpe =:= ArrayByteType
+          || field1.tpe =:= ArraySeqByteType
            ) {
           val tagSizeName = TermName(s"${field.sizeName}TagSize")
           List(
@@ -122,6 +123,7 @@ trait BuildCodec extends Common {
       common.writeFun(field1, os).map(v =>
         if ( field1.tpe =:= StringClass.selfType
           || field1.tpe =:= ArrayByteType
+          || field1.tpe =:= ArraySeqByteType
            ) {
           List(
             q"""${field.getter}.foreach((${value}: ${tpe1}) => {
@@ -254,6 +256,7 @@ trait BuildCodec extends Common {
             common.readFun(field1, is).map(readFun =>
               if ( field1.tpe =:= StringClass.selfType
                 || field1.tpe =:= ArrayByteType
+                || field1.tpe =:= ArraySeqByteType
                  ) {
                 q"${field.readName} += ${readFun}" :: Nil
               } else {

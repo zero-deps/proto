@@ -19,10 +19,11 @@ trait Common {
   val CodedOutputStreamType: c.Type = typeOf[CodedOutputStream]
   val CodedInputStreamType: c.Type = typeOf[CodedInputStream]
   val ArrayByteType: c.Type = typeOf[Array[Byte]]
+  val ArraySeqByteType: c.Type = typeOf[scala.collection.immutable.ArraySeq[Byte]]
   val NType: c.Type = c.typeOf[N]
   val ItetableType: c.Type = typeOf[scala.collection.Iterable[Unit]]
   
-  def isIterable(t: c.Type): Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ItetableType.typeConstructor)
+  def isIterable(t: c.Type): Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ItetableType.typeConstructor) && !(t =:= ArraySeqByteType)
   def isTrait(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
   def isCaseClass(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass
   def constructorParams(t: c.Type): List[TermSymbol] = t.typeSymbol.asClass.primaryConstructor.asMethod.paramLists.flatten.map(_.asTerm)
@@ -50,6 +51,7 @@ trait Common {
         wireType(tpe1)
       } else if ( t =:= StringClass.selfType
                || t =:= ArrayByteType
+               || t =:= ArraySeqByteType
                || isCaseClass(t)
                || isTrait(t)
                || isIterable(t)
@@ -75,6 +77,8 @@ trait Common {
         Some(q"${CodedOutputStreamType.typeSymbol.companion}.computeStringSizeNoTag(${field.getter})")
       } else if (field.tpe =:= ArrayByteType) {
         Some(q"${CodedOutputStreamType.typeSymbol.companion}.computeByteArraySizeNoTag(${field.getter})")
+      } else if (field.tpe =:= ArraySeqByteType) {
+        Some(q"${CodedOutputStreamType.typeSymbol.companion}.computeByteArraySizeNoTag(${field.getter}.unsafeArray.asInstanceOf[Array[Byte]])")
       } else {
         None
       }
@@ -94,6 +98,8 @@ trait Common {
         Some(q"${os}.writeStringNoTag(${field.getter})")
       } else if (field.tpe =:= ArrayByteType) {
         Some(q"${os}.writeByteArrayNoTag(${field.getter})")
+      } else if (field.tpe =:= ArraySeqByteType) {
+        Some(q"${os}.writeByteArrayNoTag(${field.getter}.unsafeArray.asInstanceOf[Array[Byte]])")
       } else {
         None
       }
@@ -113,6 +119,8 @@ trait Common {
         Some(q"${is}.readString")
       } else if (field.tpe =:= ArrayByteType) {
         Some(q"${is}.readByteArray")
+      } else if (field.tpe =:= ArraySeqByteType) {
+        Some(q"${ArraySeqByteType.typeSymbol.companion}.unsafeWrapArray(${is}.readByteArray)")
       } else {
         None
       }

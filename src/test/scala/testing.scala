@@ -3,6 +3,7 @@ package zd.proto.test
 import org.scalatest.freespec.AnyFreeSpec
 import zd.proto.api.{MessageCodec, encode, decode, N}
 import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto, sealedTraitCodecAuto, sealedTraitCodecNums, classCodecNums, classCodecAuto}
+import scala.collection.immutable.ArraySeq
 
 object models {
   case class Basic(
@@ -77,10 +78,21 @@ object models {
       override def id2: List[A] = p2
     }
   }
+
+  final case class ClassWithArray(@N(1) x: Array[Byte])
+  final case class ClassWithArraySeq(@N(1) y: ArraySeq[Byte])
 }
 
 class testing extends AnyFreeSpec {
   import models._
+
+  "ArraySeq[Byte] is compatible with Array[Byte]" in {
+    import java.util.Arrays
+    implicit val ac: MessageCodec[ClassWithArray] = caseCodecAuto[ClassWithArray]
+    implicit val bc: MessageCodec[ClassWithArraySeq] = caseCodecAuto[ClassWithArraySeq]
+    assert(Arrays.equals(decode[ClassWithArraySeq](encode[ClassWithArray](ClassWithArray(x=Array[Byte](1,2,3)))).y.unsafeArray.asInstanceOf[Array[Byte]], Array[Byte](1,2,3)))
+    assert(Arrays.equals(decode[ClassWithArray](encode[ClassWithArraySeq](ClassWithArraySeq(y=ArraySeq.unsafeWrapArray[Byte](Array[Byte](1,2,3))))).x, Array[Byte](1,2,3)))
+  }
 
   "basic" - {
     def test(implicit codec: MessageCodec[Basic]): Unit = {
