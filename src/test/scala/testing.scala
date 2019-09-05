@@ -126,14 +126,14 @@ class testing extends AnyFreeSpec {
     }
     "encode <-> decode" - {
       "auto codec" in { implicit val codec = caseCodecAuto[Basic]; test }
-      "nums codec" in { implicit val codec = caseCodecNums[Basic](Symbol("int")->6, Symbol("long")->7, Symbol("bool")->8, Symbol("double")->9, Symbol("float")->10, Symbol("str")->20, Symbol("bytes")->21); test }
+      "nums codec" in { implicit val codec = caseCodecNums[Basic]("int"->6, "long"->7, "bool"->8, "double"->9, "float"->10, "str"->20, "bytes"->21); test }
       "idx codec" in { implicit val codec = caseCodecIdx[Basic]; test }
     }
   }
 
   "option basic" - {
     object autocodec { implicit val codec = caseCodecAuto[OptionBasic] }
-    object numscodec { implicit val codec = caseCodecNums[OptionBasic](Symbol("int")->6, Symbol("long")->7, Symbol("bool")->8, Symbol("double")->9, Symbol("float")->10, Symbol("str")->20, Symbol("bytes")->21) }
+    object numscodec { implicit val codec = caseCodecNums[OptionBasic]("int"->6, "long"->7, "bool"->8, "double"->9, "float"->10, "str"->20, "bytes"->21) }
     object idxcodec { implicit val codec = caseCodecIdx[OptionBasic] }
 
     "empty bytearray <-> all fields none" - {
@@ -207,22 +207,22 @@ class testing extends AnyFreeSpec {
     }
     object numscodec {
       implicit val vehicleCodec: MessageCodec[Vehicle] = {
-        implicit val carCodec = caseCodecNums[Car](Symbol("id")->2)
-        implicit val busCodec = caseCodecNums[Bus](Symbol("id")->2)
-        implicit val teleportCodec = classCodecNums[Teleport](Symbol("id")->2)(Teleport.apply(_))
+        implicit val carCodec = caseCodecNums[Car]("id"->2)
+        implicit val busCodec = caseCodecNums[Bus]("id"->2)
+        implicit val teleportCodec = classCodecNums[Teleport]("id"->2)(Teleport.apply(_))
         implicit val unknownCodec = caseCodecNums[Unknown.type]()
-        sealedTraitCodecNums[Vehicle](Symbol("Car")->10, Symbol("Bus")->22, Symbol("Teleport")->23, Symbol("Unknown")->51)
+        sealedTraitCodecNums[Vehicle]("Car"->10, "Bus"->22, "Teleport"->23, "Unknown"->51)
       }
-      implicit val parkingCodec = caseCodecNums[Parking](Symbol("place1")->1, Symbol("place2")->2, Symbol("other")->3, Symbol("reserved")->4)
-      implicit val shoppingMallCodec = caseCodecNums[ShoppingMall](Symbol("parking1")->1, Symbol("parking2")->2)
+      implicit val parkingCodec = caseCodecNums[Parking]("place1"->1, "place2"->2, "other"->3, "reserved"->4)
+      implicit val shoppingMallCodec = caseCodecNums[ShoppingMall]("parking1"->1, "parking2"->2)
     }
     object idxcodec {
       implicit val vehicleCodec: MessageCodec[Vehicle] = {
         implicit val carCodec = caseCodecIdx[Car]
         implicit val busCodec = caseCodecIdx[Bus]
-        implicit val teleportCodec = classCodecNums[Teleport](Symbol("id")->2)(Teleport.apply(_))
+        implicit val teleportCodec = classCodecNums[Teleport]("id"->2)(Teleport.apply(_))
         implicit val unknownCodec = caseCodecIdx[Unknown.type]
-        sealedTraitCodecNums[Vehicle](Symbol("Car")->10, Symbol("Bus")->22, Symbol("Teleport")->23, Symbol("Unknown")->51)
+        sealedTraitCodecNums[Vehicle]("Car"->10, "Bus"->22, "Teleport"->23, "Unknown"->51)
       }
       implicit val parkingCodec = caseCodecIdx[Parking]
       implicit val shoppingMallCodec = caseCodecIdx[ShoppingMall]
@@ -240,25 +240,25 @@ class testing extends AnyFreeSpec {
     }
     object numscodec {
       import messages.numscodec._
-      implicit val tuple2IntInt = caseCodecNums[Tuple2[Int, Int]](Symbol("_1")->1, Symbol("_2")->2)
-      implicit def tuple2StringA[A:MessageCodec] = caseCodecNums[Tuple2[String, A]](Symbol("_1")->1, Symbol("_2")->2)
-      implicit def tuple2AString[A:MessageCodec] = caseCodecNums[Tuple2[A, String]](Symbol("_1")->1, Symbol("_2")->2)
-      implicit def tuple2AB[A:MessageCodec, B:MessageCodec] = caseCodecNums[Tuple2[A, B]](Symbol("_1")->1, Symbol("_2")->2)
+      implicit val tuple2IntInt = caseCodecNums[Tuple2[Int, Int]]("_1"->1, "_2"->2)
+      implicit def tuple2StringA[A:MessageCodec] = caseCodecNums[Tuple2[String, A]]("_1"->1, "_2"->2)
+      implicit def tuple2AString[A:MessageCodec] = caseCodecNums[Tuple2[A, String]]("_1"->1, "_2"->2)
+      implicit def tuple2AB[A:MessageCodec, B:MessageCodec] = caseCodecNums[Tuple2[A, B]]("_1"->1, "_2"->2)
       implicit val collectionCodec: MessageCodec[Collections] = caseCodecNums[Collections](
-        Symbol("int")->7
-      , Symbol("long")->8
-      , Symbol("bool")->9
-      , Symbol("double")->10
-      , Symbol("float")->11
-      , Symbol("str")->12
-      , Symbol("bytes")->13
-      , Symbol("message")->14
-      , Symbol("basicBasic")->15
-      , Symbol("basisMessage")->16
-      , Symbol("messageMessage")->17
-      , Symbol("messageBasic")->18
-      , Symbol("setBasic")->19
-      , Symbol("setMessage")->20
+        "int"->7
+      , "long"->8
+      , "bool"->9
+      , "double"->10
+      , "float"->11
+      , "str"->12
+      , "bytes"->13
+      , "message"->14
+      , "basicBasic"->15
+      , "basisMessage"->16
+      , "messageMessage"->17
+      , "messageBasic"->18
+      , "setBasic"->19
+      , "setMessage"->20
       )
     }
     object idxcodec {
@@ -335,13 +335,13 @@ class testing extends AnyFreeSpec {
   }
 
   object custom {
-    val codecSynthetic1 = classCodecNums[SimpleClass[String]](Symbol("id")->1)(SimpleClass.init(_))
-    val codecSynthetic2 = classCodecNums[SimpleClass[String]](Symbol("id")->1, Symbol("id2")->2)(SimpleClass.init2(_, _))
-    def codecSynthetic3[A:MessageCodec] = classCodecNums[SimpleClass[A]](Symbol("id")->1, Symbol("id2")->2)(SimpleClass.init3[A](_, _))
+    val codecSynthetic1 = classCodecNums[SimpleClass[String]]("id"->1)(SimpleClass.init(_))
+    val codecSynthetic2 = classCodecNums[SimpleClass[String]]("id"->1, "id2"->2)(SimpleClass.init2(_, _))
+    def codecSynthetic3[A:MessageCodec] = classCodecNums[SimpleClass[A]]("id"->1, "id2"->2)(SimpleClass.init3[A](_, _))
 
-    val codecAnonymous1 = classCodecNums[SimpleClass[String]](Symbol("id")->1)((id: Int) => SimpleClass.init(id))
-    val codecAnonymous2 = classCodecNums[SimpleClass[String]](Symbol("id")->1, Symbol("id2")->2)((id: Int, id2: List[String]) => SimpleClass.init2(id, id2))
-    def codecAnonymous3[A:MessageCodec] = classCodecNums[SimpleClass[A]](Symbol("id")->1, Symbol("id2")->2)((id: Int, id2: List[A]) => SimpleClass.init3(id, id2))
+    val codecAnonymous1 = classCodecNums[SimpleClass[String]]("id"->1)((id: Int) => SimpleClass.init(id))
+    val codecAnonymous2 = classCodecNums[SimpleClass[String]]("id"->1, "id2"->2)((id: Int, id2: List[String]) => SimpleClass.init2(id, id2))
+    def codecAnonymous3[A:MessageCodec] = classCodecNums[SimpleClass[A]]("id"->1, "id2"->2)((id: Int, id2: List[A]) => SimpleClass.init3(id, id2))
   }
 
   "custom class" - {

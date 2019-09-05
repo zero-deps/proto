@@ -15,16 +15,13 @@ object macrosapi {
   def caseCodecAuto[A]: MessageCodec[A] = macro Impl.caseCodecAuto[A]
   def caseCodecNums[A](): MessageCodec[A] = macro Impl.caseCodecNoArgs[A]
   def caseCodecNums[A](nums: (String, Int)*): MessageCodec[A] = macro Impl.caseCodecString[A]
-  def caseCodecNums[A](nums: (Symbol, Int)*): MessageCodec[A] = macro Impl.caseCodecSymbol[A]
   def caseCodecIdx[A]: MessageCodec[A] = macro Impl.caseCodecIdx[A]
 
   def classCodecAuto[A]: MessageCodec[A] = macro Impl.classCodecAuto[A]
   def classCodecNums[A](nums: (String, Int)*)(constructor: Any): MessageCodec[A] = macro Impl.classCodecString[A]
-  def classCodecNums[A](nums: (Symbol, Int)*)(constructor: Any): MessageCodec[A] = macro Impl.classCodecSymbol[A]
 
   def sealedTraitCodecAuto[A]: MessageCodec[A] = macro Impl.sealedTraitCodecAuto[A]
   def sealedTraitCodecNums[A](nums: (String, Int)*): MessageCodec[A] = macro Impl.sealedTraitCodecString[A]
-  def sealedTraitCodecNums[A](nums: (Symbol, Int)*): MessageCodec[A] = macro Impl.sealedTraitCodecSymbol[A]
 }
 
 class Impl(val c: Context) extends BuildCodec {
@@ -58,10 +55,6 @@ class Impl(val c: Context) extends BuildCodec {
     val aType: c.Type = getCaseClassType[A]
     messageCodec(aType=aType, nums=nums.map(evalTyped), cParams=constructorParams(aType))
   }
-  def caseCodecSymbol[A:c.WeakTypeTag](nums: c.Expr[(scala.Symbol, Int)]*): c.Tree = {
-    val aType: c.Type = getCaseClassType[A]
-    messageCodec(aType=aType, nums=nums.map(evalTyped).map(n => n._1.name -> n._2), cParams=constructorParams(aType))
-  }
   def caseCodecIdx[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getCaseClassType[A]
     val cParams: List[TermSymbol] = constructorParams(aType)
@@ -86,8 +79,6 @@ class Impl(val c: Context) extends BuildCodec {
   }
   def classCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*)(constructor: Impl.this.c.Expr[Any]): c.Tree =
     classCodec(aType=c.weakTypeOf[A], nums=nums.map(evalTyped), constructor=constructor.tree)
-  def classCodecSymbol[A:c.WeakTypeTag](nums: c.Expr[(scala.Symbol, Int)]*)(constructor: Impl.this.c.Expr[Any]): c.Tree =
-    classCodec(c.weakTypeOf[A], nums.map(evalTyped).map(n => n._1.name -> n._2), constructor=constructor.tree)
 
   def classCodec(aType: c.Type, nums: Seq[(String, Int)], constructor: c.Tree): c.Tree = {
     val cParams: List[TermSymbol] = nums.map{ case (name, num) =>
@@ -165,7 +156,6 @@ class Impl(val c: Context) extends BuildCodec {
   }
 
   def sealedTraitCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*): c.Tree = sealedTraitCodec(findTypes(nums.map(evalTyped)))
-  def sealedTraitCodecSymbol[A:c.WeakTypeTag](nums: c.Expr[(scala.Symbol, Int)]*): c.Tree = sealedTraitCodec(findTypes(nums.map(evalTyped).map(n => n._1.name -> n._2)))
 
   def findTypes[A:c.WeakTypeTag](nums: Seq[(String, Int)]): Seq[(c.Type, Int)] = {
     val aType: c.Type = getSealedTrait[A]
