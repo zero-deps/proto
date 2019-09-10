@@ -20,6 +20,7 @@ trait Common {
   val CodedInputStreamType: c.Type = typeOf[CodedInputStream]
   val ArrayByteType: c.Type = typeOf[Array[Byte]]
   val ArraySeqByteType: c.Type = typeOf[scala.collection.immutable.ArraySeq[Byte]]
+  val BytesType: c.Type = typeOf[zd.proto.Bytes]
   val NType: c.Type = c.typeOf[N]
   val ItetableType: c.Type = typeOf[scala.collection.Iterable[Unit]]
   
@@ -52,6 +53,7 @@ trait Common {
       } else if ( t =:= StringClass.selfType
                || t =:= ArrayByteType
                || t =:= ArraySeqByteType
+               || t =:= BytesType
                || isCaseClass(t)
                || isTrait(t)
                || isIterable(t)
@@ -78,7 +80,9 @@ trait Common {
       } else if (field.tpe =:= ArrayByteType) {
         Some(q"${CodedOutputStreamType.typeSymbol.companion}.computeByteArraySizeNoTag(${field.getter})")
       } else if (field.tpe =:= ArraySeqByteType) {
-        Some(q"${CodedOutputStreamType.typeSymbol.companion}.computeByteArraySizeNoTag(${field.getter}.unsafeArray.asInstanceOf[Array[Byte]])")
+        Some(q"${CodedOutputStreamType.typeSymbol.companion}.computeByteArraySizeNoTag(${field.getter}.toArray[Byte])")
+      } else if (field.tpe =:= BytesType) {
+        Some(q"${CodedOutputStreamType.typeSymbol.companion}.computeByteArraySizeNoTag(${field.getter}.unsafeArray)")
       } else {
         None
       }
@@ -99,7 +103,9 @@ trait Common {
       } else if (field.tpe =:= ArrayByteType) {
         Some(q"${os}.writeByteArrayNoTag(${field.getter})")
       } else if (field.tpe =:= ArraySeqByteType) {
-        Some(q"${os}.writeByteArrayNoTag(${field.getter}.unsafeArray.asInstanceOf[Array[Byte]])")
+        Some(q"${os}.writeByteArrayNoTag(${field.getter}.toArray[Byte])")
+      } else if (field.tpe =:= BytesType) {
+        Some(q"${os}.writeByteArrayNoTag(${field.getter}.unsafeArray)")
       } else {
         None
       }
@@ -121,6 +127,8 @@ trait Common {
         Some(q"${is}.readByteArray")
       } else if (field.tpe =:= ArraySeqByteType) {
         Some(q"${ArraySeqByteType.typeSymbol.companion}.unsafeWrapArray(${is}.readByteArray)")
+      } else if (field.tpe =:= BytesType) {
+        Some(q"${BytesType.typeSymbol.companion}.unsafeWrap(${is}.readByteArray)")
       } else {
         None
       }
