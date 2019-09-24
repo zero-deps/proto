@@ -120,7 +120,7 @@ decodeStringString _xs_ pos0 = do
     def isTrait(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
     def findChildren(tpe: Type): Seq[(Type, Int)] = tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, n) => (x.asType.toType, n) }
 
-    sealed trait Tpe
+    sealed trait Tpe { val tpe: Type }
     final case class TraitType(tpe: Type, children: Seq[(Type,Int)], firstLevel: Boolean) extends Tpe
     final case class SimpleType(tpe: Type) extends Tpe
 
@@ -135,7 +135,9 @@ decodeStringString _xs_ pos0 = do
       }
       @tailrec def loop(head: Type, tail: Seq[Type], acc: Seq[Tpe], firstLevel: Boolean): Seq[Tpe] = {
         val (tail1, acc1) =
-          if (isTrait(head)) {
+          if (acc.exists(_.tpe =:= head)) {
+            (tail, acc)
+          } else if (isTrait(head)) {
             val children = findChildren(head)
             (children.map(_._1)++tail, acc:+TraitType(head, children, firstLevel))
           } else if (head.typeConstructor =:= OptionClass.selfType.typeConstructor) {

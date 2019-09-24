@@ -45,7 +45,7 @@ decodeStringString _xs_ pos0 = do
                     decode end acc pos3
       else pure { pos: pos1, val: acc }
 
-data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem
+data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | ComponentTemplateOk ComponentTemplateOk
 type SiteOpts = { xs :: Array SiteOpt }
 type SiteOpts' = { xs :: Array SiteOpt }
 type SiteOpt = { id :: String, label :: Maybe String }
@@ -59,6 +59,10 @@ type PageUrl' = { addr :: Maybe String }
 type PageSeo' = { descr :: Maybe String, order :: Maybe Number }
 type PageTreeItem = { priority :: Int }
 type PageTreeItem' = { priority :: Maybe Int }
+type ComponentTemplateOk = { fieldNode :: FieldNode }
+type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode }
+type FieldNode = { root :: String, forest :: Array FieldNode }
+type FieldNode' = { root :: Maybe String, forest :: Array FieldNode }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
@@ -76,6 +80,9 @@ decodePush _xs_ = do
     4 -> do
       { pos: pos2, val } <- decodePageTreeItem _xs_ pos1
       pure { pos: pos2, val: PageTreeItem val }
+    1300 -> do
+      { pos: pos2, val } <- decodeComponentTemplateOk _xs_ pos1
+      pure { pos: pos2, val: ComponentTemplateOk val }
     i ->
       Left $ Decode.BadType i
 
@@ -348,6 +355,67 @@ decodePageTreeItem _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { priority = Just val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }
+
+decodeComponentTemplateOk :: Uint8Array -> Int -> Decode.Result ComponentTemplateOk
+decodeComponentTemplateOk _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { fieldNode: Nothing } pos
+  case val of
+    { fieldNode: Just fieldNode } -> pure { pos: pos1, val: { fieldNode } }
+    _ -> Left $ Decode.MissingFields "ComponentTemplateOk"
+    where
+    decode :: Int -> ComponentTemplateOk' -> Int -> Decode.Result ComponentTemplateOk'
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case decodeFieldNode _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { fieldNode = Just val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }
+
+decodeFieldNode :: Uint8Array -> Int -> Decode.Result FieldNode
+decodeFieldNode _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { root: Nothing, forest: [] } pos
+  case val of
+    { root: Just root, forest } -> pure { pos: pos1, val: { root, forest } }
+    _ -> Left $ Decode.MissingFields "FieldNode"
+    where
+    decode :: Int -> FieldNode' -> Int -> Decode.Result FieldNode'
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { root = Just val }) pos3
+              2 ->
+                case decodeFieldNode _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { forest = snoc acc.forest val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
