@@ -119,10 +119,15 @@ decodeStringString _xs_ pos0 = do
     }
     def isTrait(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
     def findChildren(tpe: Type): Seq[(Type, Int)] = tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{ case (x, n) => (x.asType.toType, n) }
+    @tailrec def isRecursive(base: Type, compareTo: List[Type]): Boolean = compareTo match {
+      case Nil => false
+      case x :: _ if x =:= base => true
+      case x :: xs => isRecursive(base, x.typeArgs.map(_.typeSymbol.asType.toType) ++ xs)
+    }
 
     sealed trait Tpe { val tpe: Type }
     final case class TraitType(tpe: Type, children: Seq[(Type,Int)], firstLevel: Boolean) extends Tpe
-    final case class SimpleType(tpe: Type) extends Tpe
+    final case class SimpleType(tpe: Type, recursive: Boolean) extends Tpe
 
     def collectTypes(tpe: Type): Seq[Tpe] = {
       val complexType: Type => Boolean = {
@@ -154,7 +159,7 @@ decodeStringString _xs_ pos0 = do
             else (tail, acc)
           } else {
             val fs = fields(head).map(_._2).filter(complexType)
-            (fs++tail, acc:+SimpleType(head))
+            (fs++tail, acc:+SimpleType(head, isRecursive(head, fs)))
           }
         tail1 match {
           case h +: t => loop(h, t, acc1, false)
@@ -171,7 +176,7 @@ decodeStringString _xs_ pos0 = do
         case TraitType(tpe, children,_) =>
           val name = tpe.typeSymbol.name.encodedName.toString
           s"data ${name} = ${children.map(_._1.typeSymbol.name.encodedName.toString).map(x => s"${x} ${x}").mkString(" | ")}" +: Vector.empty
-        case SimpleType(tpe) =>
+        case SimpleType(tpe, recursive) =>
           val name = tpe.typeSymbol.name.encodedName.toString
           val fieldsOf = fields(tpe)
           val fs = fieldsOf.map{ case (name1, tpe, _) =>
@@ -206,8 +211,14 @@ decodeStringString _xs_ pos0 = do
             }
           name1 -> pursType
         }
-        val x = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._1}" }.mkString(s"type ${name} = { ", ", ", " }")
-        val x1 = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._2}" }.mkString(s"type ${name}' = { ", ", ", " }")
+        val typeDef = if (recursive) "newtype" else "type"
+        def constructor(genMaybe: Boolean) = (genMaybe, recursive) match {
+          case (true, true) => s"${name}' "
+          case (false, true) => s"${name} "
+          case (_, false) => ""
+        }
+        val x = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._1}" }.mkString(s"${typeDef} ${name} = ${constructor(false)}{ ", ", ", " }")
+        val x1 = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._2}" }.mkString(s"${typeDef} ${name}' = ${constructor(true)}{ ", ", ", " }")
         if (genMaybe) Vector(x, x1) else Vector(x)
       }
     }
@@ -261,7 +272,7 @@ decodeStringString _xs_ pos0 = do
               |                  decode end acc pos3
               |    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
               |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "${name}"""".stripMargin
-        case SimpleType(tpe) =>
+        case SimpleType(tpe, recursive) =>
           val fs = fields(tpe)
           val defObj: String = fs.map{
             case (name, tpe, _) =>
@@ -286,13 +297,14 @@ decodeStringString _xs_ pos0 = do
           val unObj: String = fs.map{
             case (name,_,_) => name
           }.mkString("{ ", ", ", " }")
+          val name = tpe.typeSymbol.name.encodedName.toString
           def decodeTmpl(n: Int, fun: String, mod: String): Seq[String] = {
             List(
               s"${n} ->"
             , s"  case ${fun} _xs_ pos2 of"
             , s"    Left x -> Left x"
             , s"    Right { pos: pos3, val } ->"
-            , s"      decode end (acc { ${mod} }) pos3"
+            , s"      decode end (${if (recursive) s"${name}' $$ " else ""}acc { ${mod} }) pos3"
             )
           }
           val cases = fields(tpe).map{ case (name, tpe, n) =>
@@ -335,17 +347,16 @@ decodeStringString _xs_ pos0 = do
               decodeTmpl(n, s"decode${name1}", s"${name} = Just val")
             }
           }.flatten
-          val name = tpe.typeSymbol.name.encodedName.toString
           s"""|decode${name} :: Uint8Array -> Int -> Decode.Result ${name}
               |decode${name} _xs_ pos0 = do
               |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
               |  let end = pos + msglen
-              |  { pos: pos1, val } <- decode end ${defObj} pos
+              |  { pos: pos1, ${if (recursive) s"val: ${name}' val" else "val"} } <- decode end ${if (recursive) s"(${name}' ${defObj})" else s"${defObj}"} pos
               |  case val of
-              |    ${justObj} -> pure { pos: pos1, val: ${unObj} }${if (justObj==unObj) "" else s"""\n    _ -> Left $$ Decode.MissingFields "${name}""""}
+              |    ${justObj} -> pure { pos: pos1, val: ${if (recursive) s"${name} " else ""}${unObj} }${if (justObj==unObj) "" else s"""\n    _ -> Left $$ Decode.MissingFields "${name}""""}
               |    where
               |    decode :: Int -> ${name}' -> Int -> Decode.Result ${name}'
-              |    decode end acc pos1 =
+              |    decode end ${if (recursive) s"(${name}' acc)" else "acc"} pos1 =
               |      if pos1 < end then
               |        case Decode.uint32 _xs_ pos1 of
               |          Left x -> Left x
@@ -355,8 +366,8 @@ decodeStringString _xs_ pos0 = do
               |                case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
               |                  Left x -> Left x
               |                  Right { pos: pos3 } ->
-              |                    decode end acc pos3
-              |      else pure { pos: pos1, val: acc }""".stripMargin
+              |                    decode end ${if (recursive) s"(${name}' acc)" else "acc"} pos3
+              |      else pure { pos: pos1, val: ${if (recursive) s"${name}' acc" else "acc"} }""".stripMargin
       }
     }
 
@@ -390,7 +401,7 @@ decodeStringString _xs_ pos0 = do
           }
           s"""|encode${name} :: ${name} -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
-        case SimpleType(tpe) =>
+        case SimpleType(tpe, recursive) =>
           val encodeFields = fields(tpe).flatMap{ case (name, tpe, n) =>
             if (tpe =:= StringClass.selfType) {
               List(
@@ -454,7 +465,7 @@ decodeStringString _xs_ pos0 = do
           val name = tpe.typeSymbol.name.encodedName.toString
           if (encodeFields.nonEmpty) {
             s"""|encode${name} :: ${name} -> Uint8Array
-                |encode${name} msg = do
+                |encode${name} ${if (recursive) s"(${name} msg)" else "msg"} = do
                 |  let xs = concatAll
                 |  ${encodeFields.mkString("      [ ", "\n        , ", "\n        ]")}
                 |  let len = length xs

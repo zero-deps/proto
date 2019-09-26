@@ -61,8 +61,7 @@ type PageTreeItem = { priority :: Int }
 type PageTreeItem' = { priority :: Maybe Int }
 type ComponentTemplateOk = { fieldNode :: FieldNode }
 type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode }
-type FieldNode = { root :: String, forest :: Array FieldNode }
-type FieldNode' = { root :: Maybe String, forest :: Array FieldNode }
+newtype FieldNode' = FieldNode' { root :: Maybe String, forest :: Array FieldNode }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
@@ -394,13 +393,13 @@ decodeFieldNode :: Uint8Array -> Int -> Decode.Result FieldNode
 decodeFieldNode _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { root: Nothing, forest: [] } pos
+  { pos: pos1, val: FieldNode' val } <- decode end (FieldNode' { root: Nothing, forest: [] }) pos
   case val of
-    { root: Just root, forest } -> pure { pos: pos1, val: { root, forest } }
+    { root: Just root, forest } -> pure { pos: pos1, val: FieldNode { root, forest } }
     _ -> Left $ Decode.MissingFields "FieldNode"
     where
     decode :: Int -> FieldNode' -> Int -> Decode.Result FieldNode'
-    decode end acc pos1 =
+    decode end (FieldNode' acc) pos1 =
       if pos1 < end then
         case Decode.uint32 _xs_ pos1 of
           Left x -> Left x
@@ -410,15 +409,15 @@ decodeFieldNode _xs_ pos0 = do
                 case Decode.string _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { root = Just val }) pos3
+                    decode end (FieldNode' $ acc { root = Just val }) pos3
               2 ->
                 case decodeFieldNode _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { forest = snoc acc.forest val }) pos3
+                    decode end (FieldNode' $ acc { forest = snoc acc.forest val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
                   Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+                    decode end (FieldNode' acc) pos3
+      else pure { pos: pos1, val: FieldNode' acc }

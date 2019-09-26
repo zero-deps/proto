@@ -17,15 +17,17 @@ encodeStringString (Tuple k v) = do
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]
 
-data Pull = GetSites GetSites | UploadChunk UploadChunk | SavePage SavePage
+data Pull = GetSites GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate
 type GetSites = {  }
 type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }
 type SavePage = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
+type SaveComponentTemplate = { fieldNode :: FieldNode }
 
 encodePull :: Pull -> Uint8Array
 encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]
 encodePull (UploadChunk x) = concatAll [ Encode.uint32 8010, encodeUploadChunk x ]
 encodePull (SavePage x) = concatAll [ Encode.uint32 8018, encodeSavePage x ]
+encodePull (SaveComponentTemplate x) = concatAll [ Encode.uint32 11202, encodeSaveComponentTemplate x ]
 
 encodeGetSites :: GetSites -> Uint8Array
 encodeGetSites _ = Encode.uint32 0
@@ -86,6 +88,25 @@ encodePageSeo msg = do
         , Encode.string msg.descr
         , Encode.uint32 17
         , Encode.double msg.order
+        ]
+  let len = length xs
+  concatAll [ Encode.uint32 len, xs ]
+
+encodeSaveComponentTemplate :: SaveComponentTemplate -> Uint8Array
+encodeSaveComponentTemplate msg = do
+  let xs = concatAll
+        [ Encode.uint32 10
+        , encodeFieldNode msg.fieldNode
+        ]
+  let len = length xs
+  concatAll [ Encode.uint32 len, xs ]
+
+encodeFieldNode :: FieldNode -> Uint8Array
+encodeFieldNode (FieldNode msg) = do
+  let xs = concatAll
+        [ Encode.uint32 10
+        , Encode.string msg.root
+        , concatAll $ concatMap (\x -> [ Encode.uint32 18, encodeFieldNode x ]) msg.forest
         ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]

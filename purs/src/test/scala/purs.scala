@@ -11,10 +11,11 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
     "module name" in {
       res2.encode.prelude.startsWith("module Pull")
       res2.decode.prelude.startsWith("module Push")
+      res2.common.prelude.startsWith("module Common")
     }
     "types decode" in {
       val res = res2.decode
-      res.types.length shouldBe 18
+      res.types.length shouldBe 17
       res.types(0) shouldBe "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | ComponentTemplateOk ComponentTemplateOk"
       res.types(1) shouldBe "type SiteOpts = { xs :: Array SiteOpt }"
       res.types(2) shouldBe "type SiteOpts' = { xs :: Array SiteOpt }"
@@ -31,15 +32,15 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
       res.types(13) shouldBe "type PageTreeItem' = { priority :: Maybe Int }"
       res.types(14) shouldBe "type ComponentTemplateOk = { fieldNode :: FieldNode }"
       res.types(15) shouldBe "type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode }"
-      res.types(16) shouldBe "type FieldNode = { root :: String, forest :: Array FieldNode }"
-      res.types(17) shouldBe "type FieldNode' = { root :: Maybe String, forest :: Array FieldNode }"
+      res.types(16) shouldBe "newtype FieldNode' = FieldNode' { root :: Maybe String, forest :: Array FieldNode }"
     }
     "types encode" in {
       val res = res2.encode
-      res.types.length shouldBe 4
-      res.types(0) shouldBe "data Pull = GetSites GetSites | UploadChunk UploadChunk | SavePage SavePage"
+      res.types.length shouldBe 5
+      res.types(0) shouldBe "data Pull = GetSites GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate"
       res.types(1) shouldBe "type GetSites = {  }"
       res.types(2) shouldBe "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }"
+      res.types(4) shouldBe "type SaveComponentTemplate = { fieldNode :: FieldNode }"
       ()
     }
     "decoders" in {
@@ -61,6 +62,7 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
         case e if e.startsWith("encodePull :: ") => e should be (Snippets.encodePull)
         case e if e.startsWith("encodeGetSites :: ") => e should be (Snippets.encodeGetSites)
         case e if e.startsWith("encodeUploadChunk :: ") => e should be (Snippets.encodeUploadChunk)
+        case e if e.startsWith("encodeFieldNode :: ") => e should be (Snippets.encodeFieldNode)
         case _ =>
       }
     }
@@ -101,6 +103,7 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
   }
 }
 
+final case class FieldNode(@N(1) root: String, @N(2) forest: List[FieldNode])
 sealed trait TestSchema
 @N(1) final case class ClassWithMap(@N(1) m: Map[String,String]) extends TestSchema
 
@@ -111,7 +114,6 @@ sealed trait Push
 final case class PageSeo(@N(1) descr: String, @N(2) order: Double)
 @N(4) final case class PageTreeItem(@N(1) priority: Int) extends Push
 
-final case class FieldNode(@N(1) root: String, @N(2) forest: List[FieldNode])
 @N(1300) final case class ComponentTemplateOk
   ( @N(1) fieldNode: FieldNode
   ) extends Push
@@ -129,6 +131,9 @@ sealed trait Pull
   , @N(3) chunk: Array[Byte]
   ) extends Pull
 @N(1002) final case class SavePage(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo], @N(5) name: Map[String,String]) extends Pull
+@N(1400) final case class SaveComponentTemplate
+  ( @N(1) fieldNode: FieldNode
+  ) extends Pull
 
 object Snippets {
   val decodePush = """decodePush :: Uint8Array -> Decode.Result Push
@@ -428,13 +433,13 @@ decodeComponentTemplateOk _xs_ pos0 = do
 decodeFieldNode _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { root: Nothing, forest: [] } pos
+  { pos: pos1, val: FieldNode' val } <- decode end (FieldNode' { root: Nothing, forest: [] }) pos
   case val of
-    { root: Just root, forest } -> pure { pos: pos1, val: { root, forest } }
+    { root: Just root, forest } -> pure { pos: pos1, val: FieldNode { root, forest } }
     _ -> Left $ Decode.MissingFields "FieldNode"
     where
     decode :: Int -> FieldNode' -> Int -> Decode.Result FieldNode'
-    decode end acc pos1 =
+    decode end (FieldNode' acc) pos1 =
       if pos1 < end then
         case Decode.uint32 _xs_ pos1 of
           Left x -> Left x
@@ -444,23 +449,24 @@ decodeFieldNode _xs_ pos0 = do
                 case Decode.string _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { root = Just val }) pos3
+                    decode end (FieldNode' $ acc { root = Just val }) pos3
               2 ->
                 case decodeFieldNode _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { forest = snoc acc.forest val }) pos3
+                    decode end (FieldNode' $ acc { forest = snoc acc.forest val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
                   Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }"""
+                    decode end (FieldNode' acc) pos3
+      else pure { pos: pos1, val: FieldNode' acc }"""
 
   val encodePull = """encodePull :: Pull -> Uint8Array
 encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]
 encodePull (UploadChunk x) = concatAll [ Encode.uint32 8010, encodeUploadChunk x ]
-encodePull (SavePage x) = concatAll [ Encode.uint32 8018, encodeSavePage x ]"""
+encodePull (SavePage x) = concatAll [ Encode.uint32 8018, encodeSavePage x ]
+encodePull (SaveComponentTemplate x) = concatAll [ Encode.uint32 11202, encodeSaveComponentTemplate x ]"""
 
   val encodeGetSites = """encodeGetSites :: GetSites -> Uint8Array
 encodeGetSites _ = Encode.uint32 0"""
@@ -473,6 +479,16 @@ encodeUploadChunk msg = do
         , Encode.string msg.id
         , Encode.uint32 26
         , Encode.bytes msg.chunk
+        ]
+  let len = length xs
+  concatAll [ Encode.uint32 len, xs ]"""
+
+  val encodeFieldNode = """encodeFieldNode :: FieldNode -> Uint8Array
+encodeFieldNode (FieldNode msg) = do
+  let xs = concatAll
+        [ Encode.uint32 10
+        , Encode.string msg.root
+        , concatAll $ concatMap (\x -> [ Encode.uint32 18, encodeFieldNode x ]) msg.forest
         ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]"""
