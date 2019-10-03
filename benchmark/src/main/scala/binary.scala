@@ -15,12 +15,12 @@ object States {
 
   @State(Scope.Benchmark)
   class JavaState {
-    val key = (1 to 20).mkString("").getBytes("UTF-8")
+    val key = (1 to 20).mkString.getBytes("UTF-8")
     val value = Array.fill(1000)(1).map(_.toByte)
     val modified: Long = 1552661477L
     val vc = Vector.fill(2)(Vc(a="169.0.0.1:4400", b=2000L))
     
-    def data = Data(key=key, value=value, modified=modified, vc=vc)
+    val data = Data(key=key, value=value, modified=modified, vc=vc)
     val bytes: Array[Byte] = {
       import java.io._
       val bos = new ByteArrayOutputStream
@@ -32,26 +32,13 @@ object States {
   }
 
   @State(Scope.Benchmark)
-  class ChillState {
-    val key = (1 to 20).mkString("").getBytes("UTF-8")
-    val value = Array.fill(1000)(1).map(_.toByte)
-    val modified: Long = 1552661477L
-    val vc = Vector.fill(2)(Vc(a="169.0.0.1:4400", b=2000L))
-
-    def data = Data(key=key, value=value, modified=modified, vc=vc)
-    import com.twitter.chill._
-    val kryo = KryoPool.withByteArrayOutputStream(10, new ScalaKryoInstantiator)
-    val bytes: Array[Byte] = kryo.toBytesWithoutClass(data)
-  }
-
-  @State(Scope.Benchmark)
   class ScodecState {
-    val key = (1 to 20).mkString("").getBytes("UTF-8")
+    val key = (1 to 20).mkString.getBytes("UTF-8")
     val value = Array.fill(1000)(1).map(_.toByte)
     val modified: Long = 1552661477L
     val vc = List.fill(2)("169.0.0.1:4400" -> 2000L)
 
-    def data = DataScodec(key=key, value=value, modified=modified, vc=vc)
+    val data = DataScodec(key=key, value=value, modified=modified, vc=vc)
     import scodec.codecs._
     import scodec.{Attempt, DecodeResult, Codec, SizeBound}
     import scodec.bits.BitVector
@@ -67,12 +54,12 @@ object States {
 
   @State(Scope.Benchmark)
   class JacksonState {
-    val key = (1 to 20).mkString("").getBytes("UTF-8")
+    val key = (1 to 20).mkString.getBytes("UTF-8")
     val value = Array.fill(1000)(1).map(_.toByte)
     val modified: Long = 1552661477L
     val vc = Vector.fill(2)(Vc(a="169.0.0.1:4400", b=2000L))
 
-    def data = Data(key=key, value=value, modified=modified, vc=vc)
+    val data = Data(key=key, value=value, modified=modified, vc=vc)
     import com.fasterxml.jackson.module.scala.DefaultScalaModule
     import com.fasterxml.jackson.databind.ObjectMapper
     val m = new ObjectMapper()
@@ -82,16 +69,15 @@ object States {
 
   @State(Scope.Benchmark)
   class JsoniterState {
-    val key = (1 to 20).mkString("").getBytes("UTF-8")
+    val key = (1 to 20).mkString.getBytes("UTF-8")
     val value = Array.fill(1000)(1).map(_.toByte)
     val modified: Long = 1552661477L
     val vc = Vector.fill(2)(Vc(a="169.0.0.1:4400", b=2000L))
 
-    def data = Data(key=key, value=value, modified=modified, vc=vc)
+    val data = Data(key=key, value=value, modified=modified, vc=vc)
 
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     import com.github.plokhotnyuk.jsoniter_scala.core._
-    implicit val vcCodec: JsonValueCodec[Vc] = JsonCodecMaker.make[Vc](CodecMakerConfig())
     val codec: JsonValueCodec[Data] = JsonCodecMaker.make[Data](CodecMakerConfig())
     val bytes: Array[Byte] = writeToArray(data)(codec)
   }
@@ -99,27 +85,27 @@ object States {
   @State(Scope.Benchmark)
   class ProtobufState {
     import com.google.protobuf.ByteString
-    val key = ByteString.copyFrom((1 to 20).mkString("").getBytes("UTF-8"))
+    val key = ByteString.copyFrom((1 to 20).mkString.getBytes("UTF-8"))
     val value = ByteString.copyFrom(Array.fill(1000)(1).map(_.toByte))
     val modified: Long = 1552661477L
     val vc = Vector.fill(2)(binarymodel.Vc(a="169.0.0.1:4400", b=2000L))
 
-    def data = binarymodel.Data(key=key, value=value, modified=modified, vc=vc)
+    val data = binarymodel.Data(key=key, value=value, modified=modified, vc=vc)
     val bytes: Array[Byte] = data.toByteArray
   }
 
   @State(Scope.Benchmark)
   class MacrosState {
-    val key = (1 to 20).mkString("").getBytes("UTF-8")
+    val key = (1 to 20).mkString.getBytes("UTF-8")
     val value = Array.fill(1000)(1).map(_.toByte)
     val modified: Long = 1552661477L
     val vc = Vector.fill(2)(Vc(a="169.0.0.1:4400", b=2000L))
 
-    def data = Data(key=key, value=value, modified=modified, vc=vc)
+    val data = Data(key=key, value=value, modified=modified, vc=vc)
     import zd.proto.api.encode
-    import zd.proto.macrosapi.messageCodecIdx
-    implicit val vcCodec = messageCodecIdx[Vc]
-    val codec = messageCodecIdx[Data]
+    import zd.proto.macrosapi.caseCodecIdx
+    implicit val vcCodec = caseCodecIdx[Vc]
+    val codec = caseCodecIdx[Data]
     val bytes: Array[Byte] = encode(data)(codec)
   }
 }
@@ -135,11 +121,6 @@ class Encode {
   }
 
   @Benchmark
-  def chill(state: States.ChillState, bh: Blackhole): Unit = {
-    bh.consume(state.kryo.toBytesWithoutClass(state.data))
-  }
-
-  @Benchmark
   def scodec_(state: States.ScodecState, bh: Blackhole): Unit = {
     import scodec.codecs._
     bh.consume(state.codec.encode(state.data.key ~ state.data.value ~ state.data.modified ~ state.data.vc).toOption.get.toByteArray)
@@ -151,7 +132,7 @@ class Encode {
   }
 
   @Benchmark
-  def jsoniter(state: States.JsoniterState, bh: Blackhole): Unit = {
+  def jsoniter_scala(state: States.JsoniterState, bh: Blackhole): Unit = {
     import com.github.plokhotnyuk.jsoniter_scala.core._
     bh.consume(writeToArray(state.data)(state.codec))
   }
@@ -177,11 +158,6 @@ class Decode {
   }
 
   @Benchmark
-  def chill(state: States.ChillState, bh: Blackhole): Unit = {
-    bh.consume(state.kryo.fromBytes(state.bytes, classOf[Data]): Data)
-  }
-
-  @Benchmark
   def scodec_(state: States.ScodecState, bh: Blackhole): Unit = {
     import scodec.bits.BitVector
     val y = state.codec.decode(BitVector.view(state.bytes)).toOption.get.value
@@ -194,7 +170,7 @@ class Decode {
   }
 
   @Benchmark
-  def jsoniter(state: States.JsoniterState, bh: Blackhole): Unit = {
+  def jsoniter_scala(state: States.JsoniterState, bh: Blackhole): Unit = {
     import com.github.plokhotnyuk.jsoniter_scala.core._
     bh.consume(readFromArray(state.bytes)(state.codec): Data)
   }
