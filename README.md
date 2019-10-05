@@ -65,7 +65,7 @@ libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % "latest.integr
 
 # Usage
 
-You can pick one of the way how to difine field number:
+You can pick one of the way how to define field number:
 - with annotation `@zd.proto.api.N` and use `caseCodecAuto`
 - explicitly specify nums `caseCodecNums('field1->1, 'field2->2)`
 - field numbers by index `caseCodecIdx`
