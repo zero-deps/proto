@@ -4,6 +4,7 @@ package proto
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 import scala.annotation.tailrec
+import zd.proto.api.{MessageCodec}
 
 final case class Res2(common: Res, encode: Res, decode: Res)
 final case class Res(prelude: String, types: Seq[String], coders: Seq[String])
@@ -24,7 +25,7 @@ object Res {
 }
 
 object Purescript {
-  def generate[D, E](moduleEncodeName: String, moduleDecodeName: String, commonModule: String)(implicit dtag: TypeTag[D], etag: TypeTag[E]): Res2 = {
+  def generate[D, E](moduleEncodeName: String, moduleDecodeName: String, commonModule: String, codecs: List[MessageCodec[_]])(implicit dtag: TypeTag[D], etag: TypeTag[E]): Res2 = {
     val preludeCommon = s"""module ${commonModule} where
 
 import Data.Map (Map)
@@ -37,17 +38,11 @@ import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
-import Data.Tuple (Tuple(Tuple))
+import Data.Tuple (Tuple(Tuple), fst, snd)
 import Prelude (map, ($$))
 import Proto.Encode as Encode
 import Proto.Uint8ArrayExt (length, concatAll, fromArray)
 import ${commonModule}
-
-encodeStringString :: Tuple String String -> Uint8Array
-encodeStringString (Tuple k v) = do
-  let xs = concatAll [ Encode.uint32 10, Encode.string k, Encode.uint32 18, Encode.string v ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
 """
 
     val preludeDecode = s"""module ${moduleDecodeName} where
@@ -63,39 +58,6 @@ import Data.Tuple (Tuple(Tuple), fst, snd)
 import Prelude (bind, pure, ($$), (+), (<))
 import Proto.Decode as Decode
 import ${commonModule}
-
-decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
-decodeStringString _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
-  case val of
-    { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
-    _ -> Left $$ Decode.MissingFields "StringString"
-    where
-    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { first = Just val }) pos3
-              2 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { second = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
 """
 
     def findN(x: Symbol): Option[Int] = {
@@ -127,7 +89,8 @@ decodeStringString _xs_ pos0 = do
 
     sealed trait Tpe { val tpe: Type }
     final case class TraitType(tpe: Type, children: Seq[(Type,Int)], firstLevel: Boolean) extends Tpe
-    final case class SimpleType(tpe: Type, recursive: Boolean) extends Tpe
+    final case class RegularType(tpe: Type, recursive: Boolean) extends Tpe
+    final case class TupleType(tpe: Type) extends Tpe // consider merging with RegularType
 
     def collectTypes(tpe: Type): Seq[Tpe] = {
       val complexType: Type => Boolean = {
@@ -139,7 +102,7 @@ decodeStringString _xs_ pos0 = do
         case _ => true
       }
       @tailrec def loop(head: Type, tail: Seq[Type], acc: Seq[Tpe], firstLevel: Boolean): Seq[Tpe] = {
-        val (tail1, acc1) =
+        val (tail1, acc1): (Seq[Type], Seq[Tpe]) =
           if (acc.exists(_.tpe =:= head)) {
             (tail, acc)
           } else if (isTrait(head)) {
@@ -150,16 +113,20 @@ decodeStringString _xs_ pos0 = do
             val typeArgType = typeArg.asType.toType
             if (complexType(typeArgType)) (typeArgType+:tail, acc)
             else (tail, acc)
-          } else if (head =:= typeOf[Map[String,String]]) {
-            (tail, acc)
           } else if (isIterable(head)) {
-            val typeArg = head.typeArgs.head.typeSymbol
-            val typeArgType = typeArg.asType.toType
-            if (complexType(typeArgType)) (typeArgType+:tail, acc)
-            else (tail, acc)
+            head.typeArgs match {
+              case x :: Nil =>
+                val typeArg = x.typeSymbol
+                val typeArgType = typeArg.asType.toType
+                if (complexType(typeArgType)) (typeArgType+:tail, acc)
+                else (tail, acc)
+              case x :: y :: Nil =>
+                (tail, acc:+TupleType(appliedType(typeOf[Tuple2[Unit, Unit]].typeConstructor, x, y)))
+              case _ => throw new Exception(s"too many args for ${head}")
+            }
           } else {
             val fs = fields(head).map(_._2).filter(complexType)
-            (fs++tail, acc:+SimpleType(head, isRecursive(head, fs)))
+            (fs++tail, acc:+RegularType(head, isRecursive(head, fs)))
           }
         tail1 match {
           case h +: t => loop(h, t, acc1, false)
@@ -176,50 +143,52 @@ decodeStringString _xs_ pos0 = do
         case TraitType(tpe, children,_) =>
           val name = tpe.typeSymbol.name.encodedName.toString
           s"data ${name} = ${children.map(_._1.typeSymbol.name.encodedName.toString).map(x => s"${x} ${x}").mkString(" | ")}" +: Vector.empty
-        case SimpleType(tpe, recursive) =>
+        case TupleType(tpe) => Nil
+        case RegularType(tpe, recursive) =>
           val name = tpe.typeSymbol.name.encodedName.toString
           val fieldsOf = fields(tpe)
           val fs = fieldsOf.map{ case (name1, tpe, _) =>
-          val pursType =
-            if (tpe =:= StringClass.selfType) {
-              "String" -> "Maybe String"
-            } else if (tpe =:= IntClass.selfType) {
-              "Int" -> "Maybe Int"
-            } else if (tpe =:= BooleanClass.selfType) {
-              "Boolean" -> "Maybe Boolean"
-            } else if (tpe =:= DoubleClass.selfType) {
-              "Number" -> "Maybe Number"
-            } else if (tpe =:= typeOf[Array[Byte]]) {
-              "Uint8Array" -> "Maybe Uint8Array"
-            } else if (tpe =:= typeOf[Map[String,String]]) {
-              "Map String String" -> "Map String String"
-            } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
-              val typeArg = tpe.typeArgs.head
-              if (typeArg =:= DoubleClass.selfType) {
-                "Maybe Number" -> "Maybe Number"
+            val pursType = {
+              if (tpe =:= StringClass.selfType) {
+                "String" -> "Maybe String"
+              } else if (tpe =:= IntClass.selfType) {
+                "Int" -> "Maybe Int"
+              } else if (tpe =:= BooleanClass.selfType) {
+                "Boolean" -> "Maybe Boolean"
+              } else if (tpe =:= DoubleClass.selfType) {
+                "Number" -> "Maybe Number"
+              } else if (tpe =:= typeOf[Array[Byte]]) {
+                "Uint8Array" -> "Maybe Uint8Array"
+              } else if (tpe =:= typeOf[Map[String,String]]) {
+                "Map String String" -> "Map String String"
+              } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+                val typeArg = tpe.typeArgs.head
+                if (typeArg =:= DoubleClass.selfType) {
+                  "Maybe Number" -> "Maybe Number"
+                } else {
+                  val name = typeArg.typeSymbol.name.encodedName.toString
+                  s"Maybe ${name}" -> s"Maybe ${name}"
+                }
+              } else if (isIterable(tpe)) {
+                val typeArg = tpe.typeArgs.head.typeSymbol
+                val name = typeArg.asClass.name.encodedName.toString
+                s"Array ${name}" -> s"Array ${name}"
               } else {
-                val name = typeArg.typeSymbol.name.encodedName.toString
-                s"Maybe ${name}" -> s"Maybe ${name}"
+                val name = tpe.typeSymbol.name.encodedName.toString
+                name -> s"Maybe ${name}"
               }
-            } else if (isIterable(tpe)) {
-              val typeArg = tpe.typeArgs.head.typeSymbol
-              val name = typeArg.asClass.name.encodedName.toString
-              s"Array ${name}" -> s"Array ${name}"
-            } else {
-              val name = tpe.typeSymbol.name.encodedName.toString
-              name -> s"Maybe ${name}"
             }
-          name1 -> pursType
-        }
-        val typeDef = if (recursive) "newtype" else "type"
-        def constructor(genMaybe: Boolean) = (genMaybe, recursive) match {
-          case (true, true) => s"${name}' "
-          case (false, true) => s"${name} "
-          case (_, false) => ""
-        }
-        val x = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._1}" }.mkString(s"${typeDef} ${name} = ${constructor(false)}{ ", ", ", " }")
-        val x1 = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._2}" }.mkString(s"${typeDef} ${name}' = ${constructor(true)}{ ", ", ", " }")
-        if (genMaybe) Vector(x, x1) else Vector(x)
+            name1 -> pursType
+          }
+          val typeDef = if (recursive) "newtype" else "type"
+          def constructor(genMaybe: Boolean) = (genMaybe, recursive) match {
+            case (true, true) => s"${name}' "
+            case (false, true) => s"${name} "
+            case (_, false) => ""
+          }
+          val x = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._1}" }.mkString(s"${typeDef} ${name} = ${constructor(false)}{ ", ", ", " }")
+          val x1 = fs.map{ case (name1, tpe) => s"${name1} :: ${tpe._2}" }.mkString(s"${typeDef} ${name}' = ${constructor(true)}{ ", ", ", " }")
+          if (genMaybe) Vector(x, x1) else Vector(x)
       }
     }
 
@@ -272,7 +241,46 @@ decodeStringString _xs_ pos0 = do
               |                  decode end acc pos3
               |    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
               |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "${name}"""".stripMargin
-        case SimpleType(tpe, recursive) =>
+        case TupleType(tpe) =>
+          if (tpe =:= typeOf[(String, String)]) {
+            val tt = typeOf[(String, String)].toString
+            val xs = codecs.find(_.aType == tt).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tt}"))
+            s"""decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
+decodeStringString _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
+  case val of
+    { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
+    _ -> Left $$ Decode.MissingFields "StringString"
+    where
+    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              ${xs("_1")} ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { first = Just val }) pos3
+              ${xs("_2")} ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { second = Just val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $$ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }"""
+          } else {
+            throw new Exception(s"decoding of ${tpe} is not implemented")
+          }
+        case RegularType(tpe, recursive) =>
           val fs = fields(tpe)
           val defObj: String = fs.map{
             case (name, tpe, _) =>
@@ -401,7 +409,24 @@ decodeStringString _xs_ pos0 = do
           }
           s"""|encode${name} :: ${name} -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
-        case SimpleType(tpe, recursive) =>
+        case TupleType(tpe) =>
+          if (tpe =:= typeOf[(String, String)]) {
+            val tt = typeOf[(String, String)].toString
+            val xs = codecs.find(_.aType == tt).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tt}"))
+            s"""encodeStringString :: Tuple String String -> Uint8Array
+encodeStringString msg = do
+  let xs = concatAll
+        [ Encode.uint32 ${(xs("_1")<<3)+2}
+        , Encode.string $$ fst msg
+        , Encode.uint32 ${(xs("_2")<<3)+2}
+        , Encode.string $$ snd msg
+        ]
+  let len = length xs
+  concatAll [ Encode.uint32 len, xs ]"""
+          } else {
+            throw new Exception(s"encoding of ${tpe} is not implemented")
+          }
+        case RegularType(tpe, recursive) =>
           val encodeFields = fields(tpe).flatMap{ case (name, tpe, n) =>
             if (tpe =:= StringClass.selfType) {
               List(

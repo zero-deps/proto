@@ -130,6 +130,8 @@ class Impl(val c: Context) extends BuildCodec {
     val res: c.Tree = q"""new ${messageCodecFor(aType)} {      
       ..${prepare(params, aType, aName, sizeAcc, osName)}
       ${read(params, aType, constructorF)}
+      val nums: Map[String, Int] = Map(..${nums.map(i => q"${i}")})
+      val aType: String = ${aType.toString}
     }"""
     res
   }
@@ -198,6 +200,8 @@ class Impl(val c: Context) extends BuildCodec {
         }
       }
       ${read(params, aType)}
+      val nums: Map[String, Int] = Map(..${nums.map(x => x._1.toString -> x._2).map(i => q"${i}")})
+      val aType: String = ${aType.toString}
     }"""
     res
   }

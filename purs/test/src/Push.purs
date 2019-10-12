@@ -12,39 +12,6 @@ import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import Common
 
-decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
-decodeStringString _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
-  case val of
-    { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
-    _ -> Left $ Decode.MissingFields "StringString"
-    where
-    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { first = Just val }) pos3
-              2 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { second = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
-
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | ComponentTemplateOk ComponentTemplateOk
 type SiteOpts = { xs :: Array SiteOpt }
 type SiteOpts' = { xs :: Array SiteOpt }
@@ -326,6 +293,39 @@ decodePageSeo _xs_ pos0 = do
                   Left x -> Left x
                   Right { pos: pos3, val } ->
                     decode end (acc { order = Just val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }
+
+decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
+decodeStringString _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
+  case val of
+    { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
+    _ -> Left $ Decode.MissingFields "StringString"
+    where
+    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { first = Just val }) pos3
+              2 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { second = Just val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x

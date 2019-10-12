@@ -3,10 +3,12 @@ package proto
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{Matchers}
-import zd.proto.api.{N}
+import zd.proto.api.{N, MessageCodec, encode}
+import zd.proto.macrosapi.{caseCodecIdx, caseCodecAuto, sealedTraitCodecAuto}
 
 class PurescriptSpec extends AnyFreeSpec with Matchers {
-  val res2 = Purescript.generate[Push, Pull](moduleEncodeName="Pull", moduleDecodeName="Push", "Common")
+  val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
+  val res2 = Purescript.generate[Push, Pull](moduleEncodeName="Pull", moduleDecodeName="Push", "Common", codecs=tc::Nil)
   "purs has" - {
     "module name" in {
       res2.encode.prelude.startsWith("module Pull")
@@ -45,26 +47,26 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
     }
     "decoders" in {
       val xs = res2.decode.coders
-      xs(0) should be (Snippets.decodePush)
-      xs(2) should be (Snippets.decodeSiteOpt)
-      xs(1) should be (Snippets.decodeSiteOpts)
-      xs(3) should be (Snippets.decodePermissions)
-      xs(5) should be (Snippets.decodePageType)
-      xs(6) should be (Snippets.decodePageWidgets)
-      xs(7) should be (Snippets.decodePageUrl)
-      xs(4) should be (Snippets.decodePage)
-      xs(9) should be (Snippets.decodePageTreeItem)
-      xs(10) should be (Snippets.decodeComponentTemplateOk)
-      xs(11) should be (Snippets.decodeFieldNode)
+      xs.find(_.startsWith("decodePush :: ")) shouldBe Some(Snippets.decodePush)
+      xs.find(_.startsWith("decodeSiteOpt :: ")) shouldBe Some(Snippets.decodeSiteOpt)
+      xs.find(_.startsWith("decodeSiteOpts :: ")) shouldBe Some(Snippets.decodeSiteOpts)
+      xs.find(_.startsWith("decodePermissions :: ")) shouldBe Some(Snippets.decodePermissions)
+      xs.find(_.startsWith("decodePageType :: ")) shouldBe Some(Snippets.decodePageType)
+      xs.find(_.startsWith("decodePageWidgets :: ")) shouldBe Some(Snippets.decodePageWidgets)
+      xs.find(_.startsWith("decodePageUrl :: ")) shouldBe Some(Snippets.decodePageUrl)
+      xs.find(_.startsWith("decodePage :: ")) shouldBe Some(Snippets.decodePage)
+      xs.find(_.startsWith("decodePageTreeItem :: ")) shouldBe Some(Snippets.decodePageTreeItem)
+      xs.find(_.startsWith("decodeComponentTemplateOk :: ")) shouldBe Some(Snippets.decodeComponentTemplateOk)
+      xs.find(_.startsWith("decodeFieldNode :: ")) shouldBe Some(Snippets.decodeFieldNode)
+      xs.find(_.startsWith("decodeStringString :: ")) shouldBe Some(Snippets.decodeStringString)
     }
     "encoders" in {
-      res2.encode.coders.foreach{
-        case e if e.startsWith("encodePull :: ") => e should be (Snippets.encodePull)
-        case e if e.startsWith("encodeGetSites :: ") => e should be (Snippets.encodeGetSites)
-        case e if e.startsWith("encodeUploadChunk :: ") => e should be (Snippets.encodeUploadChunk)
-        case e if e.startsWith("encodeFieldNode :: ") => e should be (Snippets.encodeFieldNode)
-        case _ =>
-      }
+      val xs = res2.encode.coders
+      xs.find(_.startsWith("encodeStringString :: ")) shouldBe Some(Snippets.encodeStringString)
+      xs.find(_.startsWith("encodePull :: ")) shouldBe Some(Snippets.encodePull)
+      xs.find(_.startsWith("encodeGetSites :: ")) shouldBe Some(Snippets.encodeGetSites)
+      xs.find(_.startsWith("encodeUploadChunk :: ")) shouldBe Some(Snippets.encodeUploadChunk)
+      xs.find(_.startsWith("encodeFieldNode :: ")) shouldBe Some(Snippets.encodeFieldNode)
     }
     "print" in {
       // println(Res.format(res2.common))
@@ -75,14 +77,12 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
       Res.writeToFile("purs/test/src/Pull.purs", res2.encode)
     }
     "purs tests" in {
-      val testres = Purescript.generate[TestSchema, TestSchema](moduleEncodeName="SchemaPull", moduleDecodeName="SchemaPush", "SchemaCommon")
+      implicit val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
+      val testres = Purescript.generate[TestSchema, TestSchema](moduleEncodeName="SchemaPull", moduleDecodeName="SchemaPush", "SchemaCommon", codecs=tc::Nil)
       Res.writeToFile("purs/test/test/SchemaCommon.purs", testres.common)
       Res.writeToFile("purs/test/test/SchemaPull.purs", testres.encode)
       Res.writeToFile("purs/test/test/SchemaPush.purs", testres.decode)
 
-      import zd.proto.api.{MessageCodec, encode}
-      import zd.proto.macrosapi.{caseCodecIdx, caseCodecAuto, sealedTraitCodecAuto}
-      implicit val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
       implicit val ac: MessageCodec[ClassWithMap] = caseCodecAuto[ClassWithMap]
       implicit val cwmc: MessageCodec[TestSchema] = sealedTraitCodecAuto[TestSchema]
       val r1 = encode[TestSchema](new ClassWithMap(Map("en_GB"->"Name", "ro_RO"->"Nome")))
@@ -492,4 +492,48 @@ encodeFieldNode (FieldNode msg) = do
         ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]"""
+
+  val encodeStringString = """encodeStringString :: Tuple String String -> Uint8Array
+encodeStringString msg = do
+  let xs = concatAll
+        [ Encode.uint32 10
+        , Encode.string $ fst msg
+        , Encode.uint32 18
+        , Encode.string $ snd msg
+        ]
+  let len = length xs
+  concatAll [ Encode.uint32 len, xs ]"""
+
+  val decodeStringString = """decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
+decodeStringString _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  let end = pos + msglen
+  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
+  case val of
+    { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
+    _ -> Left $ Decode.MissingFields "StringString"
+    where
+    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
+    decode end acc pos1 =
+      if pos1 < end then
+        case Decode.uint32 _xs_ pos1 of
+          Left x -> Left x
+          Right { pos: pos2, val: tag } ->
+            case tag `zshr` 3 of
+              1 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { first = Just val }) pos3
+              2 ->
+                case Decode.string _xs_ pos2 of
+                  Left x -> Left x
+                  Right { pos: pos3, val } ->
+                    decode end (acc { second = Just val }) pos3
+              _ ->
+                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
+                  Left x -> Left x
+                  Right { pos: pos3 } ->
+                    decode end acc pos3
+      else pure { pos: pos1, val: acc }"""
 }
