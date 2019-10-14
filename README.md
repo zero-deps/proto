@@ -2,9 +2,11 @@
 
 Lightweight, high performance, fast serialization library for scala based on Protocol Buffers (protobuf) without proto files.
 
-[![Bintray](https://img.shields.io/bintray/v/zero-deps/maven/proto-macros.svg?label=macros)](https://bintray.com/zero-deps/maven/proto-macros/_latestVersion)
-[![Bintray](https://img.shields.io/bintray/v/zero-deps/maven/proto-runtime.svg?label=runtime)](https://bintray.com/zero-deps/maven/proto-runtime/_latestVersion)
-[![Bintray](https://img.shields.io/bintray/v/zero-deps/maven/proto-purs.svg?label=purs)](https://bintray.com/zero-deps/maven/proto-purs/_latestVersion)
+## Latest Version
+
+[proto-macros](https://bintray.com/zero-deps/maven/proto-macros/_latestVersion)
+[proto-runtime](https://bintray.com/zero-deps/maven/proto-runtime/_latestVersion)
+[proto-purs](https://bintray.com/zero-deps/maven/proto-purs/_latestVersion)
 
 # Motivation
 
