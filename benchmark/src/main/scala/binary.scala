@@ -94,6 +94,24 @@ object States {
     val bytes: Array[Byte] = new Array[Byte](bb.remaining)
     bb.get(bytes)
   }
+
+  @State(Scope.Benchmark)
+  class KryoMacrosState {
+    val value = Array.fill(1000)(1).map(_.toByte)
+    val lastModified: Long = 1552661477L
+    val vc = VectorClock(Vector.fill(2)(Version(node="169.0.0.1:4400", timestamp=2000L)))
+
+    val data = Data(value=value, lastModified=lastModified, vc=vc)
+    import com.evolutiongaming.kryo.Serializer
+    val serializer = Serializer.make[Data]
+    import com.esotericsoftware.kryo.Kryo
+    val kryo = new Kryo
+    kryo.register(classOf[Data])
+    import com.esotericsoftware.kryo.io.Output
+    val output = new Output(1024, -1)
+    kryo.writeObject(output, data)
+    val bytes: Array[Byte] = output.getBuffer
+  }
 }
 
 class Encode {
@@ -135,6 +153,15 @@ class Encode {
     bb.get(bytes)
     bh.consume(bytes)
   }
+
+  @Benchmark
+  def kryo_macros(state: States.KryoMacrosState, bh: Blackhole): Unit = {
+    import com.esotericsoftware.kryo.io.Output
+    val output = new Output(1024, -1)
+    state.kryo.writeObject(output, state.data)
+    val bytes: Array[Byte] = output.getBuffer
+    bh.consume(bytes)
+  }
 }
 
 class Decode {
@@ -173,4 +200,11 @@ class Decode {
     val bb = java.nio.ByteBuffer.wrap(state.bytes)
     bh.consume(Unpickle[Data].fromBytes(bb))
   }
+
+  // @Benchmark
+  // def kryo_macros(state: States.KryoMacrosState, bh: Blackhole): Unit = {
+  //   import com.esotericsoftware.kryo.io.Input
+  //   val input = new Input(state.bytes)
+  //   bh.consume(state.kryo.readObject(input, classOf[Data]))
+  // }
 }

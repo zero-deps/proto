@@ -47,6 +47,8 @@ lazy val benchmark = project.in(file("benchmark")).settings(
   libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "0.55.4" % Compile,
   libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "0.55.4" % Provided,
   libraryDependencies += "io.suzaku" %% "boopickle" % "1.3.1",
+  resolvers += Resolver.bintrayRepo("evolutiongaming", "maven"),
+  libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.3.0",
   PB.targets in Compile := Seq(
     scalapb.gen() -> (sourceManaged in Compile).value
   ),
