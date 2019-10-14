@@ -22,9 +22,9 @@ With easy to migrate possibility.
 
 # Benchmark
 
-JMH framework used for benchmark.
+## Data Access Object (Data)
 
-Encode binary model:
+### Encode
 
 Library                 | Cnt |       Score | Error (±) | Units
 ----------------------- | --- | -----------:| ---------:| -----
@@ -38,7 +38,7 @@ Kryo Macros             | 2/5 |   `499'809` |   `55629` | ops/s
 Scalapb                 | 2/5 | `2'442'147` |  `307072` | ops/s
 _Protobuf Scala Macros_ | 2/5 | `2'188'548` |  `731245` | ops/s
 
-Decode binary model:
+### Decode
 
 Library                 | Cnt |       Score | Error (±) | Units
 ----------------------- | --- | -----------:| ---------:| -----
@@ -52,11 +52,35 @@ Kryo Macros             | 2/5 |      failed |    failed | ops/s
 Scalapb                 | 2/5 | `2'417'988` | `1561369` | ops/s
 _Protobuf Scala Macros_ | 2/5 | `2'399'207` |  `142312` | ops/s
 
-MacBook (Retina, 12-inch, Early 2016) \
+## Data Transfer Object (Msg)
+
+### Encode
+
+Library                 | Cnt |       Score | Error (±) | Units
+----------------------- | --- | -----------:| ---------:| -----
+**JSON**                                                |
+Jsoniter                | 2/5 | `4'064'611` | `2194896` | ops/s
+**Binary**                                              |
+Scalapb                 | 2/5 | `4'719'379` | `1534250` | ops/s
+_Protobuf Scala Macros_ | 2/5 | `3'262'720` |  `945078` | ops/s
+
+### Decode
+
+Library                 | Cnt |       Score | Error (±) | Units
+----------------------- | --- | -----------:| ---------:| -----
+**JSON**                                                |
+Jsoniter                | 2/5 | `2'511'272` |  `579622` | ops/s
+**Binary**                                              |
+Scalapb                 | 2/5 | `3'621'142` |  `750982` | ops/s
+_Protobuf Scala Macros_ | 2/5 | `3'118'082` | `1186979` | ops/s
+
+## Environment
+
 1.1 GHz Dual-Core Intel Core m3 \
 JDK 13, OpenJDK 64-Bit Server VM, 13+33
 
-to run benchmark:
+## Run Benchmark
+
 ```bash
 sbt
 project benchmark

@@ -1,14 +1,15 @@
 package zd
 package proto
+package data
 
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.Scope
 import org.openjdk.jmh.annotations.State
 import org.openjdk.jmh.infra.Blackhole
 
-final case class Version(node: String, timestamp: Long)
-final case class VectorClock(versions: Vector[Version])
 final case class Data(lastModified: Long, vc: VectorClock, value: Array[Byte])
+final case class VectorClock(versions: Vector[Version])
+final case class Version(node: String, timestamp: Long)
 
 object States {
   @State(Scope.Benchmark)
