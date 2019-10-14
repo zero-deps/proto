@@ -46,6 +46,7 @@ lazy val benchmark = project.in(file("benchmark")).settings(
   libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.10.0",
   libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "0.55.4" % Compile,
   libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "0.55.4" % Provided,
+  libraryDependencies += "io.suzaku" %% "boopickle" % "1.3.1",
   PB.targets in Compile := Seq(
     scalapb.gen() -> (sourceManaged in Compile).value
   ),

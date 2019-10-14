@@ -28,9 +28,12 @@ Encode binary model:
 
 Library                 | Cnt |       Score | Error (±) | Units
 ----------------------- | --- | -----------:| ---------:| -----
-Java                    | 2+5 |   `138'784` |   `14398` | ops/s
+**JSON** |
 Jackson                 | 2+5 |   `284'961` |   `17967` | ops/s
 Jsoniter                | 2+5 |   `336'422` |    `9952` | ops/s
+**Binary** |
+Java                    | 2+5 |   `138'784` |   `14398` | ops/s
+Boopickle               | 2+5 |   `814'452` |  `239226` | ops/s
 Scalapb                 | 2+5 | `2'442'147` |  `307072` | ops/s
 _Protobuf Scala Macros_ | 2+5 | `2'188'548` |  `731245` | ops/s
 
@@ -38,9 +41,12 @@ Decode binary model:
 
 Library                 | Cnt |       Score | Error (±) | Units
 ----------------------- | --- | -----------:| ---------:| -----
-Java                    | 2+5 |    `26'035` |    `2259` | ops/s
+**JSON** |
 Jackson                 | 2+5 |   `126'717` |    `1146` | ops/s
 Jsoniter                | 2+5 |   `128'983` |    `8813` | ops/s
+**Binary** |
+Java                    | 2+5 |    `26'035` |    `2259` | ops/s
+Boopickle               | 2+5 | `1'908'439` |   `96786` | ops/s
 Scalapb                 | 2+5 | `2'417'988` | `1561369` | ops/s
 _Protobuf Scala Macros_ | 2+5 | `2'399'207` |  `142312` | ops/s
 
@@ -52,7 +58,7 @@ to run benchmark:
 ```bash
 sbt
 project benchmark
-jmh:run -i 10 -wi 10 -f1 -t1
+jmh:run -i 5 -wi 2 -f1 -t1
 ```
 
 # Install
