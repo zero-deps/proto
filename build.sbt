@@ -33,7 +33,7 @@ lazy val macros = project.in(file("macros")).settings(
 
 lazy val runtime = project.in(file("runtime")).settings(
   name := "proto-runtime",
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.7.1",
+  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.10.0",
 )
 
 lazy val purs = project.in(file("purs")).settings(
@@ -43,7 +43,6 @@ lazy val purs = project.in(file("purs")).settings(
 ).dependsOn(runtime, macros % Test)
 
 lazy val benchmark = project.in(file("benchmark")).settings(
-  libraryDependencies += "org.scodec" %% "scodec-core" % "1.11.4",
   libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.10.0",
   libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "0.55.4" % Compile,
   libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "0.55.4" % Provided,

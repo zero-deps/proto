@@ -26,32 +26,33 @@ JMH framework used for benchmark.
 
 Encode binary model:
 
-Library                 | Mode  | Cnt |           Score |   Error (±) | Units
------------------------ | ----- | --- | ---------------:| -----------:| -----
-Chill                   | thrpt | 10  | `1'430'215.034` | `25633.918` | ops/s
-Jackson                 | thrpt | 10  |   `386'583.021` |  `8171.466` | ops/s
-Java                    | thrpt | 10  |   `309'812.676` |  `3264.095` | ops/s
-Jsoniter                | thrpt | 10  |   `344'249.777` |  `2115.862` | ops/s
-_Protobuf Scala Macros_ | thrpt | 10  | `3'513'769.379` | `87134.627` | ops/s
-Scalapb                 | thrpt | 10  | `3'365'452.452` | `91954.323` | ops/s
-Scodec                  | thrpt | 10  |   `538'439.124` |  `4053.778` | ops/s
+Library                 | Cnt |       Score | Error (±) | Units
+----------------------- | --- | -----------:| ---------:| -----
+Java                    | 2+5 |   `138'784` |   `14398` | ops/s
+Jackson                 | 2+5 |   `284'961` |   `17967` | ops/s
+Jsoniter                | 2+5 |   `336'422` |    `9952` | ops/s
+Scalapb                 | 2+5 | `2'442'147` |  `307072` | ops/s
+_Protobuf Scala Macros_ | 2+5 | `2'188'548` |  `731245` | ops/s
 
 Decode binary model:
 
-Library                 | Mode  | Cnt |           Score |   Error (±) | Units
------------------------ | ----- | --- | ---------------:| -----------:| -----
-Chill                   | thrpt | 10  | `1'811'975.200` | `24817.175` | ops/s
-Jackson                 | thrpt | 10  |   `258'545.215` |  `1915.428` | ops/s
-Java                    | thrpt | 10  |    `60'502.636` |  `2054.997` | ops/s
-Jsoniter                | thrpt | 10  |   `181'508.082` |   `798.176` | ops/s
-_Protobuf Scala Macros_ | thrpt | 10  | `3'344'461.999` | `27551.737` | ops/s
-Scalapb                 | thrpt | 10  | `3'565'243.532` | `39629.749` | ops/s
-Scodec                  | thrpt | 10  |   `538'439.124` |  `4053.778` | ops/s
+Library                 | Cnt |       Score | Error (±) | Units
+----------------------- | --- | -----------:| ---------:| -----
+Java                    | 2+5 |    `26'035` |    `2259` | ops/s
+Jackson                 | 2+5 |   `126'717` |    `1146` | ops/s
+Jsoniter                | 2+5 |   `128'983` |    `8813` | ops/s
+Scalapb                 | 2+5 | `2'417'988` | `1561369` | ops/s
+_Protobuf Scala Macros_ | 2+5 | `2'399'207` |  `142312` | ops/s
+
+MacBook (Retina, 12-inch, Early 2016) \
+1.1 GHz Dual-Core Intel Core m3 \
+JDK 13, OpenJDK 64-Bit Server VM, 13+33
 
 to run benchmark:
-```
-> project benchmark
-> jmh:run -i 10 -wi 10 -f1 -t1
+```bash
+sbt
+project benchmark
+jmh:run -i 10 -wi 10 -f1 -t1
 ```
 
 # Install

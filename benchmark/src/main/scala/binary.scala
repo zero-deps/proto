@@ -6,21 +6,18 @@ import org.openjdk.jmh.annotations.Scope
 import org.openjdk.jmh.annotations.State
 import org.openjdk.jmh.infra.Blackhole
 
-final case class Vc(a: String, b: Long)
-final case class Data(key: Array[Byte], value: Array[Byte], modified: Long, vc: Vector[Vc])
-
-final case class DataScodec(key: Array[Byte], value: Array[Byte], modified: Long, vc: List[(String, Long)])
+final case class Version(node: String, timestamp: Long)
+final case class VectorClock(versions: Vector[Version])
+final case class Data(lastModified: Long, vc: VectorClock, value: Array[Byte])
 
 object States {
-
   @State(Scope.Benchmark)
   class JavaState {
-    val key = (1 to 20).mkString.getBytes("UTF-8")
     val value = Array.fill(1000)(1).map(_.toByte)
-    val modified: Long = 1552661477L
-    val vc = Vector.fill(2)(Vc(a="169.0.0.1:4400", b=2000L))
+    val lastModified: Long = 1552661477L
+    val vc = VectorClock(Vector.fill(2)(Version(node="169.0.0.1:4400", timestamp=2000L)))
     
-    val data = Data(key=key, value=value, modified=modified, vc=vc)
+    val data = Data(value=value, lastModified=lastModified, vc=vc)
     val bytes: Array[Byte] = {
       import java.io._
       val bos = new ByteArrayOutputStream
@@ -32,34 +29,13 @@ object States {
   }
 
   @State(Scope.Benchmark)
-  class ScodecState {
-    val key = (1 to 20).mkString.getBytes("UTF-8")
-    val value = Array.fill(1000)(1).map(_.toByte)
-    val modified: Long = 1552661477L
-    val vc = List.fill(2)("169.0.0.1:4400" -> 2000L)
-
-    val data = DataScodec(key=key, value=value, modified=modified, vc=vc)
-    import scodec.codecs._
-    import scodec.{Attempt, DecodeResult, Codec, SizeBound}
-    import scodec.bits.BitVector
-    val abytes = new Codec[Array[Byte]] {
-      def sizeBound = SizeBound.unknown
-      def encode(a: Array[Byte]) = Attempt.successful(BitVector.view(a))
-      def decode(bytes: BitVector) = Attempt.successful(DecodeResult(bytes.toByteArray, BitVector.empty))
-      override def toString = "byteArray"
-    }
-    val codec = abytes ~ abytes ~ vlong ~ list(utf8 ~ vlong)
-    val bytes: Array[Byte] = codec.encode(data.key ~ data.value ~ data.modified ~ data.vc).toOption.get.toByteArray
-  }
-
-  @State(Scope.Benchmark)
   class JacksonState {
     val key = (1 to 20).mkString.getBytes("UTF-8")
     val value = Array.fill(1000)(1).map(_.toByte)
-    val modified: Long = 1552661477L
-    val vc = Vector.fill(2)(Vc(a="169.0.0.1:4400", b=2000L))
+    val lastModified: Long = 1552661477L
+    val vc = VectorClock(Vector.fill(2)(Version(node="169.0.0.1:4400", timestamp=2000L)))
 
-    val data = Data(key=key, value=value, modified=modified, vc=vc)
+    val data = Data(value=value, lastModified=lastModified, vc=vc)
     import com.fasterxml.jackson.module.scala.DefaultScalaModule
     import com.fasterxml.jackson.databind.ObjectMapper
     val m = new ObjectMapper()
@@ -71,10 +47,10 @@ object States {
   class JsoniterState {
     val key = (1 to 20).mkString.getBytes("UTF-8")
     val value = Array.fill(1000)(1).map(_.toByte)
-    val modified: Long = 1552661477L
-    val vc = Vector.fill(2)(Vc(a="169.0.0.1:4400", b=2000L))
+    val lastModified: Long = 1552661477L
+    val vc = VectorClock(Vector.fill(2)(Version(node="169.0.0.1:4400", timestamp=2000L)))
 
-    val data = Data(key=key, value=value, modified=modified, vc=vc)
+    val data = Data(value=value, lastModified=lastModified, vc=vc)
 
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     import com.github.plokhotnyuk.jsoniter_scala.core._
@@ -87,10 +63,10 @@ object States {
     import com.google.protobuf.ByteString
     val key = ByteString.copyFrom((1 to 20).mkString.getBytes("UTF-8"))
     val value = ByteString.copyFrom(Array.fill(1000)(1).map(_.toByte))
-    val modified: Long = 1552661477L
-    val vc = Vector.fill(2)(binarymodel.Vc(a="169.0.0.1:4400", b=2000L))
+    val lastModified: Long = 1552661477L
+    val vc = binarymodel.VectorClock(Vector.fill(2)(binarymodel.Version(node="169.0.0.1:4400", timestamp=2000L)))
 
-    val data = binarymodel.Data(key=key, value=value, modified=modified, vc=vc)
+    val data = binarymodel.Data(value=value, lastModified=lastModified, vc=Some(vc))
     val bytes: Array[Byte] = data.toByteArray
   }
 
@@ -98,13 +74,14 @@ object States {
   class MacrosState {
     val key = (1 to 20).mkString.getBytes("UTF-8")
     val value = Array.fill(1000)(1).map(_.toByte)
-    val modified: Long = 1552661477L
-    val vc = Vector.fill(2)(Vc(a="169.0.0.1:4400", b=2000L))
+    val lastModified: Long = 1552661477L
+    val vc = VectorClock(Vector.fill(2)(Version(node="169.0.0.1:4400", timestamp=2000L)))
 
-    val data = Data(key=key, value=value, modified=modified, vc=vc)
+    val data = Data(value=value, lastModified=lastModified, vc=vc)
     import zd.proto.api.encode
     import zd.proto.macrosapi.caseCodecIdx
-    implicit val vcCodec = caseCodecIdx[Vc]
+    implicit val vCodec = caseCodecIdx[Version]
+    implicit val vcCodec = caseCodecIdx[VectorClock]
     val codec = caseCodecIdx[Data]
     val bytes: Array[Byte] = encode(data)(codec)
   }
@@ -118,12 +95,6 @@ class Encode {
     out.writeObject(state.data)
     out.close()
     bh.consume(bos.toByteArray)
-  }
-
-  @Benchmark
-  def scodec_(state: States.ScodecState, bh: Blackhole): Unit = {
-    import scodec.codecs._
-    bh.consume(state.codec.encode(state.data.key ~ state.data.value ~ state.data.modified ~ state.data.vc).toOption.get.toByteArray)
   }
 
   @Benchmark
@@ -155,13 +126,6 @@ class Decode {
     val obj = in.readObject
     in.close()
     bh.consume(obj.asInstanceOf[Data])
-  }
-
-  @Benchmark
-  def scodec_(state: States.ScodecState, bh: Blackhole): Unit = {
-    import scodec.bits.BitVector
-    val y = state.codec.decode(BitVector.view(state.bytes)).toOption.get.value
-    bh.consume(DataScodec(y._1._1._1, y._1._1._2, y._1._2, y._2))
   }
 
   @Benchmark
