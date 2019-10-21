@@ -17,7 +17,7 @@ object States {
     val msg = Msg(Stat("cpu", "0.45"), StatMeta("1571067208996", "127.0.0.1:8080"))
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     import com.github.plokhotnyuk.jsoniter_scala.core._
-    val codec: JsonValueCodec[Msg] = JsonCodecMaker.make[Msg](CodecMakerConfig())
+    val codec: JsonValueCodec[Msg] = JsonCodecMaker.make[Msg](CodecMakerConfig)
     val bytes: Array[Byte] = writeToArray(msg)(codec)
   }
 

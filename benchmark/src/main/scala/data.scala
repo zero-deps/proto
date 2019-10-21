@@ -50,10 +50,28 @@ object States {
     val vc = VectorClock(Vector.fill(2)(Version(node="169.0.0.1:4400", timestamp=2000L)))
 
     val data = Data(value=value, lastModified=lastModified, vc=vc)
-
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     import com.github.plokhotnyuk.jsoniter_scala.core._
-    val codec: JsonValueCodec[Data] = JsonCodecMaker.make[Data](CodecMakerConfig())
+    implicit val base64Codec: JsonValueCodec[Array[Byte]] = // more efficient support of Base64 is coming
+      new JsonValueCodec[Array[Byte]] {
+        override def decodeValue(in: JsonReader, default: Array[Byte]): Array[Byte] = {
+          val arr = in.readRawValAsBytes()
+          if (arr(0) != '"' || arr(arr.length - 1) != '"') in.decodeError("Expected string value")
+          java.util.Base64.getDecoder.decode(java.nio.ByteBuffer.wrap(arr, 1, arr.length - 2)).array()
+        }
+
+        override def encodeValue(x: Array[Byte], out: JsonWriter): Unit = {
+          val arr = java.util.Base64.getEncoder.encode(x)
+          val rawVal = new Array[Byte](arr.length + 2)
+          System.arraycopy(arr, 0, rawVal, 1, arr.length)
+          rawVal(0) = '"'
+          rawVal(arr.length + 1 ) = '"'
+          out.writeRawVal(rawVal)
+        }
+
+        override val nullValue: Array[Byte] = new Array[Byte](0)
+      }
+    val codec: JsonValueCodec[Data] = JsonCodecMaker.make[Data](CodecMakerConfig)
     val bytes: Array[Byte] = writeToArray(data)(codec)
   }
 
