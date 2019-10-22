@@ -98,7 +98,8 @@ class Impl(val c: Context) extends BuildCodec {
     val aName = TermName("a")
     val osName = TermName("os")
     val sizeAcc = TermName("sizeAcc")
-    val params: List[FieldInfo] = cParams.map{ p =>
+
+    val params: List[FieldInfo] = cParams.zipWithIndex.map{ case (p, i) =>
       val tpe: c.Type = p.info match {
         case t@NullaryMethodType(_) => t.resultType
         case t => t
@@ -111,6 +112,14 @@ class Impl(val c: Context) extends BuildCodec {
       } else {
         tpe.map(tt => typeArgs.collectFirst{case (fromT, toT) if fromT =:= tt => toT}.getOrElse(tt))
       }
+      val defaultValue = if (p.isParamWithDefault) {
+        if (isOption(tpe)) error(s"`${p.name}: ${tpe}`: default value for Option isn't allowed")
+        else if (isIterable(tpe)) error(s"`${p.name}: ${tpe}`: default value for collections isn't allowed")
+        else {
+          val getDefaultMethod = TermName(s"apply$$default$$${i + 1}")
+          Some(q"${aType.typeSymbol.companion}.${getDefaultMethod}")
+        }
+      } else None
       FieldInfo(
         name=p.name
       , sizeName=TermName(s"${encodedName}Size")
@@ -119,11 +128,12 @@ class Impl(val c: Context) extends BuildCodec {
       , getter=q"${aName}.${p.name}"
       , tpe=withoutTypeArgs
       , num=nums.collectFirst{case (name, num) if name == decodedName => num}.getOrElse(error(s"missing num for `${decodedName}: ${tpe}`"))
+      , defaultValue=defaultValue
       )
     }
     val constructorF = constructor.collect{
       case fun1: Function =>
-        val initArgs = params.map(field => q"${initArg(field.tpe, field.name, field.readName)}")
+        val initArgs = params.map(field => q"${initArg(field)}")
         q"${c.untypecheck(fun1.duplicate)}(..${initArgs})"
       case fun1 => error(s"`${showRaw(fun1)}` is not a function")
     }
@@ -186,6 +196,7 @@ class Impl(val c: Context) extends BuildCodec {
         , getter=q" ${aName}"
         , tpe=tpe
         , num=num
+        , defaultValue=None
         )
       }
     val prepareAll = params.map(field => prepare(List(field), field.tpe, aName, sizeAcc, osName)).flatten

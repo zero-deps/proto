@@ -83,6 +83,16 @@ object models {
   final case class ClassWithArray(@N(1) x: Array[Byte])
   final case class ClassWithArraySeq(@N(1) y: ArraySeq[Byte])
   final case class ClassWithBytes(@N(1) z: Bytes)
+
+  final case class DefaultValuesClass(
+    @N(1) int: Int = 10
+  , @N(2) bool: Boolean = true
+  , @N(3) float: Float
+  , @N(4) str: String = "NonEmptyString"
+  , @N(5) vehicle: Vehicle = Car(id="321")
+  )
+
+  final case class DefaultValuesClass1(@N(3) float: Float)
 }
 
 class testing extends AnyFreeSpec {
@@ -403,6 +413,58 @@ class testing extends AnyFreeSpec {
       val decoded: SimpleClass[Vehicle] = decode[SimpleClass[Vehicle]](encode(data))
       assert(data.id === decoded.id)
       val _ = assert(data.id2 === decoded.id2)
+    }
+  }
+
+  object defaultValues {
+    object autocodec {
+      import messages.autocodec.vehicleCodec
+      implicit val DefaultValuesClassCodec = caseCodecAuto[DefaultValuesClass]
+      implicit val DefaultValuesClass1Codec = caseCodecAuto[DefaultValuesClass1]
+    }
+    object numscodec {
+      import messages.numscodec.vehicleCodec
+      implicit val DefaultValuesClassCodec = caseCodecNums[DefaultValuesClass]("int"->2,"bool"->3,"float"->4,"str"->5,"vehicle"->6)
+    }
+    object idxcodec {
+      import messages.idxcodec.vehicleCodec
+      implicit val DefaultValuesClassCodec = caseCodecIdx[DefaultValuesClass]
+    }
+  }
+
+  "default values" - {
+    "encode <-> decode" - {
+      def testAllParamsPassed(implicit codec: MessageCodec[DefaultValuesClass]): Unit = {
+        val data = DefaultValuesClass(
+            int=23
+          , bool=false
+          , float=33
+          , str="hello"
+          , vehicle=Bus("33")
+        )
+        val decoded = decode[DefaultValuesClass](encode(data))
+        val _ = assert(decoded === data)
+      }
+       def testNoneParamsPassed(implicit codec: MessageCodec[DefaultValuesClass]): Unit = {
+        val data = DefaultValuesClass(
+            float=33
+        )
+        val decoded = decode[DefaultValuesClass](encode(data))
+        val _ = assert(decoded === data)
+      }
+      "auto codec (all params passed)" in { import defaultValues.autocodec._; testAllParamsPassed }
+      "auto codec (none params passed)" in { import defaultValues.autocodec._; testNoneParamsPassed }
+      "numscodec (all params passed)" in { import defaultValues.numscodec._; testAllParamsPassed }
+      "numscodec (none params passed)" in { import defaultValues.numscodec._; testNoneParamsPassed }
+      "idxcodec (all params passed)" in { import defaultValues.idxcodec._; testAllParamsPassed }
+      "idxcodec (none params passed)" in { import defaultValues.idxcodec._; testNoneParamsPassed }
+    }
+    "new fields with default values" in {
+      import defaultValues.autocodec._
+      val data = DefaultValuesClass1(float=123)
+      val expected = DefaultValuesClass(float=123)
+      val decoded: DefaultValuesClass = decode[DefaultValuesClass](encode[DefaultValuesClass1](data))
+      val _ = assert(decoded === expected)
     }
   }
 }

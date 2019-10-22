@@ -13,7 +13,7 @@ trait Common {
   def error[A](msg: String): A = c.abort(c.enclosingPosition, msg)
   def evalTyped[A](expr: c.Expr[A]) = c.eval(c.Expr[A](c.untypecheck(expr.tree.duplicate)))
   
-  private[proto] case class FieldInfo(name: TermName, sizeName: TermName, prepareName: TermName, readName: TermName, getter: c.Tree, tpe: c.Type, num: Int)  
+  private[proto] case class FieldInfo(name: TermName, sizeName: TermName, prepareName: TermName, readName: TermName, getter: c.Tree, tpe: c.Type, num: Int, defaultValue: Option[c.Tree])  
 
   val PrepareType: c.Type = typeOf[Prepare]
   val CodedOutputStreamType: c.Type = typeOf[CodedOutputStream]
@@ -24,6 +24,7 @@ trait Common {
   val NType: c.Type = c.typeOf[N]
   val ItetableType: c.Type = typeOf[scala.collection.Iterable[Unit]]
   
+  def isOption(t: c.Type): Boolean = t.typeConstructor =:= OptionClass.selfType.typeConstructor
   def isIterable(t: c.Type): Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ItetableType.typeConstructor) && !(t =:= ArraySeqByteType)
   def isTrait(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
   def isCaseClass(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass

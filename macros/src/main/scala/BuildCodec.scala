@@ -15,7 +15,7 @@ trait BuildCodec extends Common {
     ))
 
   def sizeOption(field: FieldInfo, sizeAcc: TermName): Option[List[c.Tree]] =
-    if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+    if (isOption(field.tpe)) {
       val tpe1 = field.tpe.typeArgs(0)
       val field1 = field.copy(getter=q"${field.getter}.get", tpe=tpe1, num=field.num) 
       common.sizeFun(field1).map(v => List(
@@ -96,7 +96,7 @@ trait BuildCodec extends Common {
     ))
 
   def writeOption(field: FieldInfo, os: TermName): Option[List[c.Tree]] =
-    if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+    if (isOption(field.tpe)) {
       val tpe1 = field.tpe.typeArgs(0)
       val field1 = field.copy(getter=q"${field.getter}.get", tpe=tpe1, num=field.num) 
       common.writeFun(field1, os).map(v => List(
@@ -187,14 +187,15 @@ trait BuildCodec extends Common {
     )
   }
 
-  def initArg(fieldTpe: c.Type, fieldName: TermName, fieldReadName: TermName): c.Tree =
-    if (fieldTpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
-      q"${fieldReadName}"
-    } else if (isIterable(fieldTpe)) {
-      q"${fieldReadName}.result"
+  def initArg(field: FieldInfo): c.Tree =
+    if (isOption(field.tpe)) {
+      q"${field.readName}"
+    } else if (isIterable(field.tpe)) {
+      q"${field.readName}.result"
     } else {
-      val err: String = s"missing required field `${fieldName}: ${fieldTpe}`"
-      q"${fieldReadName}.getOrElse(throw new RuntimeException(${err}))"
+      val err: String = s"missing required field `${field.name}: ${field.tpe}`"
+      val orElse = field.defaultValue.getOrElse(q"throw new RuntimeException(${err})")
+      q"${field.readName}.getOrElse($orElse)"
     }
 
   def read(params: List[FieldInfo], t: c.Type, buildResult: Option[c.Tree]=None): c.Tree = {
@@ -203,7 +204,7 @@ trait BuildCodec extends Common {
         List(q"var readRes: ${OptionClass}[${t}] = ${NoneModule}")
       } else {
         params.map(field =>
-          if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+          if (isOption(field.tpe)) {
             q"var ${field.readName}: ${field.tpe} = ${NoneModule}"
           } else if (isIterable(field.tpe)) {
             val tpe1 = field.tpe.baseType(ItetableType.typeSymbol).typeArgs(0)
@@ -224,7 +225,7 @@ trait BuildCodec extends Common {
           } else if (t.typeSymbol.companion == NoSymbol) {
             q"${t.typeSymbol.owner.asClass.selfType.member(TermName(t.typeSymbol.name.encodedName.toString))}"
           } else {
-            val args = params.map(field => q"${field.name} = ${initArg(field.tpe, field.name, field.readName)}")
+            val args = params.map(field => q"${field.name} = ${initArg(field)}")
             q"${t.typeSymbol.companion}.apply(..${args})"  
           }
       }
@@ -244,7 +245,7 @@ trait BuildCodec extends Common {
           q"${field.readName} = Some(${readFun})"
         )).getOrElse{
           val value = TermName("value")
-          if (field.tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+          if (isOption(field.tpe)) {
             val tpe1 = field.tpe.typeArgs(0)
             val field1 = field.copy(getter=q"${value}", tpe=tpe1, num=field.num)
             common.readFun(field1, is).map(readFun => List(
