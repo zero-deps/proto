@@ -52,7 +52,7 @@ Java                    | 2/5 |    `39'634` |    `3758` | ops/s
 Boopickle               | 2/5 | `2'801'239` |  `125618` | ops/s
 Kryo Macros             | 2/5 |      failed |    failed | ops/s
 Scalapb                 | 2/5 | `4'034'554` |  `113449` | ops/s
-_Protobuf Scala Macros_ | 2/5 | `3'816'776` | `429'360` | ops/s
+_Protobuf Scala Macros_ | 2/5 | `3'816'776` |  `429360` | ops/s
 
 ## Data Transfer Object (Msg)
 
@@ -78,7 +78,7 @@ _Protobuf Scala Macros_ | 2/5 | `6'190'147` |   `97743` | ops/s
 
 ## Environment
 
-2.8 GHz Quad-Core Intel Core i7\\
+2.8 GHz Quad-Core Intel Core i7 \
 JDK 13, OpenJDK 64-Bit Server VM, 13+33
 
 ## Run Benchmark
