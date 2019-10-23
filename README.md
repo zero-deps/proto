@@ -31,28 +31,28 @@ With easy to migrate possibility.
 Library                 | Cnt |       Score | Error (±) | Units
 ----------------------- | --- | -----------:| ---------:| -----
 **JSON**                                                |
-Jackson                 | 2/5 |   `284'961` |   `17967` | ops/s
-Jsoniter                | 2/5 |   `336'422` |    `9952` | ops/s
+Jackson                 | 2/5 |   `501'953` |    `8368` | ops/s
+Jsoniter                | 2/5 |   `621'852` |   `23367` | ops/s
 **Binary**                                              |
-Java                    | 2/5 |   `138'784` |   `14398` | ops/s
-Boopickle               | 2/5 |   `814'452` |  `239226` | ops/s
-Kryo Macros             | 2/5 |   `499'809` |   `55629` | ops/s
-Scalapb                 | 2/5 | `2'442'147` |  `307072` | ops/s
-_Protobuf Scala Macros_ | 2/5 | `2'188'548` |  `731245` | ops/s
+Java                    | 2/5 |   `250'822` |    `6650` | ops/s
+Boopickle               | 2/5 | `1'292'133` |   `60921` | ops/s
+Kryo Macros             | 2/5 |   `823'570` |   `26575` | ops/s
+Scalapb                 | 2/5 | `3'696'083` |  `124840` | ops/s
+_Protobuf Scala Macros_ | 2/5 | `3'393'026` |  `234068` | ops/s
 
 ### Decode
 
 Library                 | Cnt |       Score | Error (±) | Units
 ----------------------- | --- | -----------:| ---------:| -----
 **JSON**                                                |
-Jackson                 | 2/5 |   `126'717` |    `1146` | ops/s
-Jsoniter                | 2/5 |   `128'983` |    `8813` | ops/s
+Jackson                 | 2/5 |   `201'021` |    `3191` | ops/s
+Jsoniter                | 2/5 |   `428'333` |   `74834` | ops/s
 **Binary**                                              |
-Java                    | 2/5 |    `26'035` |    `2259` | ops/s
-Boopickle               | 2/5 | `1'908'439` |   `96786` | ops/s
+Java                    | 2/5 |    `39'634` |    `3758` | ops/s
+Boopickle               | 2/5 | `2'801'239` |  `125618` | ops/s
 Kryo Macros             | 2/5 |      failed |    failed | ops/s
-Scalapb                 | 2/5 | `2'417'988` | `1561369` | ops/s
-_Protobuf Scala Macros_ | 2/5 | `2'399'207` |  `142312` | ops/s
+Scalapb                 | 2/5 | `4'034'554` |  `113449` | ops/s
+_Protobuf Scala Macros_ | 2/5 | `3'816'776` | `429'360` | ops/s
 
 ## Data Transfer Object (Msg)
 
@@ -61,24 +61,24 @@ _Protobuf Scala Macros_ | 2/5 | `2'399'207` |  `142312` | ops/s
 Library                 | Cnt |       Score | Error (±) | Units
 ----------------------- | --- | -----------:| ---------:| -----
 **JSON**                                                |
-Jsoniter                | 2/5 | `4'064'611` | `2194896` | ops/s
+Jsoniter                | 2/5 | `8'341'638` |  `172897` | ops/s
 **Binary**                                              |
-Scalapb                 | 2/5 | `4'719'379` | `1534250` | ops/s
-_Protobuf Scala Macros_ | 2/5 | `3'262'720` |  `945078` | ops/s
+Scalapb                 | 2/5 | `6'822'814` |  `213144` | ops/s
+_Protobuf Scala Macros_ | 2/5 | `7'688'959` |   `80381` | ops/s
 
 ### Decode
 
 Library                 | Cnt |       Score | Error (±) | Units
 ----------------------- | --- | -----------:| ---------:| -----
 **JSON**                                                |
-Jsoniter                | 2/5 | `2'511'272` |  `579622` | ops/s
+Jsoniter                | 2/5 | `4'246'303` |  `195804` | ops/s
 **Binary**                                              |
-Scalapb                 | 2/5 | `3'621'142` |  `750982` | ops/s
-_Protobuf Scala Macros_ | 2/5 | `3'118'082` | `1186979` | ops/s
+Scalapb                 | 2/5 | `6'556'764` |  `891429` | ops/s
+_Protobuf Scala Macros_ | 2/5 | `6'190'147` |   `97743` | ops/s
 
 ## Environment
 
-1.1 GHz Dual-Core Intel Core m3 \
+2.8 GHz Quad-Core Intel Core i7\\
 JDK 13, OpenJDK 64-Bit Server VM, 13+33
 
 ## Run Benchmark
