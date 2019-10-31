@@ -44,8 +44,8 @@ lazy val purs = project.in(file("purs")).settings(
 
 lazy val benchmark = project.in(file("benchmark")).settings(
   libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.10.0",
-  libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "1.0.0" % Compile,
-  libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "1.0.0" % Provided,
+  libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.0.1",
+  libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.0.1" % Provided,
   libraryDependencies += "io.suzaku" %% "boopickle" % "1.3.1",
   resolvers += Resolver.bintrayRepo("evolutiongaming", "maven"),
   libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.3.0",
