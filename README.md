@@ -94,7 +94,7 @@ jmh:run -i 5 -wi 2 -f1 -t1
 Add dependency:
 ```
 resolvers += Resolver.jcenterRepo
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "latest.integration" % Compile
+libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "latest.integration" % Provided
 libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % "latest.integration"
 ```
 
