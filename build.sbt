@@ -22,7 +22,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 lazy val root = project.in(file(".")).settings(
   name := "proto",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-SNAP13" % Test,
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-RC3" % Test,
   skip in publish := true,
 ).dependsOn(macros).aggregate(macros, runtime, purs, benchmark)
 
@@ -38,7 +38,7 @@ lazy val runtime = project.in(file("runtime")).settings(
 
 lazy val purs = project.in(file("purs")).settings(
   name := "proto-purs",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-SNAP13" % Test,
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-RC3" % Test,
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
 ).dependsOn(runtime, macros % Test)
 

@@ -45,21 +45,24 @@ class Impl(val c: Context) extends BuildCodec {
         case _ => error(s"multiple ${NType} annotations applied for `${p.name}: ${p.info}`")
       }
     )
-    messageCodec(aType=aType, nums=nums, cParams=constructorParams(aType))
+    messageCodec(aType=aType, nums=nums, cParams=constructorParams(aType), restrictDefaults=true)
   }
+
   def caseCodecNoArgs[A:c.WeakTypeTag](): c.Tree = {
     val aType: c.Type = getCaseClassType[A]
-    messageCodec(aType=aType, nums=Seq.empty, cParams=constructorParams(aType))
+    messageCodec(aType=aType, nums=Seq.empty, cParams=constructorParams(aType), restrictDefaults=false)
   }
+
   def caseCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*): c.Tree = {
     val aType: c.Type = getCaseClassType[A]
-    messageCodec(aType=aType, nums=nums.map(evalTyped), cParams=constructorParams(aType))
+    messageCodec(aType=aType, nums=nums.map(evalTyped), cParams=constructorParams(aType), restrictDefaults=false)
   }
+
   def caseCodecIdx[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getCaseClassType[A]
     val cParams: List[TermSymbol] = constructorParams(aType)
     val nums = cParams.zipWithIndex.map{case (p, idx) => (p.name.decodedName.toString, idx + 1)}
-    messageCodec(aType=aType, nums=nums, cParams=cParams)
+    messageCodec(aType=aType, nums=nums, cParams=cParams, restrictDefaults=false)
   }
 
   def classCodecAuto[A:c.WeakTypeTag]: c.Tree = {
@@ -75,23 +78,24 @@ class Impl(val c: Context) extends BuildCodec {
         case _ => error(s"multiple ${NType} annotations applied for `${p.name}: ${p.info}`")
       }
     )
-    messageCodec(aType=aType, nums=nums, cParams=constructorParams(aType))
+    val res = messageCodec(aType=aType, nums=nums, cParams=constructorParams(aType), restrictDefaults=true)
+    res
   }
-  def classCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*)(constructor: Impl.this.c.Expr[Any]): c.Tree =
-    classCodec(aType=c.weakTypeOf[A], nums=nums.map(evalTyped), constructor=constructor.tree)
 
-  def classCodec(aType: c.Type, nums: Seq[(String, Int)], constructor: c.Tree): c.Tree = {
-    val cParams: List[TermSymbol] = nums.map{ case (name, num) =>
+  def classCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*)(constructor: Impl.this.c.Expr[Any]): c.Tree = {
+    val aType = c.weakTypeOf[A]
+    val nums1 = nums.map(evalTyped)
+    val cParams: List[TermSymbol] = nums1.map{ case (name, num) =>
       val member = aType.member(TermName(name))
       if (member == NoSymbol) error(s"`${aType}` has no field `${name}`")
       if (!member.isTerm) error(s"`${aType}` field `${name}` is not a term")
       member.asTerm
     }.toList
-    val res = messageCodec(aType=aType, nums=nums, cParams=cParams, constructor=Some(constructor))
+    val res = messageCodec(aType=aType, nums=nums1, cParams=cParams, restrictDefaults=false, constructor=Some(constructor.tree))
     res
   }
 
-  def messageCodec(aType: c.Type, nums: Seq[(String, Int)], cParams: List[TermSymbol], constructor: Option[c.Tree]=None): c.Tree = {
+  def messageCodec(aType: c.Type, nums: Seq[(String, Int)], cParams: List[TermSymbol], restrictDefaults: Boolean, constructor: Option[c.Tree]=None): c.Tree = {
     if (nums.exists(_._2 < 1)) error(s"nums ${nums} should be > 0")
     if (nums.size != cParams.size) error(s"nums size ${nums} not equal to `${aType}` constructor params size ${cParams.size}")
     if (nums.groupBy(_._2).exists(_._2.size != 1)) error(s"nums ${nums} should be unique")
@@ -113,8 +117,8 @@ class Impl(val c: Context) extends BuildCodec {
         tpe.map(tt => typeArgs.collectFirst{case (fromT, toT) if fromT =:= tt => toT}.getOrElse(tt))
       }
       val defaultValue = if (p.isParamWithDefault) {
-        if (isOption(tpe)) error(s"`${p.name}: ${tpe}`: default value for Option isn't allowed")
-        else if (isIterable(tpe)) error(s"`${p.name}: ${tpe}`: default value for collections isn't allowed")
+        if (isOption(tpe) && restrictDefaults) error(s"`${p.name}: ${tpe}`: default value for Option isn't allowed")
+        else if (isIterable(tpe) && restrictDefaults) error(s"`${p.name}: ${tpe}`: default value for collections isn't allowed")
         else {
           val getDefaultMethod = TermName(s"apply$$default$$${i + 1}")
           Some(q"${aType.typeSymbol.companion}.${getDefaultMethod}")
