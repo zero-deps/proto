@@ -2,7 +2,7 @@ package zd
 package proto
 
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.{Matchers}
+import org.scalatest.matchers.should.Matchers
 import zd.proto.api.{N}
 
 class PurescriptSpec extends AnyFreeSpec with Matchers {
