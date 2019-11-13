@@ -28,4 +28,5 @@ object api {
   }
 
   final case class N(n: Int) extends scala.annotation.StaticAnnotation
+  final case class RestrictedN(nums: Int*) extends scala.annotation.StaticAnnotation
 }

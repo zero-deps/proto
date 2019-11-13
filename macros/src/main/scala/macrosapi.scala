@@ -32,6 +32,25 @@ class Impl(val c: Context) extends BuildCodec {
     if (isCaseClass(tpe)) tpe else error(s"`${tpe}` is not a final case class")
   }
 
+  private def getRestrictedNums(tpe: c.Type): List[Int] = {
+    val term = tpe.typeSymbol
+    term.annotations.filter(_.tree.tpe =:= RestrictedNType) match {
+        case List(a) =>
+          a.tree.children.tail match {
+            case Nil => error(s"empty annotation=${a} for `${term.name}: ${term.info}`")
+            case xs =>
+              val nums = xs.collect{
+                case Literal(Constant(n: Int)) => n
+                case x => error(s"wrong annotation=${a} for `${term.name}: ${term.info}`")
+              }
+              if (nums.size != nums.distinct.size) error(s"nums not unique in annotation=${a} for `${term.name}: ${term.info}`")
+              nums
+          }
+        case Nil => Nil
+        case _ => error(s"multiple ${RestrictedNType} annotations applied for `${term.name}: ${term.info}`")
+      }
+  }
+
   def caseCodecAuto[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getCaseClassType[A]
     val nums: List[(String, Int)] = constructorParams(aType).map(p =>
@@ -99,6 +118,7 @@ class Impl(val c: Context) extends BuildCodec {
     if (nums.exists(_._2 < 1)) error(s"nums ${nums} should be > 0")
     if (nums.size != cParams.size) error(s"nums size ${nums} not equal to `${aType}` constructor params size ${cParams.size}")
     if (nums.groupBy(_._2).exists(_._2.size != 1)) error(s"nums ${nums} should be unique")
+    val restrictedNums = getRestrictedNums(aType)
     val aName = TermName("a")
     val osName = TermName("os")
     val sizeAcc = TermName("sizeAcc")
@@ -131,7 +151,7 @@ class Impl(val c: Context) extends BuildCodec {
       , readName=TermName(s"${encodedName}Read")
       , getter=q"${aName}.${p.name}"
       , tpe=withoutTypeArgs
-      , num=nums.collectFirst{case (name, num) if name == decodedName => num}.getOrElse(error(s"missing num for `${decodedName}: ${tpe}`"))
+      , num=nums.collectFirst{case (name, num) if name == decodedName => if (restrictedNums.contains(num)) error(s"num ${num} for `${decodedName}: ${tpe}` is restricted") else num}.getOrElse(error(s"missing num for `${decodedName}: ${tpe}`"))
       , defaultValue=defaultValue
       )
     }
@@ -181,6 +201,7 @@ class Impl(val c: Context) extends BuildCodec {
 
   def sealedTraitCodec[A:c.WeakTypeTag](nums: Seq[(c.Type, Int)]): c.Tree = {
     val aType: c.Type = getSealedTrait[A]
+    val restrictedNums = getRestrictedNums(aType)
     val subclasses = knownDirectSubclasses(aType)
     if (subclasses.size <= 0) error(s"required at least 1 subclass for `${aType}`")
     if (nums.size != subclasses.size) error(s"`${aType}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
@@ -192,6 +213,7 @@ class Impl(val c: Context) extends BuildCodec {
     val params: List[FieldInfo] = subclasses
       .map{tpe => 
         val num: Int = nums.collectFirst{case (tpe1, num) if tpe1 =:= tpe => num}.getOrElse(error(s"missing num for class `${tpe}` of trait `${aType}`"))
+        if (restrictedNums.contains(num)) error(s"num ${num} is restricted for class `${tpe}` of trait `${aType}`")
         FieldInfo(
           name=TermName(s"field${num}")
         , sizeName=TermName(s"field${num}Size")

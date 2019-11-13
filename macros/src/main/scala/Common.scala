@@ -2,7 +2,7 @@ package zd
 package proto
 
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
-import proto.api.{MessageCodec, Prepare, N}
+import proto.api.{MessageCodec, Prepare, N, RestrictedN}
 import scala.reflect.macros.blackbox.Context
 
 trait Common {
@@ -22,6 +22,7 @@ trait Common {
   val ArraySeqByteType: c.Type = typeOf[scala.collection.immutable.ArraySeq[Byte]]
   val BytesType: c.Type = typeOf[zd.proto.Bytes]
   val NType: c.Type = c.typeOf[N]
+  val RestrictedNType: c.Type = c.typeOf[RestrictedN]
   val ItetableType: c.Type = typeOf[scala.collection.Iterable[Unit]]
   
   def isOption(t: c.Type): Boolean = t.typeConstructor =:= OptionClass.selfType.typeConstructor

@@ -105,12 +105,15 @@ You can pick one of the way how to define field number:
 - explicitly specify nums `caseCodecNums('field1->1, 'field2->2)`
 - field numbers by index `caseCodecIdx`
 
+You can use annotation `@zd.proto.api.RestrictedN` to restrict usage of specified field numbers. Can be used with classes or traits.
+
 ```scala
 import scala.collection.immutable.TreeMap
 import zd.proto.api.{encode, decode, N}
 import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto}
 
 final case class VectorClock(versions: TreeMap[String, Long])
+@RestrictedN(3,4)
 final case class Equipment(@N(1) id: String, @N(2) tpe: String)
 final case class Car(id: String, color: Int, equipment: List[Equipment], vc: VectorClock)
 
