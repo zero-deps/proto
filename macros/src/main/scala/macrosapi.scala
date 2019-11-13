@@ -13,7 +13,6 @@ import scala.reflect.macros.blackbox.Context
 object macrosapi {
 
   def caseCodecAuto[A]: MessageCodec[A] = macro Impl.caseCodecAuto[A]
-  def caseCodecNums[A](): MessageCodec[A] = macro Impl.caseCodecNoArgs[A]
   def caseCodecNums[A](nums: (String, Int)*): MessageCodec[A] = macro Impl.caseCodecString[A]
   def caseCodecIdx[A]: MessageCodec[A] = macro Impl.caseCodecIdx[A]
 
@@ -65,11 +64,6 @@ class Impl(val c: Context) extends BuildCodec {
       }
     )
     messageCodec(aType=aType, nums=nums, cParams=constructorParams(aType), restrictDefaults=true)
-  }
-
-  def caseCodecNoArgs[A:c.WeakTypeTag](): c.Tree = {
-    val aType: c.Type = getCaseClassType[A]
-    messageCodec(aType=aType, nums=Seq.empty, cParams=constructorParams(aType), restrictDefaults=false)
   }
 
   def caseCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*): c.Tree = {
