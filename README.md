@@ -23,8 +23,8 @@ With easy to migrate possibility.
 
 # Benchmark
 
-msg  |        | library                | score
----- | ------ | ---------------------- | -------------:
+data |        | library                | score
+---- | ------ |:---------------------- | -------------:
 data | decode | java_                  | `   19073.590`
 data | decode | jackson                | `  104793.164`
 data | decode | jsoniter_scala         | `  250291.760`
@@ -32,8 +32,8 @@ data | decode | boopickle_             | ` 1511503.588`
 data | decode | protobuf_scala_macros  | ` 1841584.774`
 data | decode | scalapb                | ` 2191344.254`
 
-msg  |        | library                | score
----- | ------ | ---------------------- | -------------:
+data |        | library                | score
+---- | ------ |:---------------------- | -------------:
 data | encode | java_                  | `  115404.671`
 data | encode | jackson                | `  239388.147`
 data | encode | kryo_macros            | `  398249.642`
@@ -42,14 +42,14 @@ data | encode | boopickle_             | `  672294.937`
 data | encode | protobuf_scala_macros  | ` 1760090.157`
 data | encode | scalapb                | ` 2022918.710`
 
-msg  |        | library                | score
----- | ------ | ---------------------- | -------------:
+data |        | library                | score
+---- | ------ |:---------------------- | -------------:
 msg  | decode | jsoniter_scala         | ` 2442577.755`
 msg  | decode | protobuf_scala_macros  | ` 2786830.341`
 msg  | decode | scalapb                | ` 2914400.904`
 
-msg  |        | library                | score
----- | ------ | ---------------------- | -------------:s
+data |        | library                | score
+---- | ------ |:---------------------- | -------------:
 msg  | encode | jsoniter_scala         | ` 3601656.904`
 msg  | encode | protobuf_scala_macros  | ` 3736006.117`
 msg  | encode | scalapb                | ` 4464953.270`
