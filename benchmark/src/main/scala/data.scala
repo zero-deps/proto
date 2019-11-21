@@ -52,25 +52,13 @@ object States {
     val data = Data(value=value, lastModified=lastModified, vc=vc)
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     import com.github.plokhotnyuk.jsoniter_scala.core._
-    implicit val base64Codec: JsonValueCodec[Array[Byte]] = // more efficient support of Base64 is coming
-      new JsonValueCodec[Array[Byte]] {
-        override def decodeValue(in: JsonReader, default: Array[Byte]): Array[Byte] = {
-          val arr = in.readRawValAsBytes()
-          if (arr(0) != '"' || arr(arr.length - 1) != '"') in.decodeError("Expected string value")
-          java.util.Base64.getDecoder.decode(java.nio.ByteBuffer.wrap(arr, 1, arr.length - 2)).array()
-        }
+    implicit val base16Codec: JsonValueCodec[Array[Byte]] = new JsonValueCodec[Array[Byte]] {
+      override def decodeValue(in: JsonReader, default: Array[Byte]): Array[Byte] = in.readBase16AsBytes(default)
 
-        override def encodeValue(x: Array[Byte], out: JsonWriter): Unit = {
-          val arr = java.util.Base64.getEncoder.encode(x)
-          val rawVal = new Array[Byte](arr.length + 2)
-          System.arraycopy(arr, 0, rawVal, 1, arr.length)
-          rawVal(0) = '"'
-          rawVal(arr.length + 1 ) = '"'
-          out.writeRawVal(rawVal)
-        }
+      override def encodeValue(x: Array[Byte], out: JsonWriter): Unit = out.writeBase16Val(x, lowerCase = true)
 
-        override val nullValue: Array[Byte] = new Array[Byte](0)
-      }
+      override val nullValue: Array[Byte] = new Array[Byte](0)
+    }
     val codec: JsonValueCodec[Data] = JsonCodecMaker.make[Data](CodecMakerConfig)
     val bytes: Array[Byte] = writeToArray(data)(codec)
   }
