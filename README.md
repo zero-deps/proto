@@ -23,36 +23,36 @@ With easy to migrate possibility.
 
 # Benchmark
 
- msg |        | library                |     | Score
----- | ------ | ---------------------- | --- | -------------:
-data | Decode | java_                  | 1/2 | `   19073.590`
-data | Decode | jackson                | 1/2 | `  104793.164`
-data | Decode | jsoniter_scala         | 1/2 | `  250291.760`
-data | Decode | boopickle_             | 1/2 | ` 1511503.588`
-data | Decode | protobuf_scala_macros  | 1/2 | ` 1841584.774`
-data | Decode | scalapb                | 1/2 | ` 2191344.254`
+msg  |        | library                | score
+---- | ------ | ---------------------- | -------------:
+data | decode | java_                  | `   19073.590`
+data | decode | jackson                | `  104793.164`
+data | decode | jsoniter_scala         | `  250291.760`
+data | decode | boopickle_             | ` 1511503.588`
+data | decode | protobuf_scala_macros  | ` 1841584.774`
+data | decode | scalapb                | ` 2191344.254`
 
- msg |        | library                |     | Score
----- | ------ | ----------------------:| ---:| -------------
-data | Encode | java_                  | 1/2 | `  115404.671`
-data | Encode | jackson                | 1/2 | `  239388.147`
-data | Encode | kryo_macros            | 1/2 | `  398249.642`
-data | Encode | jsoniter_scala         | 1/2 | `  564752.678`
-data | Encode | boopickle_             | 1/2 | `  672294.937`
-data | Encode | protobuf_scala_macros  | 1/2 | ` 1760090.157`
-data | Encode | scalapb                | 1/2 | ` 2022918.710`
+msg  |        | library                | score
+---- | ------ | ---------------------- | -------------:
+data | encode | java_                  | `  115404.671`
+data | encode | jackson                | `  239388.147`
+data | encode | kryo_macros            | `  398249.642`
+data | encode | jsoniter_scala         | `  564752.678`
+data | encode | boopickle_             | `  672294.937`
+data | encode | protobuf_scala_macros  | ` 1760090.157`
+data | encode | scalapb                | ` 2022918.710`
 
- msg |        | library                |     | Score
----- | ------ | ----------------------:| ---:| -------------
-msg  | Decode | jsoniter_scala         | 1/2 | ` 2442577.755`
-msg  | Decode | protobuf_scala_macros  | 1/2 | ` 2786830.341`
-msg  | Decode | scalapb                | 1/2 | ` 2914400.904`
+msg  |        | library                | score
+---- | ------ | ---------------------- | -------------:
+msg  | decode | jsoniter_scala         | ` 2442577.755`
+msg  | decode | protobuf_scala_macros  | ` 2786830.341`
+msg  | decode | scalapb                | ` 2914400.904`
 
- msg |        | library                |     | Score
----- | ------ | ----------------------:| ---:| -------------
-msg  | Encode | jsoniter_scala         | 1/2 | ` 3601656.904`
-msg  | Encode | protobuf_scala_macros  | 1/2 | ` 3736006.117`
-msg  | Encode | scalapb                | 1/2 | ` 4464953.270`
+msg  |        | library                | score
+---- | ------ | ---------------------- | -------------:s
+msg  | encode | jsoniter_scala         | ` 3601656.904`
+msg  | encode | protobuf_scala_macros  | ` 3736006.117`
+msg  | encode | scalapb                | ` 4464953.270`
 
 ## Environment
 
