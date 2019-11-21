@@ -24,7 +24,7 @@ lazy val root = project.in(file(".")).settings(
   name := "proto",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-RC3" % Test,
   skip in publish := true,
-).dependsOn(macros).aggregate(macros, runtime, purs, benchmark)
+).dependsOn(macros).aggregate(macros, runtime, benchmark)
 
 lazy val macros = project.in(file("macros")).settings(
   name := "proto-macros",
@@ -35,12 +35,6 @@ lazy val runtime = project.in(file("runtime")).settings(
   name := "proto-runtime",
   libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.10.0",
 )
-
-lazy val purs = project.in(file("purs")).settings(
-  name := "proto-purs",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-RC3" % Test,
-  libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-).dependsOn(runtime, macros % Test)
 
 lazy val benchmark = project.in(file("benchmark")).settings(
   libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.10.0",
