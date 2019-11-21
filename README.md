@@ -23,61 +23,41 @@ With easy to migrate possibility.
 
 # Benchmark
 
-## Data Access Object (Data)
+ msg |        | library                |     | Score
+---- | ------ | ---------------------- | --- | -------------:
+data | Decode | java_                  | 1/2 | `   19073.590`
+data | Decode | jackson                | 1/2 | `  104793.164`
+data | Decode | jsoniter_scala         | 1/2 | `  250291.760`
+data | Decode | boopickle_             | 1/2 | ` 1511503.588`
+data | Decode | protobuf_scala_macros  | 1/2 | ` 1841584.774`
+data | Decode | scalapb                | 1/2 | ` 2191344.254`
 
-### Encode
+ msg |        | library                |     | Score
+---- | ------ | ----------------------:| ---:| -------------
+data | Encode | java_                  | 1/2 | `  115404.671`
+data | Encode | jackson                | 1/2 | `  239388.147`
+data | Encode | kryo_macros            | 1/2 | `  398249.642`
+data | Encode | jsoniter_scala         | 1/2 | `  564752.678`
+data | Encode | boopickle_             | 1/2 | `  672294.937`
+data | Encode | protobuf_scala_macros  | 1/2 | ` 1760090.157`
+data | Encode | scalapb                | 1/2 | ` 2022918.710`
 
-Library                 | Cnt |       Score | Error (±) | Units
------------------------ | --- | -----------:| ---------:| -----
-**JSON**                                                |
-Jackson                 | 2/5 |   `501'953` |    `8368` | ops/s
-Jsoniter                | 2/5 |   `621'852` |   `23367` | ops/s
-**Binary**                                              |
-Java                    | 2/5 |   `250'822` |    `6650` | ops/s
-Boopickle               | 2/5 | `1'292'133` |   `60921` | ops/s
-Kryo Macros             | 2/5 |   `823'570` |   `26575` | ops/s
-Scalapb                 | 2/5 | `3'696'083` |  `124840` | ops/s
-_Protobuf Scala Macros_ | 2/5 | `3'393'026` |  `234068` | ops/s
+ msg |        | library                |     | Score
+---- | ------ | ----------------------:| ---:| -------------
+msg  | Decode | jsoniter_scala         | 1/2 | ` 2442577.755`
+msg  | Decode | protobuf_scala_macros  | 1/2 | ` 2786830.341`
+msg  | Decode | scalapb                | 1/2 | ` 2914400.904`
 
-### Decode
-
-Library                 | Cnt |       Score | Error (±) | Units
------------------------ | --- | -----------:| ---------:| -----
-**JSON**                                                |
-Jackson                 | 2/5 |   `201'021` |    `3191` | ops/s
-Jsoniter                | 2/5 |   `428'333` |   `74834` | ops/s
-**Binary**                                              |
-Java                    | 2/5 |    `39'634` |    `3758` | ops/s
-Boopickle               | 2/5 | `2'801'239` |  `125618` | ops/s
-Kryo Macros             | 2/5 |      failed |    failed | ops/s
-Scalapb                 | 2/5 | `4'034'554` |  `113449` | ops/s
-_Protobuf Scala Macros_ | 2/5 | `3'816'776` |  `429360` | ops/s
-
-## Data Transfer Object (Msg)
-
-### Encode
-
-Library                 | Cnt |       Score | Error (±) | Units
------------------------ | --- | -----------:| ---------:| -----
-**JSON**                                                |
-Jsoniter                | 2/5 | `8'341'638` |  `172897` | ops/s
-**Binary**                                              |
-Scalapb                 | 2/5 | `6'822'814` |  `213144` | ops/s
-_Protobuf Scala Macros_ | 2/5 | `7'688'959` |   `80381` | ops/s
-
-### Decode
-
-Library                 | Cnt |       Score | Error (±) | Units
------------------------ | --- | -----------:| ---------:| -----
-**JSON**                                                |
-Jsoniter                | 2/5 | `4'246'303` |  `195804` | ops/s
-**Binary**                                              |
-Scalapb                 | 2/5 | `6'556'764` |  `891429` | ops/s
-_Protobuf Scala Macros_ | 2/5 | `6'190'147` |   `97743` | ops/s
+ msg |        | library                |     | Score
+---- | ------ | ----------------------:| ---:| -------------
+msg  | Encode | jsoniter_scala         | 1/2 | ` 3601656.904`
+msg  | Encode | protobuf_scala_macros  | 1/2 | ` 3736006.117`
+msg  | Encode | scalapb                | 1/2 | ` 4464953.270`
 
 ## Environment
 
-2.8 GHz Quad-Core Intel Core i7 \
+1.1 GHz Dual-Core Intel Core m3 \
+8 GB 1867 MHz LPDDR3 \
 JDK 13, OpenJDK 64-Bit Server VM, 13+33
 
 ## Run Benchmark
@@ -85,7 +65,7 @@ JDK 13, OpenJDK 64-Bit Server VM, 13+33
 ```bash
 sbt
 project benchmark
-jmh:run -i 5 -wi 2 -f1 -t1
+jmh:run -i 2 -wi 1 -f1 -t1
 ```
 
 # Install
