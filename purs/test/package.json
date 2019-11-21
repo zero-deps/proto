@@ -6,7 +6,6 @@
     "tes": "pulp test -o out_test"
   },
   "devDependencies": {
-    "pulp": "*",
     "bower": "*",
     "purescript": "0.13.3"
   }
