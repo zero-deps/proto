@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.zero-deps"
-ThisBuild / version := zd.gs.git.GitOps.version(tags=true)
+ThisBuild / version := zd.gs.git.GitOps.version
 ThisBuild / scalaVersion := "2.13.1"
 ThisBuild / scalacOptions ++= Seq(
   "-Ywarn-extra-implicit",
