@@ -461,7 +461,7 @@ encodeStringString msg = do
                 s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+1}, Encode.double x ]) msg.${name}""" :: Nil
               } else {
                 val typeArgName = typeArg.name.encodedName.toString
-                s"""fromMaybe (fromArray []) $$ map encode${typeArgName} msg.${name}""" :: Nil
+                s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, encode${typeArgName} x ]) msg.${name}""" :: Nil
               }
             } else if (tpe =:= typeOf[Array[Byte]]) {
               List(

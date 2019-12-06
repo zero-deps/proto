@@ -38,8 +38,8 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
     }
     "types encode" in {
       val res = res2.encode
-      res.types.length shouldBe 5
-      res.types(0) shouldBe "data Pull = GetSites GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate"
+      res.types.length shouldBe 6
+      res.types(0) shouldBe "data Pull = GetSites GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs"
       res.types(1) shouldBe "type GetSites = {  }"
       res.types(2) shouldBe "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }"
       res.types(4) shouldBe "type SaveComponentTemplate = { fieldNode :: FieldNode }"
@@ -70,18 +70,18 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
     }
     "print" in {
       // println(Res.format(res2.common))
-      Res.writeToFile("purs/test/src/Common.purs", res2.common)
+      Res.writeToFile("src/test/Common.purs", res2.common)
       // println(Res.format(res2.decode))
-      Res.writeToFile("purs/test/src/Push.purs", res2.decode)
+      Res.writeToFile("src/test/Push.purs", res2.decode)
       // println(Res.format(res2.encode))
-      Res.writeToFile("purs/test/src/Pull.purs", res2.encode)
+      Res.writeToFile("src/test/Pull.purs", res2.encode)
     }
     "purs tests" in {
       implicit val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
       val testres = Purescript.generate[TestSchema, TestSchema](moduleEncodeName="SchemaPull", moduleDecodeName="SchemaPush", "SchemaCommon", codecs=tc::Nil)
-      Res.writeToFile("purs/test/test/SchemaCommon.purs", testres.common)
-      Res.writeToFile("purs/test/test/SchemaPull.purs", testres.encode)
-      Res.writeToFile("purs/test/test/SchemaPush.purs", testres.decode)
+      Res.writeToFile("src/test/SchemaCommon.purs", testres.common)
+      Res.writeToFile("src/test/SchemaPull.purs", testres.encode)
+      Res.writeToFile("src/test/SchemaPush.purs", testres.decode)
 
       implicit val ac: MessageCodec[ClassWithMap] = caseCodecAuto[ClassWithMap]
       implicit val cwmc: MessageCodec[TestSchema] = sealedTraitCodecAuto[TestSchema]
@@ -98,7 +98,7 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
             |
             |r1 :: String
             |r1 = "${r1.mkString(" ")}"""".stripMargin
-      Res.writeToFile("purs/test/test/Cases.purs", exp)
+      Res.writeToFile("src/test/Cases.purs", exp)
     }
   }
 }
@@ -133,6 +133,13 @@ sealed trait Pull
 @N(1002) final case class SavePage(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo], @N(5) name: Map[String,String]) extends Pull
 @N(1400) final case class SaveComponentTemplate
   ( @N(1) fieldNode: FieldNode
+  ) extends Pull
+@N(1920) final case class ComponentsSavePrefs
+  ( @N(1) id: String
+  , @N(2) pageid: String
+  , @N(3) siteid: String
+  , @N(4) tree: FieldNode
+  , @N(5) extTree: Option[FieldNode]
   ) extends Pull
 
 object Snippets {
@@ -466,7 +473,8 @@ decodeFieldNode _xs_ pos0 = do
 encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]
 encodePull (UploadChunk x) = concatAll [ Encode.uint32 8010, encodeUploadChunk x ]
 encodePull (SavePage x) = concatAll [ Encode.uint32 8018, encodeSavePage x ]
-encodePull (SaveComponentTemplate x) = concatAll [ Encode.uint32 11202, encodeSaveComponentTemplate x ]"""
+encodePull (SaveComponentTemplate x) = concatAll [ Encode.uint32 11202, encodeSaveComponentTemplate x ]
+encodePull (ComponentsSavePrefs x) = concatAll [ Encode.uint32 15362, encodeComponentsSavePrefs x ]"""
 
   val encodeGetSites = """encodeGetSites :: GetSites -> Uint8Array
 encodeGetSites _ = Encode.uint32 0"""
