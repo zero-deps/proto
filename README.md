@@ -14,8 +14,8 @@ This library generates Purescript code to decode/encode protobuf bytes. Code is 
 ### Test
 
 ```bash
-sbt 'project purs' test
-cd purs/test
+sbt test
+cd test
 npm i
 npm run dep
 npm run com

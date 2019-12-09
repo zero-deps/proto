@@ -70,18 +70,18 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
     }
     "print" in {
       // println(Res.format(res2.common))
-      Res.writeToFile("src/test/Common.purs", res2.common)
+      Res.writeToFile("test/src/Common.purs", res2.common)
       // println(Res.format(res2.decode))
-      Res.writeToFile("src/test/Push.purs", res2.decode)
+      Res.writeToFile("test/src/Push.purs", res2.decode)
       // println(Res.format(res2.encode))
-      Res.writeToFile("src/test/Pull.purs", res2.encode)
+      Res.writeToFile("test/src/Pull.purs", res2.encode)
     }
     "purs tests" in {
       implicit val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
       val testres = Purescript.generate[TestSchema, TestSchema](moduleEncodeName="SchemaPull", moduleDecodeName="SchemaPush", "SchemaCommon", codecs=tc::Nil)
-      Res.writeToFile("src/test/SchemaCommon.purs", testres.common)
-      Res.writeToFile("src/test/SchemaPull.purs", testres.encode)
-      Res.writeToFile("src/test/SchemaPush.purs", testres.decode)
+      Res.writeToFile("test/test/SchemaCommon.purs", testres.common)
+      Res.writeToFile("test/test/SchemaPull.purs", testres.encode)
+      Res.writeToFile("test/test/SchemaPush.purs", testres.decode)
 
       implicit val ac: MessageCodec[ClassWithMap] = caseCodecAuto[ClassWithMap]
       implicit val cwmc: MessageCodec[TestSchema] = sealedTraitCodecAuto[TestSchema]
@@ -98,7 +98,7 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
             |
             |r1 :: String
             |r1 = "${r1.mkString(" ")}"""".stripMargin
-      Res.writeToFile("src/test/Cases.purs", exp)
+      Res.writeToFile("test/test/Cases.purs", exp)
     }
   }
 }

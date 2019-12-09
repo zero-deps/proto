@@ -1,12 +1,12 @@
 {
   "scripts": {
     "dep": "bower prune && bower update",
-    "com": "if [ $(purs --version) == '0.13.3' ]; then echo '\u001b[33mCompiling with purs '$(purs --version)'\u001b[0m' && purs compile 'bower_components/purescript-*/src/**/*.purs' 'src/**/*.purs' --no-prefix -o 'out' && purs bundle 'out/**/*.js' -o 'bin/compiled.js' -m Pull -m Push && echo '\u001b[32mCompiled with purs '$(purs --version)'\u001b[0m'; else echo '\u001b[31mCannot compile with purs '$(purs --version)'\u001b[0m'; fi",
+    "com": "if [ $(purs --version) == '0.13.5' ]; then echo '\u001b[33mCompiling with purs '$(purs --version)'\u001b[0m' && purs compile 'bower_components/purescript-*/src/**/*.purs' 'src/**/*.purs' --no-prefix -o 'out' && purs bundle 'out/**/*.js' -o 'bin/compiled.js' -m Pull -m Push && echo '\u001b[32mCompiled with purs '$(purs --version)'\u001b[0m'; else echo '\u001b[31mCannot compile with purs '$(purs --version)'\u001b[0m'; fi",
     "rep": "purs repl 'bower_components/purescript-*/src/**/*.purs'",
     "tes": "pulp test -o out_test"
   },
   "devDependencies": {
-    "bower": "*",
-    "purescript": "0.13.3"
+    "bower": "1.8.8",
+    "purescript": "0.13.5"
   }
 }
