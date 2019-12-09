@@ -21,6 +21,8 @@ ThisBuild / turbo := true
 ThisBuild / useCoursier := true
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
+name := "proto-purs"
+
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-RC3" % Test
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
 libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "1.7.1" % Test
