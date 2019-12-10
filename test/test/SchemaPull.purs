@@ -5,7 +5,7 @@ import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
-import Data.Tuple (Tuple(Tuple), fst, snd)
+import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($))
 import Proto.Encode as Encode
 import Proto.Uint8ArrayExt (length, concatAll, fromArray)
@@ -25,12 +25,13 @@ encodeClassWithMap msg = do
   concatAll [ Encode.uint32 len, xs ]
 
 encodeStringString :: Tuple String String -> Uint8Array
-encodeStringString msg = do
+encodeStringString (Tuple _1 _2) = do
+  let msg = { _1, _2 }
   let xs = concatAll
         [ Encode.uint32 10
-        , Encode.string $ fst msg
+        , Encode.string msg._1
         , Encode.uint32 18
-        , Encode.string $ snd msg
+        , Encode.string msg._2
         ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]

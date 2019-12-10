@@ -1,5 +1,4 @@
-package zd
-package proto
+package zd.proto.purs
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
@@ -502,12 +501,13 @@ encodeFieldNode (FieldNode msg) = do
   concatAll [ Encode.uint32 len, xs ]"""
 
   val encodeStringString = """encodeStringString :: Tuple String String -> Uint8Array
-encodeStringString msg = do
+encodeStringString (Tuple _1 _2) = do
+  let msg = { _1, _2 }
   let xs = concatAll
         [ Encode.uint32 10
-        , Encode.string $ fst msg
+        , Encode.string msg._1
         , Encode.uint32 18
-        , Encode.string $ snd msg
+        , Encode.string msg._2
         ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]"""
@@ -519,7 +519,7 @@ decodeStringString _xs_ pos0 = do
   { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
   case val of
     { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
-    _ -> Left $ Decode.MissingFields "StringString"
+    _ -> Left $ Decode.MissingFields "decodeStringString"
     where
     decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
     decode end acc pos1 =

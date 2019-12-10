@@ -307,7 +307,7 @@ decodeStringString _xs_ pos0 = do
   { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
   case val of
     { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
-    _ -> Left $ Decode.MissingFields "StringString"
+    _ -> Left $ Decode.MissingFields "decodeStringString"
     where
     decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
     decode end acc pos1 =
