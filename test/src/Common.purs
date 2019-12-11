@@ -2,6 +2,8 @@ module Common where
 
 import Data.Map (Map)
 import Data.Maybe (Maybe)
+import Data.Tuple (Tuple)
+import Data.Set (Set)
 
 data PageType = PageWidgets PageWidgets | PageUrl PageUrl
 type PageWidgets = {  }

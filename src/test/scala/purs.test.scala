@@ -119,7 +119,7 @@ final case class PageSeo(@N(1) descr: String, @N(2) order: Double)
 
 final case class SiteOpt(@N(1) id: String, @N(2) label: Option[String])
 sealed trait PageType
-@N(1) final case class PageWidgets() extends PageType
+@N(1) final case object PageWidgets extends PageType
 @N(2) final case class PageUrl(@N(1) addr: String) extends PageType
 
 sealed trait Pull
@@ -140,7 +140,7 @@ sealed trait Pull
   , @N(4) tree: FieldNode
   , @N(5) extTree: Option[FieldNode]
   ) extends Pull
-
+  
 object Snippets {
   val decodePush = """decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do

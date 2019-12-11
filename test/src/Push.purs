@@ -8,6 +8,8 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple), fst, snd)
+import Data.Set (Set)
+import Data.Set as Set
 import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import Common

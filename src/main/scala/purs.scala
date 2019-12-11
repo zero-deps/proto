@@ -25,12 +25,14 @@ object Res {
 
 object Purescript {
   def generate[D, E](moduleEncodeName: String, moduleDecodeName: String, commonModule: String, codecs: List[MessageCodec[_]])(implicit dtag: TypeTag[D], etag: TypeTag[E]): Res2 = {
-    val preludeCommon = s"""module ${commonModule} where
+    val preludeCommon = s"""module $commonModule where
 
 import Data.Map (Map)
 import Data.Maybe (Maybe)
+import Data.Tuple (Tuple)
+import Data.Set (Set)
 """
-    val preludeEncode = s"""module ${moduleEncodeName} where
+    val preludeEncode = s"""module $moduleEncodeName where
 
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
@@ -38,13 +40,15 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
 import Data.Tuple (Tuple(Tuple))
+import Data.Set (Set)
+import Data.Set as Set
 import Prelude (map, ($$))
 import Proto.Encode as Encode
 import Proto.Uint8ArrayExt (length, concatAll, fromArray)
-import ${commonModule}
+import $commonModule
 """
 
-    val preludeDecode = s"""module ${moduleDecodeName} where
+    val preludeDecode = s"""module $moduleDecodeName where
 
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
@@ -54,9 +58,11 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple), fst, snd)
+import Data.Set (Set)
+import Data.Set as Set
 import Prelude (bind, pure, ($$), (+), (<))
 import Proto.Decode as Decode
-import ${commonModule}
+import $commonModule
 """
 
     def findN(x: Symbol): Option[Int] = {
@@ -117,7 +123,8 @@ import ${commonModule}
                 if (complexType(typeArgType)) (typeArgType+:tail, acc)
                 else (tail, acc)
               case x :: y :: Nil =>
-                (tail, acc:+TupleType(appliedType(typeOf[Tuple2[Unit, Unit]].typeConstructor, x, y), x, y))
+                val zs = List(x, y).filter(complexType)
+                (zs++tail, acc:+TupleType(appliedType(typeOf[Tuple2[Unit, Unit]].typeConstructor, x, y), x, y))
               case _ => throw new Exception(s"too many type args for ${head}")
             }
           } else {
@@ -206,8 +213,7 @@ import ${commonModule}
               |    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
               |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "${name}"""".stripMargin
         case TupleType(tpe, tpe_1, tpe_2) =>
-          val tt = tpe.toString
-          val xs = codecs.find(_.aType == tt).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tt}"))
+          val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
           val fun = "decode" + tupleFunName(tpe_1, tpe_2)
           val cases = List(("first", tpe_1, xs("_1")), ("second", tpe_2, xs("_2"))).flatMap((decodeField(None) _).tupled)
           s"""$fun :: Uint8Array -> Int -> Decode.Result (Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1})
@@ -296,9 +302,8 @@ $fun _xs_ pos0 = do
           s"""|encode${name} :: ${name} -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
         case TupleType(tpe, tpe_1, tpe_2) =>
-          val tt = tpe.toString
-          val xs = codecs.find(_.aType == tt).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tt}"))
-          val fun = "encode" + tt.filter(_.isLetter)
+          val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
+          val fun = "encode" + tupleFunName(tpe_1, tpe_2)
           s"""$fun :: Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1} -> Uint8Array
 $fun (Tuple _1 _2) = do
   let msg = { _1, _2 }
