@@ -3,13 +3,14 @@ module SetMap.Push where
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
+import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Tuple (Tuple(Tuple), fst, snd)
 import Data.Set (Set)
 import Data.Set as Set
+import Data.Tuple (Tuple(Tuple), fst, snd)
 import Data.Unit (Unit, unit)
 import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
