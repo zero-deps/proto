@@ -16,7 +16,7 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
     }
     "types decode" in {
       val res = res2.decode
-      res.types.length shouldBe 17
+      res.types.length shouldBe 16
       res.types(0) shouldBe "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | ComponentTemplateOk ComponentTemplateOk"
       res.types(1) shouldBe "type SiteOpts = { xs :: Array SiteOpt }"
       res.types(2) shouldBe "type SiteOpts' = { xs :: Array SiteOpt }"
@@ -26,22 +26,20 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
       res.types(6) shouldBe "type Permissions' = { xs :: Array String }"
       res.types(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
       res.types(8) shouldBe "type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
-      res.types(9) shouldBe "type PageWidgets' = {  }"
-      res.types(10) shouldBe "type PageUrl' = { addr :: Maybe String }"
-      res.types(11) shouldBe "type PageSeo' = { descr :: Maybe String, order :: Maybe Number }"
-      res.types(12) shouldBe "type PageTreeItem = { priority :: Int }"
-      res.types(13) shouldBe "type PageTreeItem' = { priority :: Maybe Int }"
-      res.types(14) shouldBe "type ComponentTemplateOk = { fieldNode :: FieldNode }"
-      res.types(15) shouldBe "type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode }"
-      res.types(16) shouldBe "newtype FieldNode' = FieldNode' { root :: Maybe String, forest :: Array FieldNode }"
+      res.types(9) shouldBe "type PageUrl' = { addr :: Maybe String }"
+      res.types(10) shouldBe "type PageSeo' = { descr :: Maybe String, order :: Maybe Number }"
+      res.types(11) shouldBe "type PageTreeItem = { priority :: Int }"
+      res.types(12) shouldBe "type PageTreeItem' = { priority :: Maybe Int }"
+      res.types(13) shouldBe "type ComponentTemplateOk = { fieldNode :: FieldNode }"
+      res.types(14) shouldBe "type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode }"
+      res.types(15) shouldBe "newtype FieldNode' = FieldNode' { root :: Maybe String, forest :: Array FieldNode }"
     }
     "types encode" in {
       val res = res2.encode
-      res.types.length shouldBe 6
-      res.types(0) shouldBe "data Pull = GetSites GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs"
-      res.types(1) shouldBe "type GetSites = {  }"
-      res.types(2) shouldBe "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }"
-      res.types(4) shouldBe "type SaveComponentTemplate = { fieldNode :: FieldNode }"
+      res.types.length shouldBe 5
+      res.types(0) shouldBe "data Pull = GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs"
+      res.types(1) shouldBe "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }"
+      res.types(3) shouldBe "type SaveComponentTemplate = { fieldNode :: FieldNode }"
       ()
     }
     "decoders" in {
@@ -314,8 +312,7 @@ decodePageType _xs_ pos0 = do
             1 ->
               case decodePageWidgets _xs_ pos2 of
                 Left x -> Left x
-                Right { pos: pos3, val } ->
-                  decode end (Just $ PageWidgets val) pos3
+                Right { pos: pos3 } -> decode end (Just PageWidgets) pos3
             2 ->
               case decodePageUrl _xs_ pos2 of
                 Left x -> Left x
@@ -357,27 +354,11 @@ decodePageUrl _xs_ pos0 = do
                     decode end acc pos3
       else pure { pos: pos1, val: acc }"""
 
-  val decodePageWidgets = """decodePageWidgets :: Uint8Array -> Int -> Decode.Result PageWidgets
+  val decodePageWidgets = """decodePageWidgets :: Uint8Array -> Int -> Decode.Result Unit
 decodePageWidgets _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end {  } pos
-  case val of
-    {  } -> pure { pos: pos1, val: {  } }
-    where
-    decode :: Int -> PageWidgets' -> Int -> Decode.Result PageWidgets'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }"""
+  pure { pos: end, val: unit }"""
 
   val decodePageTreeItem = """decodePageTreeItem :: Uint8Array -> Int -> Decode.Result PageTreeItem
 decodePageTreeItem _xs_ pos0 = do
@@ -469,14 +450,14 @@ decodeFieldNode _xs_ pos0 = do
       else pure { pos: pos1, val: FieldNode' acc }"""
 
   val encodePull = """encodePull :: Pull -> Uint8Array
-encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]
+encodePull GetSites = concatAll [ Encode.uint32 8002, encodeGetSites ]
 encodePull (UploadChunk x) = concatAll [ Encode.uint32 8010, encodeUploadChunk x ]
 encodePull (SavePage x) = concatAll [ Encode.uint32 8018, encodeSavePage x ]
 encodePull (SaveComponentTemplate x) = concatAll [ Encode.uint32 11202, encodeSaveComponentTemplate x ]
 encodePull (ComponentsSavePrefs x) = concatAll [ Encode.uint32 15362, encodeComponentsSavePrefs x ]"""
 
-  val encodeGetSites = """encodeGetSites :: GetSites -> Uint8Array
-encodeGetSites _ = Encode.uint32 0"""
+  val encodeGetSites = """encodeGetSites :: Uint8Array
+encodeGetSites = Encode.uint32 0"""
 
   val encodeUploadChunk = """encodeUploadChunk :: UploadChunk -> Uint8Array
 encodeUploadChunk msg = do

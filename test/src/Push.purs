@@ -10,6 +10,7 @@ import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Data.Set (Set)
 import Data.Set as Set
+import Data.Unit (Unit, unit)
 import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import Common
@@ -23,7 +24,6 @@ type Permissions = { xs :: Array String }
 type Permissions' = { xs :: Array String }
 type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
 type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
-type PageWidgets' = {  }
 type PageUrl' = { addr :: Maybe String }
 type PageSeo' = { descr :: Maybe String, order :: Maybe Number }
 type PageTreeItem = { priority :: Int }
@@ -204,8 +204,7 @@ decodePageType _xs_ pos0 = do
             1 ->
               case decodePageWidgets _xs_ pos2 of
                 Left x -> Left x
-                Right { pos: pos3, val } ->
-                  decode end (Just $ PageWidgets val) pos3
+                Right { pos: pos3 } -> decode end (Just PageWidgets) pos3
             2 ->
               case decodePageUrl _xs_ pos2 of
                 Left x -> Left x
@@ -219,27 +218,11 @@ decodePageType _xs_ pos0 = do
     decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
     decode end acc@Nothing pos1 = Left $ Decode.MissingFields "PageType"
 
-decodePageWidgets :: Uint8Array -> Int -> Decode.Result PageWidgets
+decodePageWidgets :: Uint8Array -> Int -> Decode.Result Unit
 decodePageWidgets _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end {  } pos
-  case val of
-    {  } -> pure { pos: pos1, val: {  } }
-    where
-    decode :: Int -> PageWidgets' -> Int -> Decode.Result PageWidgets'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+  pure { pos: end, val: unit }
 
 decodePageUrl :: Uint8Array -> Int -> Decode.Result PageUrl
 decodePageUrl _xs_ pos0 = do

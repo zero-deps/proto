@@ -10,6 +10,7 @@ import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Data.Set (Set)
 import Data.Set as Set
+import Data.Unit (Unit, unit)
 import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import SetMap.Common
@@ -17,8 +18,6 @@ import SetMap.Common
 data Push = Flow1 Flow1 | Flow2 Flow2
 type Flow1' = { graph :: Map String (Set String) }
 type Flow2' = { graph :: Array (Tuple StepId (Array StepId)) }
-type Prod' = {  }
-type Dev' = {  }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
@@ -168,13 +167,11 @@ decodeStepId _xs_ pos0 = do
             1 ->
               case decodeProd _xs_ pos2 of
                 Left x -> Left x
-                Right { pos: pos3, val } ->
-                  decode end (Just $ Prod val) pos3
+                Right { pos: pos3 } -> decode end (Just Prod) pos3
             2 ->
               case decodeDev _xs_ pos2 of
                 Left x -> Left x
-                Right { pos: pos3, val } ->
-                  decode end (Just $ Dev val) pos3
+                Right { pos: pos3 } -> decode end (Just Dev) pos3
             _ ->
               case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                 Left x -> Left x
@@ -183,46 +180,14 @@ decodeStepId _xs_ pos0 = do
     decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
     decode end acc@Nothing pos1 = Left $ Decode.MissingFields "StepId"
 
-decodeProd :: Uint8Array -> Int -> Decode.Result Prod
+decodeProd :: Uint8Array -> Int -> Decode.Result Unit
 decodeProd _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end {  } pos
-  case val of
-    {  } -> pure { pos: pos1, val: {  } }
-    where
-    decode :: Int -> Prod' -> Int -> Decode.Result Prod'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+  pure { pos: end, val: unit }
 
-decodeDev :: Uint8Array -> Int -> Decode.Result Dev
+decodeDev :: Uint8Array -> Int -> Decode.Result Unit
 decodeDev _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end {  } pos
-  case val of
-    {  } -> pure { pos: pos1, val: {  } }
-    where
-    decode :: Int -> Dev' -> Int -> Decode.Result Dev'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+  pure { pos: end, val: unit }

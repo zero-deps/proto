@@ -58,17 +58,17 @@ encodeStepIdArrayStepId (Tuple _1 _2) = do
   concatAll [ Encode.uint32 len, xs ]
 
 encodeStepId :: StepId -> Uint8Array
-encodeStepId (Prod x) = do
-  let xs = concatAll [ Encode.uint32 10, encodeProd x ]
+encodeStepId Prod = do
+  let xs = concatAll [ Encode.uint32 10, encodeProd ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]
-encodeStepId (Dev x) = do
-  let xs = concatAll [ Encode.uint32 18, encodeDev x ]
+encodeStepId Dev = do
+  let xs = concatAll [ Encode.uint32 18, encodeDev ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]
 
-encodeProd :: Prod -> Uint8Array
-encodeProd _ = Encode.uint32 0
+encodeProd :: Uint8Array
+encodeProd = Encode.uint32 0
 
-encodeDev :: Dev -> Uint8Array
-encodeDev _ = Encode.uint32 0
+encodeDev :: Uint8Array
+encodeDev = Encode.uint32 0

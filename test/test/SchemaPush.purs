@@ -10,6 +10,7 @@ import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Data.Set (Set)
 import Data.Set as Set
+import Data.Unit (Unit, unit)
 import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import SchemaCommon

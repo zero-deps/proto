@@ -7,8 +7,6 @@ import Data.Set (Set)
 
 type Flow1 = { graph :: Map String (Set String) }
 type Flow2 = { graph :: Array (Tuple StepId (Array StepId)) }
-data StepId = Prod Prod | Dev Dev
-type Prod = {  }
-type Dev = {  }
+data StepId = Prod | Dev
 
 

@@ -13,22 +13,21 @@ import Proto.Encode as Encode
 import Proto.Uint8ArrayExt (length, concatAll, fromArray)
 import Common
 
-data Pull = GetSites GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs
-type GetSites = {  }
+data Pull = GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs
 type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }
 type SavePage = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
 type SaveComponentTemplate = { fieldNode :: FieldNode }
 type ComponentsSavePrefs = { id :: String, pageid :: String, siteid :: String, tree :: FieldNode, extTree :: Maybe FieldNode }
 
 encodePull :: Pull -> Uint8Array
-encodePull (GetSites x) = concatAll [ Encode.uint32 8002, encodeGetSites x ]
+encodePull GetSites = concatAll [ Encode.uint32 8002, encodeGetSites ]
 encodePull (UploadChunk x) = concatAll [ Encode.uint32 8010, encodeUploadChunk x ]
 encodePull (SavePage x) = concatAll [ Encode.uint32 8018, encodeSavePage x ]
 encodePull (SaveComponentTemplate x) = concatAll [ Encode.uint32 11202, encodeSaveComponentTemplate x ]
 encodePull (ComponentsSavePrefs x) = concatAll [ Encode.uint32 15362, encodeComponentsSavePrefs x ]
 
-encodeGetSites :: GetSites -> Uint8Array
-encodeGetSites _ = Encode.uint32 0
+encodeGetSites :: Uint8Array
+encodeGetSites = Encode.uint32 0
 
 encodeUploadChunk :: UploadChunk -> Uint8Array
 encodeUploadChunk msg = do
@@ -58,8 +57,8 @@ encodeSavePage msg = do
   concatAll [ Encode.uint32 len, xs ]
 
 encodePageType :: PageType -> Uint8Array
-encodePageType (PageWidgets x) = do
-  let xs = concatAll [ Encode.uint32 10, encodePageWidgets x ]
+encodePageType PageWidgets = do
+  let xs = concatAll [ Encode.uint32 10, encodePageWidgets ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]
 encodePageType (PageUrl x) = do
@@ -67,8 +66,8 @@ encodePageType (PageUrl x) = do
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]
 
-encodePageWidgets :: PageWidgets -> Uint8Array
-encodePageWidgets _ = Encode.uint32 0
+encodePageWidgets :: Uint8Array
+encodePageWidgets = Encode.uint32 0
 
 encodePageUrl :: PageUrl -> Uint8Array
 encodePageUrl msg = do
