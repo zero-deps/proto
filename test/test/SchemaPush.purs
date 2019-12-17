@@ -6,7 +6,7 @@ import Data.Either (Either(Left, Right))
 import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Tuple (Tuple(Tuple), fst, snd)
+import Data.Tuple (Tuple(Tuple))
 import Data.Unit (Unit, unit)
 import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode

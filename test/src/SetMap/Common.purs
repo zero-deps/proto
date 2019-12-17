@@ -9,4 +9,3 @@ type Flow2 = { graph :: Array (Tuple StepId (Array StepId)) }
 data StepId = Prod | Dev
 derive instance eqStepId :: Eq StepId
 
-

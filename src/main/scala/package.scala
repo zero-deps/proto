@@ -191,7 +191,7 @@ package object purs {
     }
   }
 
-  def collectTypes(tpe: Type): Seq[Tpe] = {
+  def collectTpes(tpe: Type): Seq[Tpe] = {
     val complexType: Type => Boolean = {
       case tpe if tpe =:= StringClass.selfType => false
       case tpe if tpe =:= IntClass.selfType => false
