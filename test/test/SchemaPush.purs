@@ -1,4 +1,6 @@
-module SchemaPush where
+module SchemaPush
+  ( decodeTestSchema
+  ) where
 
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)

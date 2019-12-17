@@ -1,4 +1,7 @@
-module SetMap.Pull where
+module SetMap.Pull
+  ( Pull(..)
+  , encodePull
+  ) where
 
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)

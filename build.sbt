@@ -13,7 +13,7 @@ scalacOptions ++= Seq(
   "-Ywarn-numeric-widen",
   "-Ywarn-value-discard"
 )
-licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
+licenses += "MIT" -> url("http://opensource.org/licenses/MIT")
 isSnapshot := true
 resolvers += Resolver.bintrayRepo("zero-deps", "maven")
 
@@ -27,3 +27,4 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-RC3" % Test
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
 libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "1.7.1" % Test
 libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % "1.7.1"
+libraryDependencies += "io.github.zero-deps" %% "gs-z" % "1.6.2"

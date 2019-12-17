@@ -1,4 +1,6 @@
-module SchemaPull where
+module SchemaPull
+  ( encodeTestSchema
+  ) where
 
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)

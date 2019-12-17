@@ -1,4 +1,8 @@
-module SetMap.Common where
+module SetMap.Common
+  ( Flow1
+  , Flow2
+  , StepId(..)
+  ) where
 
 import Data.Eq (class Eq)
 import Data.Maybe (Maybe)

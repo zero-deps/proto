@@ -1,4 +1,11 @@
-module Pull where
+module Pull
+  ( Pull(..)
+  , UploadChunk
+  , SavePage
+  , SaveComponentTemplate
+  , ComponentsSavePrefs
+  , encodePull
+  ) where
 
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)

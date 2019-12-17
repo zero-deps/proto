@@ -1,4 +1,7 @@
-module SchemaCommon where
+module SchemaCommon
+  ( TestSchema(..)
+  , ClassWithMap
+  ) where
 
 import Data.Eq (class Eq)
 import Data.Maybe (Maybe)

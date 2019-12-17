@@ -14,36 +14,8 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
       res2.decode.prelude.startsWith("module Push")
       res2.common.prelude.startsWith("module Common")
     }
-    "types decode" in {
-      val res = res2.decode
-      res.types.length shouldBe 16
-      res.types(0) shouldBe "data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | ComponentTemplateOk ComponentTemplateOk"
-      res.types(1) shouldBe "type SiteOpts = { xs :: Array SiteOpt }"
-      res.types(2) shouldBe "type SiteOpts' = { xs :: Array SiteOpt }"
-      res.types(3) shouldBe "type SiteOpt = { id :: String, label :: Maybe String }"
-      res.types(4) shouldBe "type SiteOpt' = { id :: Maybe String, label :: Maybe String }"
-      res.types(5) shouldBe "type Permissions = { xs :: Array String }"
-      res.types(6) shouldBe "type Permissions' = { xs :: Array String }"
-      res.types(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }"
-      res.types(8) shouldBe "type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }"
-      res.types(9) shouldBe "type PageUrl' = { addr :: Maybe String }"
-      res.types(10) shouldBe "type PageSeo' = { descr :: Maybe String, order :: Maybe Number }"
-      res.types(11) shouldBe "type PageTreeItem = { priority :: Int }"
-      res.types(12) shouldBe "type PageTreeItem' = { priority :: Maybe Int }"
-      res.types(13) shouldBe "type ComponentTemplateOk = { fieldNode :: FieldNode }"
-      res.types(14) shouldBe "type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode }"
-      res.types(15) shouldBe "newtype FieldNode' = FieldNode' { root :: Maybe String, forest :: Array FieldNode }"
-    }
-    "types encode" in {
-      val res = res2.encode
-      res.types.length shouldBe 5
-      res.types(0) shouldBe "data Pull = GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs"
-      res.types(1) shouldBe "type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }"
-      res.types(3) shouldBe "type SaveComponentTemplate = { fieldNode :: FieldNode }"
-      ()
-    }
     "decoders" in {
-      val xs = res2.decode.coders
+      val xs = res2.decode.coders.map(_.tmpl)
       xs.find(_.startsWith("decodePush :: ")) shouldBe Some(Snippets.decodePush)
       xs.find(_.startsWith("decodeSiteOpt :: ")) shouldBe Some(Snippets.decodeSiteOpt)
       xs.find(_.startsWith("decodeSiteOpts :: ")) shouldBe Some(Snippets.decodeSiteOpts)
@@ -58,7 +30,7 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
       xs.find(_.startsWith("decodeStringString :: ")) shouldBe Some(Snippets.decodeStringString)
     }
     "encoders" in {
-      val xs = res2.encode.coders
+      val xs = res2.encode.coders.map(_.tmpl)
       xs.find(_.startsWith("encodeStringString :: ")) shouldBe Some(Snippets.encodeStringString)
       xs.find(_.startsWith("encodePull :: ")) shouldBe Some(Snippets.encodePull)
       xs.find(_.startsWith("encodeGetSites :: ")) shouldBe Some(Snippets.encodeGetSites)

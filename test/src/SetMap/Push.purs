@@ -1,4 +1,7 @@
-module SetMap.Push where
+module SetMap.Push
+  ( Push(..)
+  , decodePush
+  ) where
 
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)

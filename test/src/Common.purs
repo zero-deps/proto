@@ -1,4 +1,9 @@
-module Common where
+module Common
+  ( PageType(..)
+  , PageUrl
+  , PageSeo
+  , FieldNode(FieldNode)
+  ) where
 
 import Data.Eq (class Eq)
 import Data.Maybe (Maybe)
