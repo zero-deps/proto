@@ -5,11 +5,7 @@ import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
 import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
-import Data.Map (Map)
-import Data.Map as Map
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Set (Set)
-import Data.Set as Set
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Data.Unit (Unit, unit)
 import Prelude (bind, pure, ($), (+), (<))
@@ -17,7 +13,7 @@ import Proto.Decode as Decode
 import SetMap.Common
 
 data Push = Flow1 Flow1 | Flow2 Flow2
-type Flow1' = { graph :: Map String (Set String) }
+type Flow1' = { graph :: Array (Tuple String (Array String)) }
 type Flow2' = { graph :: Array (Tuple StepId (Array StepId)) }
 
 decodePush :: Uint8Array -> Decode.Result Push
@@ -37,7 +33,7 @@ decodeFlow1 :: Uint8Array -> Int -> Decode.Result Flow1
 decodeFlow1 _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { graph: Map.empty } pos
+  { pos: pos1, val } <- decode end { graph: [] } pos
   case val of
     { graph } -> pure { pos: pos1, val: { graph } }
     where
@@ -49,10 +45,10 @@ decodeFlow1 _xs_ pos0 = do
           Right { pos: pos2, val: tag } ->
             case tag `zshr` 3 of
               1 ->
-                case decodeStringSetString _xs_ pos2 of
+                case decodeStringArrayString _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { graph = Map.insert (fst val) (snd val) acc.graph }) pos3
+                    decode end (acc { graph = snoc acc.graph val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x
@@ -60,16 +56,16 @@ decodeFlow1 _xs_ pos0 = do
                     decode end acc pos3
       else pure { pos: pos1, val: acc }
 
-decodeStringSetString :: Uint8Array -> Int -> Decode.Result (Tuple String (Set String))
-decodeStringSetString _xs_ pos0 = do
+decodeStringArrayString :: Uint8Array -> Int -> Decode.Result (Tuple String (Array String))
+decodeStringArrayString _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { first: Nothing, second: Set.empty } pos
+  { pos: pos1, val } <- decode end { first: Nothing, second: [] } pos
   case val of
     { first: Just first, second } -> pure { pos: pos1, val: Tuple first second }
-    _ -> Left $ Decode.MissingFields "decodeStringSetString"
+    _ -> Left $ Decode.MissingFields "decodeStringArrayString"
     where
-    decode :: Int -> { first :: Maybe String, second :: Set String } -> Int -> Decode.Result { first :: Maybe String, second :: Set String }
+    decode :: Int -> { first :: Maybe String, second :: Array String } -> Int -> Decode.Result { first :: Maybe String, second :: Array String }
     decode end acc pos1 =
       if pos1 < end then
         case Decode.uint32 _xs_ pos1 of
@@ -85,7 +81,7 @@ decodeStringSetString _xs_ pos0 = do
                 case Decode.string _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { second = Set.insert val acc.second }) pos3
+                    decode end (acc { second = snoc acc.second val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x

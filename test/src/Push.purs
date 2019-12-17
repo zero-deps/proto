@@ -5,11 +5,7 @@ import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
 import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
-import Data.Map (Map)
-import Data.Map as Map
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Set (Set)
-import Data.Set as Set
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Data.Unit (Unit, unit)
 import Prelude (bind, pure, ($), (+), (<))
@@ -23,8 +19,8 @@ type SiteOpt = { id :: String, label :: Maybe String }
 type SiteOpt' = { id :: Maybe String, label :: Maybe String }
 type Permissions = { xs :: Array String }
 type Permissions' = { xs :: Array String }
-type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
-type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
+type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
+type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
 type PageUrl' = { addr :: Maybe String }
 type PageSeo' = { descr :: Maybe String, order :: Maybe Number }
 type PageTreeItem = { priority :: Int }
@@ -146,7 +142,7 @@ decodePage :: Uint8Array -> Int -> Decode.Result Page
 decodePage _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: Map.empty } pos
+  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: [] } pos
   case val of
     { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo, name } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo, name } }
     _ -> Left $ Decode.MissingFields "Page"
@@ -182,7 +178,7 @@ decodePage _xs_ pos0 = do
                 case decodeStringString _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { name = Map.insert (fst val) (snd val) acc.name }) pos3
+                    decode end (acc { name = snoc acc.name val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x

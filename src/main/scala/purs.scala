@@ -26,9 +26,7 @@ object Purescript {
     val preludeCommon = s"""module $commonModule where
 
 import Data.Eq (class Eq)
-import Data.Map (Map)
 import Data.Maybe (Maybe)
-import Data.Set (Set)
 import Data.Tuple (Tuple)
 """
     val preludeEncode = s"""module $moduleEncodeName where
@@ -36,11 +34,7 @@ import Data.Tuple (Tuple)
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Eq (class Eq)
-import Data.Map (Map)
-import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
-import Data.Set (Set)
-import Data.Set as Set
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($$))
 import Proto.Encode as Encode
@@ -55,12 +49,8 @@ import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
 import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
-import Data.Map (Map)
-import Data.Map as Map
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Set (Set)
-import Data.Set as Set
-import Data.Tuple (Tuple(Tuple), fst, snd)
+import Data.Tuple (Tuple(Tuple))
 import Data.Unit (Unit, unit)
 import Prelude (bind, pure, ($$), (+), (<))
 import Proto.Decode as Decode
@@ -114,7 +104,7 @@ import $commonModule
             if (noargs)
               List(
                 s"$n -> do"
-              , s"  pos2 <- decode$name _xs_ pos1"
+              , s"  { pos: pos2 } <- decode$name _xs_ pos1"
               , s"  pure { pos: pos2, val: $name }"
               )
             else

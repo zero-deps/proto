@@ -5,18 +5,14 @@ import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left, Right))
 import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
-import Data.Map (Map)
-import Data.Map as Map
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Set (Set)
-import Data.Set as Set
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import Data.Unit (Unit, unit)
 import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import SchemaCommon
 
-type ClassWithMap' = { m :: Map String String }
+type ClassWithMap' = { m :: Array (Tuple String String) }
 
 decodeTestSchema :: Uint8Array -> Decode.Result TestSchema
 decodeTestSchema _xs_ = do
@@ -32,7 +28,7 @@ decodeClassWithMap :: Uint8Array -> Int -> Decode.Result ClassWithMap
 decodeClassWithMap _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { m: Map.empty } pos
+  { pos: pos1, val } <- decode end { m: [] } pos
   case val of
     { m } -> pure { pos: pos1, val: { m } }
     where
@@ -47,7 +43,7 @@ decodeClassWithMap _xs_ pos0 = do
                 case decodeStringString _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { m = Map.insert (fst val) (snd val) acc.m }) pos3
+                    decode end (acc { m = snoc acc.m val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x

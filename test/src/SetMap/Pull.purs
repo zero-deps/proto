@@ -3,11 +3,7 @@ module SetMap.Pull where
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Eq (class Eq)
-import Data.Map (Map)
-import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
-import Data.Set (Set)
-import Data.Set as Set
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($))
 import Proto.Encode as Encode
@@ -23,18 +19,18 @@ encodePull (Flow2 x) = concatAll [ Encode.uint32 18, encodeFlow2 x ]
 encodeFlow1 :: Flow1 -> Uint8Array
 encodeFlow1 msg = do
   let xs = concatAll
-        [ concatAll $ concatMap (\x -> [ Encode.uint32 10, encodeStringSetString x ]) $ Map.toUnfoldableUnordered msg.graph
+        [ concatAll $ concatMap (\x -> [ Encode.uint32 10, encodeStringArrayString x ]) msg.graph
         ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]
 
-encodeStringSetString :: Tuple String (Set String) -> Uint8Array
-encodeStringSetString (Tuple _1 _2) = do
+encodeStringArrayString :: Tuple String (Array String) -> Uint8Array
+encodeStringArrayString (Tuple _1 _2) = do
   let msg = { _1, _2 }
   let xs = concatAll
         [ Encode.uint32 10
         , Encode.string msg._1
-        , concatAll $ concatMap (\x -> [ Encode.uint32 18, Encode.string x ]) $ Set.toUnfoldable msg._2
+        , concatAll $ concatMap (\x -> [ Encode.uint32 18, Encode.string x ]) msg._2
         ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]

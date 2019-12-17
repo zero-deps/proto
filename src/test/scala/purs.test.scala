@@ -24,8 +24,8 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
       res.types(4) shouldBe "type SiteOpt' = { id :: Maybe String, label :: Maybe String }"
       res.types(5) shouldBe "type Permissions = { xs :: Array String }"
       res.types(6) shouldBe "type Permissions' = { xs :: Array String }"
-      res.types(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
-      res.types(8) shouldBe "type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }"
+      res.types(7) shouldBe "type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }"
+      res.types(8) shouldBe "type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }"
       res.types(9) shouldBe "type PageUrl' = { addr :: Maybe String }"
       res.types(10) shouldBe "type PageSeo' = { descr :: Maybe String, order :: Maybe Number }"
       res.types(11) shouldBe "type PageTreeItem = { priority :: Int }"
@@ -87,11 +87,10 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
         s"""|module Cases where
             |
             |import SchemaCommon
-            |import Data.Map as Map
             |import Data.Tuple (Tuple(Tuple))
             |
             |c1 :: TestSchema
-            |c1 = ClassWithMap { m: Map.fromFoldable [ Tuple "en_GB" "Name", Tuple "ro_RO" "Nome" ] }
+            |c1 = ClassWithMap { m: [ Tuple "en_GB" "Name", Tuple "ro_RO" "Nome" ] }
             |
             |r1 :: String
             |r1 = "${r1.mkString(" ")}"""".stripMargin
@@ -253,7 +252,7 @@ decodePermissions _xs_ pos0 = do
 decodePage _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: Map.empty } pos
+  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: [] } pos
   case val of
     { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo, name } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo, name } }
     _ -> Left $ Decode.MissingFields "Page"
@@ -289,7 +288,7 @@ decodePage _xs_ pos0 = do
                 case decodeStringString _xs_ pos2 of
                   Left x -> Left x
                   Right { pos: pos3, val } ->
-                    decode end (acc { name = Map.insert (fst val) (snd val) acc.name }) pos3
+                    decode end (acc { name = snoc acc.name val }) pos3
               _ ->
                 case Decode.skipType _xs_ pos2 $ tag .&. 7 of
                   Left x -> Left x

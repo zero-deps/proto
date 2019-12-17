@@ -3,11 +3,7 @@ module Pull where
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Eq (class Eq)
-import Data.Map (Map)
-import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
-import Data.Set (Set)
-import Data.Set as Set
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($))
 import Proto.Encode as Encode
@@ -16,7 +12,7 @@ import Common
 
 data Pull = GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs
 type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }
-type SavePage = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Map String String }
+type SavePage = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
 type SaveComponentTemplate = { fieldNode :: FieldNode }
 type ComponentsSavePrefs = { id :: String, pageid :: String, siteid :: String, tree :: FieldNode, extTree :: Maybe FieldNode }
 
@@ -52,7 +48,7 @@ encodeSavePage msg = do
         , Encode.uint32 26
         , encodePageSeo msg.seo
         , fromMaybe (fromArray []) $ map (\x -> concatAll [ Encode.uint32 34, encodePageSeo x ]) msg.mobileSeo
-        , concatAll $ concatMap (\x -> [ Encode.uint32 42, encodeStringString x ]) $ Map.toUnfoldableUnordered msg.name
+        , concatAll $ concatMap (\x -> [ Encode.uint32 42, encodeStringString x ]) msg.name
         ]
   let len = length xs
   concatAll [ Encode.uint32 len, xs ]
