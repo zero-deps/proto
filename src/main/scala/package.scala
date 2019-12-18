@@ -53,11 +53,9 @@ package object purs {
   def decodeField(recursive: Option[String])(name: String, tpe: Type, n: Int): List[String] = {
     def tmpl(n: Int, fun: String, mod: String): List[String] = {
       List(
-        s"${n} ->"
-      , s"  case ${fun} _xs_ pos2 of"
-      , s"    Left x -> Left x"
-      , s"    Right { pos: pos3, val } ->"
-      , s"      decode end (${if (recursive.isDefined) s"${recursive.get}' $$ " else ""}acc { ${mod} }) pos3"
+        s"${n} -> do"
+      , s"  { pos: pos3, val } <- ${fun} _xs_ pos2"
+      , s"  pure $$ Loop { a: end, b: ${if (recursive.isDefined) s"${recursive.get}' $$ " else ""}acc { ${mod} }, c: pos3 }"
       )
     }
     if (tpe =:= StringClass.selfType) {

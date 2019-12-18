@@ -2,9 +2,10 @@ module SchemaPush
   ( decodeTestSchema
   ) where
 
+import Control.Monad.Rec.Class (Step(Loop, Done), tailRecM3)
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Either (Either(Left, Right))
+import Data.Either (Either(Left))
 import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
@@ -30,58 +31,42 @@ decodeClassWithMap :: Uint8Array -> Int -> Decode.Result ClassWithMap
 decodeClassWithMap _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { m: [] } pos
+  { pos: pos1, val } <- tailRecM3 decode end { m: [] } pos
   case val of
     { m } -> pure { pos: pos1, val: { m } }
     where
-    decode :: Int -> ClassWithMap' -> Int -> Decode.Result ClassWithMap'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case decodeStringString _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { m = snoc acc.m val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> ClassWithMap' -> Int -> Decode.Result' (Step { a :: Int, b :: ClassWithMap', c :: Int } { pos :: Int, val :: ClassWithMap' })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- decodeStringString _xs_ pos2
+          pure $ Loop { a: end, b: acc { m = snoc acc.m val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
 decodeStringString _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode end { first: Nothing, second: Nothing } pos
   case val of
     { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
     _ -> Left $ Decode.MissingFields "decodeStringString"
     where
-    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { first = Just val }) pos3
-              2 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { second = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result' (Step { a :: Int, b :: { first :: Maybe String, second :: Maybe String }, c :: Int } { pos :: Int, val :: { first :: Maybe String, second :: Maybe String } })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: acc { first = Just val }, c: pos3 }
+        2 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: acc { second = Just val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }

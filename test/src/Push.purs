@@ -9,9 +9,10 @@ module Push
   , decodePush
   ) where
 
+import Control.Monad.Rec.Class (Step(Loop, Done), tailRecM3)
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Either (Either(Left, Right))
+import Data.Either (Either(Left))
 import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
@@ -64,164 +65,119 @@ decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts
 decodeSiteOpts _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { xs: [] } pos
+  { pos: pos1, val } <- tailRecM3 decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
     where
-    decode :: Int -> SiteOpts' -> Int -> Decode.Result SiteOpts'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case decodeSiteOpt _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { xs = snoc acc.xs val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> SiteOpts' -> Int -> Decode.Result' (Step { a :: Int, b :: SiteOpts', c :: Int } { pos :: Int, val :: SiteOpts' })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- decodeSiteOpt _xs_ pos2
+          pure $ Loop { a: end, b: acc { xs = snoc acc.xs val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeSiteOpt :: Uint8Array -> Int -> Decode.Result SiteOpt
 decodeSiteOpt _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { id: Nothing, label: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode end { id: Nothing, label: Nothing } pos
   case val of
     { id: Just id, label } -> pure { pos: pos1, val: { id, label } }
     _ -> Left $ Decode.MissingFields "SiteOpt"
     where
-    decode :: Int -> SiteOpt' -> Int -> Decode.Result SiteOpt'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { id = Just val }) pos3
-              2 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { label = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> SiteOpt' -> Int -> Decode.Result' (Step { a :: Int, b :: SiteOpt', c :: Int } { pos :: Int, val :: SiteOpt' })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: acc { id = Just val }, c: pos3 }
+        2 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: acc { label = Just val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodePermissions :: Uint8Array -> Int -> Decode.Result Permissions
 decodePermissions _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { xs: [] } pos
+  { pos: pos1, val } <- tailRecM3 decode end { xs: [] } pos
   case val of
     { xs } -> pure { pos: pos1, val: { xs } }
     where
-    decode :: Int -> Permissions' -> Int -> Decode.Result Permissions'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { xs = snoc acc.xs val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> Permissions' -> Int -> Decode.Result' (Step { a :: Int, b :: Permissions', c :: Int } { pos :: Int, val :: Permissions' })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: acc { xs = snoc acc.xs val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodePage :: Uint8Array -> Int -> Decode.Result Page
 decodePage _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: [] } pos
+  { pos: pos1, val } <- tailRecM3 decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: [] } pos
   case val of
     { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo, name } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo, name } }
     _ -> Left $ Decode.MissingFields "Page"
     where
-    decode :: Int -> Page' -> Int -> Decode.Result Page'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case decodePageType _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { tpe = Just val }) pos3
-              2 ->
-                case Decode.boolean _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { guest = Just val }) pos3
-              3 ->
-                case decodePageSeo _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { seo = Just val }) pos3
-              4 ->
-                case decodePageSeo _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { mobileSeo = Just val }) pos3
-              5 ->
-                case decodeStringString _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { name = snoc acc.name val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> Page' -> Int -> Decode.Result' (Step { a :: Int, b :: Page', c :: Int } { pos :: Int, val :: Page' })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- decodePageType _xs_ pos2
+          pure $ Loop { a: end, b: acc { tpe = Just val }, c: pos3 }
+        2 -> do
+          { pos: pos3, val } <- Decode.boolean _xs_ pos2
+          pure $ Loop { a: end, b: acc { guest = Just val }, c: pos3 }
+        3 -> do
+          { pos: pos3, val } <- decodePageSeo _xs_ pos2
+          pure $ Loop { a: end, b: acc { seo = Just val }, c: pos3 }
+        4 -> do
+          { pos: pos3, val } <- decodePageSeo _xs_ pos2
+          pure $ Loop { a: end, b: acc { mobileSeo = Just val }, c: pos3 }
+        5 -> do
+          { pos: pos3, val } <- decodeStringString _xs_ pos2
+          pure $ Loop { a: end, b: acc { name = snoc acc.name val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodePageType :: Uint8Array -> Int -> Decode.Result PageType
 decodePageType _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  decode end Nothing pos
+  tailRecM3 decode end Nothing pos
     where
-    decode :: Int -> Maybe PageType -> Int -> Decode.Result PageType
-    decode end acc pos1 | pos1 < end =
-      case Decode.uint32 _xs_ pos1 of
-        Left x -> Left x
-        Right { pos: pos2, val: tag } ->
-          case tag `zshr` 3 of
-            1 ->
-              case decodePageWidgets _xs_ pos2 of
-                Left x -> Left x
-                Right { pos: pos3 } -> decode end (Just PageWidgets) pos3
-            2 ->
-              case decodePageUrl _xs_ pos2 of
-                Left x -> Left x
-                Right { pos: pos3, val } ->
-                  decode end (Just $ PageUrl val) pos3
-            _ ->
-              case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                Left x -> Left x
-                Right { pos: pos3 } ->
-                  decode end acc pos3
-    decode end (Just acc) pos1 = pure { pos: pos1, val: acc }
+    decode :: Int -> Maybe PageType -> Int -> Decode.Result' (Step { a :: Int, b :: Maybe PageType, c :: Int } { pos :: Int, val :: PageType })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3 } <- decodePageWidgets _xs_ pos2
+          pure $ Loop { a: end, b: Just PageWidgets, c: pos3 }
+        2 -> do
+          { pos: pos3, val } <- decodePageUrl _xs_ pos2
+          pure $ Loop { a: end, b: Just $ PageUrl val, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end (Just acc) pos1 = pure $ Done { pos: pos1, val: acc }
     decode end acc@Nothing pos1 = Left $ Decode.MissingFields "PageType"
 
 decodePageWidgets :: Uint8Array -> Int -> Decode.Result Unit
@@ -234,181 +190,133 @@ decodePageUrl :: Uint8Array -> Int -> Decode.Result PageUrl
 decodePageUrl _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { addr: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode end { addr: Nothing } pos
   case val of
     { addr: Just addr } -> pure { pos: pos1, val: { addr } }
     _ -> Left $ Decode.MissingFields "PageUrl"
     where
-    decode :: Int -> PageUrl' -> Int -> Decode.Result PageUrl'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { addr = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> PageUrl' -> Int -> Decode.Result' (Step { a :: Int, b :: PageUrl', c :: Int } { pos :: Int, val :: PageUrl' })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: acc { addr = Just val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodePageSeo :: Uint8Array -> Int -> Decode.Result PageSeo
 decodePageSeo _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { descr: Nothing, order: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode end { descr: Nothing, order: Nothing } pos
   case val of
     { descr: Just descr, order: Just order } -> pure { pos: pos1, val: { descr, order } }
     _ -> Left $ Decode.MissingFields "PageSeo"
     where
-    decode :: Int -> PageSeo' -> Int -> Decode.Result PageSeo'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { descr = Just val }) pos3
-              2 ->
-                case Decode.double _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { order = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> PageSeo' -> Int -> Decode.Result' (Step { a :: Int, b :: PageSeo', c :: Int } { pos :: Int, val :: PageSeo' })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: acc { descr = Just val }, c: pos3 }
+        2 -> do
+          { pos: pos3, val } <- Decode.double _xs_ pos2
+          pure $ Loop { a: end, b: acc { order = Just val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
 decodeStringString _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { first: Nothing, second: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode end { first: Nothing, second: Nothing } pos
   case val of
     { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
     _ -> Left $ Decode.MissingFields "decodeStringString"
     where
-    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result { first :: Maybe String, second :: Maybe String }
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { first = Just val }) pos3
-              2 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { second = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> { first :: Maybe String, second :: Maybe String } -> Int -> Decode.Result' (Step { a :: Int, b :: { first :: Maybe String, second :: Maybe String }, c :: Int } { pos :: Int, val :: { first :: Maybe String, second :: Maybe String } })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: acc { first = Just val }, c: pos3 }
+        2 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: acc { second = Just val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodePageTreeItem :: Uint8Array -> Int -> Decode.Result PageTreeItem
 decodePageTreeItem _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { priority: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode end { priority: Nothing } pos
   case val of
     { priority: Just priority } -> pure { pos: pos1, val: { priority } }
     _ -> Left $ Decode.MissingFields "PageTreeItem"
     where
-    decode :: Int -> PageTreeItem' -> Int -> Decode.Result PageTreeItem'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.int32 _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { priority = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> PageTreeItem' -> Int -> Decode.Result' (Step { a :: Int, b :: PageTreeItem', c :: Int } { pos :: Int, val :: PageTreeItem' })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- Decode.int32 _xs_ pos2
+          pure $ Loop { a: end, b: acc { priority = Just val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeComponentTemplateOk :: Uint8Array -> Int -> Decode.Result ComponentTemplateOk
 decodeComponentTemplateOk _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- decode end { fieldNode: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode end { fieldNode: Nothing } pos
   case val of
     { fieldNode: Just fieldNode } -> pure { pos: pos1, val: { fieldNode } }
     _ -> Left $ Decode.MissingFields "ComponentTemplateOk"
     where
-    decode :: Int -> ComponentTemplateOk' -> Int -> Decode.Result ComponentTemplateOk'
-    decode end acc pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case decodeFieldNode _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (acc { fieldNode = Just val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end acc pos3
-      else pure { pos: pos1, val: acc }
+    decode :: Int -> ComponentTemplateOk' -> Int -> Decode.Result' (Step { a :: Int, b :: ComponentTemplateOk', c :: Int } { pos :: Int, val :: ComponentTemplateOk' })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- decodeFieldNode _xs_ pos2
+          pure $ Loop { a: end, b: acc { fieldNode = Just val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: acc, c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeFieldNode :: Uint8Array -> Int -> Decode.Result FieldNode
 decodeFieldNode _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val: FieldNode' val } <- decode end (FieldNode' { root: Nothing, forest: [] }) pos
+  { pos: pos1, val: FieldNode' val } <- tailRecM3 decode end (FieldNode' { root: Nothing, forest: [] }) pos
   case val of
     { root: Just root, forest } -> pure { pos: pos1, val: FieldNode { root, forest } }
     _ -> Left $ Decode.MissingFields "FieldNode"
     where
-    decode :: Int -> FieldNode' -> Int -> Decode.Result FieldNode'
-    decode end (FieldNode' acc) pos1 =
-      if pos1 < end then
-        case Decode.uint32 _xs_ pos1 of
-          Left x -> Left x
-          Right { pos: pos2, val: tag } ->
-            case tag `zshr` 3 of
-              1 ->
-                case Decode.string _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (FieldNode' $ acc { root = Just val }) pos3
-              2 ->
-                case decodeFieldNode _xs_ pos2 of
-                  Left x -> Left x
-                  Right { pos: pos3, val } ->
-                    decode end (FieldNode' $ acc { forest = snoc acc.forest val }) pos3
-              _ ->
-                case Decode.skipType _xs_ pos2 $ tag .&. 7 of
-                  Left x -> Left x
-                  Right { pos: pos3 } ->
-                    decode end (FieldNode' acc) pos3
-      else pure { pos: pos1, val: FieldNode' acc }
+    decode :: Int -> FieldNode' -> Int -> Decode.Result' (Step { a :: Int, b :: FieldNode', c :: Int } { pos :: Int, val :: FieldNode' })
+    decode end (FieldNode' acc) pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: FieldNode' $ acc { root = Just val }, c: pos3 }
+        2 -> do
+          { pos: pos3, val } <- decodeFieldNode _xs_ pos2
+          pure $ Loop { a: end, b: FieldNode' $ acc { forest = snoc acc.forest val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: (FieldNode' acc), c: pos3 }
+    decode end (FieldNode' acc) pos1 = pure $ Done { pos: pos1, val: FieldNode' acc }

@@ -5,11 +5,11 @@ import Effect.Console (log)
 import Prelude (class Eq, class Show, Unit, discard, pure, show, unit, ($), (<>), (==))
 import SchemaPull (encodeTestSchema)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Either (Either(Left, Right))
-import Data.Tuple (Tuple(Tuple))
+-- import Data.Either (Either(Left, Right))
+-- import Data.Tuple (Tuple(Tuple))
 import Cases as Cases
 import Node.Process (exit)
-import Proto.Decode as Decode
+-- import Proto.Decode as Decode
 
 main :: Effect Unit
 main = do

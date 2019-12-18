@@ -48,9 +48,10 @@ import $commonModule"""
     def preludeDecode(exports: Seq[String]): String = s"""module $moduleDecodeName
 ${exports.mkString("  ( ", "\n  , ", "\n  )")} where
 
+import Control.Monad.Rec.Class (Step(Loop, Done), tailRecM3)
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Either (Either(Left, Right))
+import Data.Either (Either(Left))
 import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
