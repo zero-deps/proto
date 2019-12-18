@@ -20,20 +20,10 @@ Scala type        | Purescript type
 `Int            ` | `Int`
 `Float`           | Not implemented
 `Double         ` | `Number`
-`Option[String] ` | `Maybe String`
-`Option[Int] `    | `Maybe Int`
-`Option[Float] `  | Not implemented
-`Option[Double] ` | `Maybe Number`
-`Set[String]    ` | `Set String`
-`Set[Int]       ` | Not implemented
-`Set[Float]    `  | Not implemented
-`Set[Double]    ` | Not implemented
-`Map[String, _] ` | `Map String _`
-`Map[Int, _]    ` | `Map Int _`
-`Map[Float, _] `  | Not implemented
-`Map[Double, _] ` | `Map Number _`
-`Map[_, _]      ` | `Array (Tuple _ _)`
+`Option[_] `      | `Maybe _`
 `Array[Byte]    ` | `Uint8Array`
+`Set[_]    `      | `Array _`
+`Map[_, _]      ` | `Array (Tuple _ _)`
 `Iterable[_]    ` | `Array _`
 
 ## Test
