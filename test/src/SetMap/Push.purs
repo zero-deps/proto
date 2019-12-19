@@ -28,8 +28,7 @@ decodePush _xs_ = do
     2 -> do
       { pos: pos2, val } <- decodeFlow2 _xs_ pos1
       pure { pos: pos2, val: Flow2 val }
-    i ->
-      Left $ Decode.BadType i
+    i -> Left $ Decode.BadType i
 
 decodeFlow1 :: Uint8Array -> Int -> Decode.Result Flow1
 decodeFlow1 _xs_ pos0 = do

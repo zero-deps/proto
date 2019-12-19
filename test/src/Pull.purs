@@ -42,8 +42,7 @@ encodeUploadChunk msg = do
         , Encode.uint32 26
         , Encode.bytes msg.chunk
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeSavePage :: SavePage -> Uint8Array
 encodeSavePage msg = do
@@ -57,18 +56,15 @@ encodeSavePage msg = do
         , fromMaybe (fromArray []) $ map (\x -> concatAll [ Encode.uint32 34, encodePageSeo x ]) msg.mobileSeo
         , concatAll $ concatMap (\x -> [ Encode.uint32 42, encodeStringString x ]) msg.name
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodePageType :: PageType -> Uint8Array
 encodePageType PageWidgets = do
   let xs = concatAll [ Encode.uint32 10, encodePageWidgets ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 encodePageType (PageUrl x) = do
   let xs = concatAll [ Encode.uint32 18, encodePageUrl x ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodePageWidgets :: Uint8Array
 encodePageWidgets = Encode.uint32 0
@@ -79,8 +75,7 @@ encodePageUrl msg = do
         [ Encode.uint32 10
         , Encode.string msg.addr
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodePageSeo :: PageSeo -> Uint8Array
 encodePageSeo msg = do
@@ -90,8 +85,7 @@ encodePageSeo msg = do
         , Encode.uint32 17
         , Encode.double msg.order
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeStringString :: Tuple String String -> Uint8Array
 encodeStringString (Tuple _1 _2) = do
@@ -102,8 +96,7 @@ encodeStringString (Tuple _1 _2) = do
         , Encode.uint32 18
         , Encode.string msg._2
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeSaveComponentTemplate :: SaveComponentTemplate -> Uint8Array
 encodeSaveComponentTemplate msg = do
@@ -111,8 +104,7 @@ encodeSaveComponentTemplate msg = do
         [ Encode.uint32 10
         , encodeFieldNode msg.fieldNode
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeFieldNode :: FieldNode -> Uint8Array
 encodeFieldNode (FieldNode msg) = do
@@ -121,8 +113,7 @@ encodeFieldNode (FieldNode msg) = do
         , Encode.string msg.root
         , concatAll $ concatMap (\x -> [ Encode.uint32 18, encodeFieldNode x ]) msg.forest
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeComponentsSavePrefs :: ComponentsSavePrefs -> Uint8Array
 encodeComponentsSavePrefs msg = do
@@ -137,5 +128,4 @@ encodeComponentsSavePrefs msg = do
         , encodeFieldNode msg.tree
         , fromMaybe (fromArray []) $ map (\x -> concatAll [ Encode.uint32 42, encodeFieldNode x ]) msg.extTree
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]

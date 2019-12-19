@@ -29,8 +29,7 @@ object Decoders {
               |decode$name _xs_ = do
               |  { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
               |  case tag `zshr` 3 of${cases.map(_.map("\n    "+_).mkString("")).mkString("")}
-              |    i ->
-              |      Left $$ Decode.BadType i""".stripMargin
+              |    i -> Left $$ Decode.BadType i""".stripMargin
         Coder(tmpl, s"decode$name".just)
       case TraitType(tpe, children, false) =>
         val name = tpe.typeSymbol.name.encodedName.toString

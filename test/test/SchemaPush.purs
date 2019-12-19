@@ -24,8 +24,7 @@ decodeTestSchema _xs_ = do
     1 -> do
       { pos: pos2, val } <- decodeClassWithMap _xs_ pos1
       pure { pos: pos2, val: ClassWithMap val }
-    i ->
-      Left $ Decode.BadType i
+    i -> Left $ Decode.BadType i
 
 decodeClassWithMap :: Uint8Array -> Int -> Decode.Result ClassWithMap
 decodeClassWithMap _xs_ pos0 = do

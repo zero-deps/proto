@@ -24,8 +24,7 @@ encodeFlow1 msg = do
   let xs = concatAll
         [ concatAll $ concatMap (\x -> [ Encode.uint32 10, encodeStringArrayString x ]) msg.graph
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeStringArrayString :: Tuple String (Array String) -> Uint8Array
 encodeStringArrayString (Tuple _1 _2) = do
@@ -35,16 +34,14 @@ encodeStringArrayString (Tuple _1 _2) = do
         , Encode.string msg._1
         , concatAll $ concatMap (\x -> [ Encode.uint32 18, Encode.string x ]) msg._2
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeFlow2 :: Flow2 -> Uint8Array
 encodeFlow2 msg = do
   let xs = concatAll
         [ concatAll $ concatMap (\x -> [ Encode.uint32 10, encodeStepIdArrayStepId x ]) msg.graph
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeStepIdArrayStepId :: Tuple StepId (Array StepId) -> Uint8Array
 encodeStepIdArrayStepId (Tuple _1 _2) = do
@@ -54,18 +51,15 @@ encodeStepIdArrayStepId (Tuple _1 _2) = do
         , encodeStepId msg._1
         , concatAll $ concatMap (\x -> [ Encode.uint32 18, encodeStepId x ]) msg._2
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeStepId :: StepId -> Uint8Array
 encodeStepId Prod = do
   let xs = concatAll [ Encode.uint32 10, encodeProd ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 encodeStepId Dev = do
   let xs = concatAll [ Encode.uint32 18, encodeDev ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeProd :: Uint8Array
 encodeProd = Encode.uint32 0

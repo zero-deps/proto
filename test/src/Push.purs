@@ -56,8 +56,7 @@ decodePush _xs_ = do
     1300 -> do
       { pos: pos2, val } <- decodeComponentTemplateOk _xs_ pos1
       pure { pos: pos2, val: ComponentTemplateOk val }
-    i ->
-      Left $ Decode.BadType i
+    i -> Left $ Decode.BadType i
 
 decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts
 decodeSiteOpts _xs_ pos0 = do

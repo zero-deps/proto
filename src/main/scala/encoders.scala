@@ -30,8 +30,7 @@ object Encoders {
               List(
                 s"encode$name $name1 = do"
               , s"  let xs = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 ]"
-              , s"  let len = length xs"
-              , s"  concatAll [ Encode.uint32 len, xs ]"
+              , s"  concatAll [ Encode.uint32 $$ length xs, xs ]"
               ).mkString("\n")
             )
           else
@@ -39,8 +38,7 @@ object Encoders {
               List(
                 s"encode$name ($name1 x) = do"
               , s"  let xs = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 x ]"
-              , s"  let len = length xs"
-              , s"  concatAll [ Encode.uint32 len, xs ]"
+              , s"  concatAll [ Encode.uint32 $$ length xs, xs ]"
               ).mkString("\n")
             )
         }
@@ -57,8 +55,7 @@ object Encoders {
               |  let msg = { _1, _2 }
               |  let xs = concatAll
               |  ${List(("_1", tpe_1, xs("_1")), ("_2", tpe_2, xs("_2"))).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
-              |  let len = length xs
-              |  concatAll [ Encode.uint32 len, xs ]""".stripMargin
+              |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
         Coder(tmpl, Nothing)
       case NoargsType(tpe) =>
         val name = tpe.typeSymbol.name.encodedName.toString
@@ -76,8 +73,7 @@ object Encoders {
                 |encode$name ${if (recursive) s"($name msg)" else "msg"} = do
                 |  let xs = concatAll
                 |  ${encodeFields.mkString("      [ ", "\n        , ", "\n        ]")}
-                |  let len = length xs
-                |  concatAll [ Encode.uint32 len, xs ]""".stripMargin
+                |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
           } else {
             s"""|encode$name :: $name -> Uint8Array
                 |encode$name _ = Encode.uint32 0""".stripMargin
@@ -93,8 +89,7 @@ object Encoders {
                 |encode$name ${if (recursive) s"($name msg)" else "msg"} = do
                 |  let xs = concatAll
                 |  ${encodeFields.mkString("      [ ", "\n        , ", "\n        ]")}
-                |  let len = length xs
-                |  concatAll [ Encode.uint32 len, xs ]""".stripMargin
+                |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
           } else {
             s"""|encode$name :: $name -> Uint8Array
                 |encode$name _ = Encode.uint32 0""".stripMargin

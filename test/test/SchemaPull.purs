@@ -22,8 +22,7 @@ encodeClassWithMap msg = do
   let xs = concatAll
         [ concatAll $ concatMap (\x -> [ Encode.uint32 10, encodeStringString x ]) msg.m
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
 
 encodeStringString :: Tuple String String -> Uint8Array
 encodeStringString (Tuple _1 _2) = do
@@ -34,5 +33,4 @@ encodeStringString (Tuple _1 _2) = do
         , Encode.uint32 18
         , Encode.string msg._2
         ]
-  let len = length xs
-  concatAll [ Encode.uint32 len, xs ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
