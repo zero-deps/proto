@@ -51,8 +51,7 @@ object Decoders {
           s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
               |decode$name _xs_ pos0 = do
               |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-              |  let end = pos + msglen
-              |  tailRecM3 decode end Nothing pos
+              |  tailRecM3 decode (pos + msglen) Nothing pos
               |    where
               |    decode :: Int -> Maybe $name -> Int -> Decode.Result' (Step { a :: Int, b :: Maybe $name, c :: Int } { pos :: Int, val :: $name })
               |    decode end acc pos1 | pos1 < end = do
@@ -72,8 +71,7 @@ object Decoders {
           s"""|$fun :: Uint8Array -> Int -> Decode.Result (Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1})
               |$fun _xs_ pos0 = do
               |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-              |  let end = pos + msglen
-              |  { pos: pos1, val } <- tailRecM3 decode end { ${nothingValue("first", tpe_1)}, ${nothingValue("second", tpe_2)} } pos
+              |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { ${nothingValue("first", tpe_1)}, ${nothingValue("second", tpe_2)} } pos
               |  case val of
               |    { ${justValue("first", tpe_1)}, ${justValue("second", tpe_2)} } -> pure { pos: pos1, val: Tuple first second }
               |    _ -> Left $$ Decode.MissingFields "$fun"
@@ -93,8 +91,7 @@ object Decoders {
           s"""|decode$name :: Uint8Array -> Int -> Decode.Result Unit
               |decode$name _xs_ pos0 = do
               |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-              |  let end = pos + msglen
-              |  pure { pos: end, val: unit }""".stripMargin
+              |  pure { pos: pos + msglen, val: unit }""".stripMargin
         Coder(tmpl, Nothing)
       case RecursiveType(tpe) =>
         val recursive = true
@@ -111,8 +108,7 @@ object Decoders {
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-                |  let end = pos + msglen
-                |  tailRecM3 decode end ($name $defObj) pos
+                |  tailRecM3 decode (pos + msglen) ($name $defObj) pos
                 |    where
                 |    decode :: Int -> $name -> Int -> Decode.Result' (Step { a :: Int, b :: $name, c :: Int } { pos :: Int, val :: $name })
                 |    decode end ($name acc) pos1 | pos1 < end = do
@@ -126,8 +122,7 @@ object Decoders {
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-                |  let end = pos + msglen
-                |  { pos: pos1, val } <- tailRecM3 decode end ($name' $defObj) pos
+                |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) ($name' $defObj) pos
                 |  case val of
                 |    $name' $justObj -> pure { pos: pos1, val: $name $unObj }
                 |    _ -> Left $$ Decode.MissingFields "$name"
@@ -156,8 +151,7 @@ object Decoders {
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-                |  let end = pos + msglen
-                |  tailRecM3 decode end $defObj pos
+                |  tailRecM3 decode (pos + msglen) $defObj pos
                 |    where
                 |    decode :: Int -> $name -> Int -> Decode.Result' (Step { a :: Int, b :: $name, c :: Int } { pos :: Int, val :: $name })
                 |    decode end acc pos1 | pos1 < end = do
@@ -171,8 +165,7 @@ object Decoders {
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-                |  let end = pos + msglen
-                |  { pos: pos1, val } <- tailRecM3 decode end $defObj pos
+                |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) $defObj pos
                 |  case val of
                 |    $justObj -> pure { pos: pos1, val: $unObj }
                 |    _ -> Left $$ Decode.MissingFields "$name"

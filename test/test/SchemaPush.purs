@@ -29,8 +29,7 @@ decodeTestSchema _xs_ = do
 decodeClassWithMap :: Uint8Array -> Int -> Decode.Result ClassWithMap
 decodeClassWithMap _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  tailRecM3 decode end { m: [] } pos
+  tailRecM3 decode (pos + msglen) { m: [] } pos
     where
     decode :: Int -> ClassWithMap -> Int -> Decode.Result' (Step { a :: Int, b :: ClassWithMap, c :: Int } { pos :: Int, val :: ClassWithMap })
     decode end acc pos1 | pos1 < end = do
@@ -47,8 +46,7 @@ decodeClassWithMap _xs_ pos0 = do
 decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
 decodeStringString _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { first: Nothing, second: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { first: Nothing, second: Nothing } pos
   case val of
     { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
     _ -> Left $ Decode.MissingFields "decodeStringString"

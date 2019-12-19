@@ -61,8 +61,7 @@ decodePush _xs_ = do
 decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts
 decodeSiteOpts _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  tailRecM3 decode end { xs: [] } pos
+  tailRecM3 decode (pos + msglen) { xs: [] } pos
     where
     decode :: Int -> SiteOpts -> Int -> Decode.Result' (Step { a :: Int, b :: SiteOpts, c :: Int } { pos :: Int, val :: SiteOpts })
     decode end acc pos1 | pos1 < end = do
@@ -79,8 +78,7 @@ decodeSiteOpts _xs_ pos0 = do
 decodeSiteOpt :: Uint8Array -> Int -> Decode.Result SiteOpt
 decodeSiteOpt _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { id: Nothing, label: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { id: Nothing, label: Nothing } pos
   case val of
     { id: Just id, label } -> pure { pos: pos1, val: { id, label } }
     _ -> Left $ Decode.MissingFields "SiteOpt"
@@ -103,8 +101,7 @@ decodeSiteOpt _xs_ pos0 = do
 decodePermissions :: Uint8Array -> Int -> Decode.Result Permissions
 decodePermissions _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  tailRecM3 decode end { xs: [] } pos
+  tailRecM3 decode (pos + msglen) { xs: [] } pos
     where
     decode :: Int -> Permissions -> Int -> Decode.Result' (Step { a :: Int, b :: Permissions, c :: Int } { pos :: Int, val :: Permissions })
     decode end acc pos1 | pos1 < end = do
@@ -121,8 +118,7 @@ decodePermissions _xs_ pos0 = do
 decodePage :: Uint8Array -> Int -> Decode.Result Page
 decodePage _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: [] } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { tpe: Nothing, guest: Nothing, seo: Nothing, mobileSeo: Nothing, name: [] } pos
   case val of
     { tpe: Just tpe, guest: Just guest, seo: Just seo, mobileSeo, name } -> pure { pos: pos1, val: { tpe, guest, seo, mobileSeo, name } }
     _ -> Left $ Decode.MissingFields "Page"
@@ -154,8 +150,7 @@ decodePage _xs_ pos0 = do
 decodePageType :: Uint8Array -> Int -> Decode.Result PageType
 decodePageType _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  tailRecM3 decode end Nothing pos
+  tailRecM3 decode (pos + msglen) Nothing pos
     where
     decode :: Int -> Maybe PageType -> Int -> Decode.Result' (Step { a :: Int, b :: Maybe PageType, c :: Int } { pos :: Int, val :: PageType })
     decode end acc pos1 | pos1 < end = do
@@ -176,14 +171,12 @@ decodePageType _xs_ pos0 = do
 decodePageWidgets :: Uint8Array -> Int -> Decode.Result Unit
 decodePageWidgets _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  pure { pos: end, val: unit }
+  pure { pos: pos + msglen, val: unit }
 
 decodePageUrl :: Uint8Array -> Int -> Decode.Result PageUrl
 decodePageUrl _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { addr: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { addr: Nothing } pos
   case val of
     { addr: Just addr } -> pure { pos: pos1, val: { addr } }
     _ -> Left $ Decode.MissingFields "PageUrl"
@@ -203,8 +196,7 @@ decodePageUrl _xs_ pos0 = do
 decodePageSeo :: Uint8Array -> Int -> Decode.Result PageSeo
 decodePageSeo _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { descr: Nothing, order: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { descr: Nothing, order: Nothing } pos
   case val of
     { descr: Just descr, order: Just order } -> pure { pos: pos1, val: { descr, order } }
     _ -> Left $ Decode.MissingFields "PageSeo"
@@ -227,8 +219,7 @@ decodePageSeo _xs_ pos0 = do
 decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
 decodeStringString _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { first: Nothing, second: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { first: Nothing, second: Nothing } pos
   case val of
     { first: Just first, second: Just second } -> pure { pos: pos1, val: Tuple first second }
     _ -> Left $ Decode.MissingFields "decodeStringString"
@@ -251,8 +242,7 @@ decodeStringString _xs_ pos0 = do
 decodePageTreeItem :: Uint8Array -> Int -> Decode.Result PageTreeItem
 decodePageTreeItem _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { priority: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { priority: Nothing } pos
   case val of
     { priority: Just priority } -> pure { pos: pos1, val: { priority } }
     _ -> Left $ Decode.MissingFields "PageTreeItem"
@@ -272,8 +262,7 @@ decodePageTreeItem _xs_ pos0 = do
 decodeComponentTemplateOk :: Uint8Array -> Int -> Decode.Result ComponentTemplateOk
 decodeComponentTemplateOk _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { fieldNode: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { fieldNode: Nothing } pos
   case val of
     { fieldNode: Just fieldNode } -> pure { pos: pos1, val: { fieldNode } }
     _ -> Left $ Decode.MissingFields "ComponentTemplateOk"
@@ -293,8 +282,7 @@ decodeComponentTemplateOk _xs_ pos0 = do
 decodeFieldNode :: Uint8Array -> Int -> Decode.Result FieldNode
 decodeFieldNode _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end (FieldNode' { root: Nothing, forest: [] }) pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) (FieldNode' { root: Nothing, forest: [] }) pos
   case val of
     FieldNode' { root: Just root, forest } -> pure { pos: pos1, val: FieldNode { root, forest } }
     _ -> Left $ Decode.MissingFields "FieldNode"

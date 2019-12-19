@@ -33,8 +33,7 @@ decodePush _xs_ = do
 decodeFlow1 :: Uint8Array -> Int -> Decode.Result Flow1
 decodeFlow1 _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  tailRecM3 decode end { graph: [] } pos
+  tailRecM3 decode (pos + msglen) { graph: [] } pos
     where
     decode :: Int -> Flow1 -> Int -> Decode.Result' (Step { a :: Int, b :: Flow1, c :: Int } { pos :: Int, val :: Flow1 })
     decode end acc pos1 | pos1 < end = do
@@ -51,8 +50,7 @@ decodeFlow1 _xs_ pos0 = do
 decodeStringArrayString :: Uint8Array -> Int -> Decode.Result (Tuple String (Array String))
 decodeStringArrayString _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { first: Nothing, second: [] } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { first: Nothing, second: [] } pos
   case val of
     { first: Just first, second } -> pure { pos: pos1, val: Tuple first second }
     _ -> Left $ Decode.MissingFields "decodeStringArrayString"
@@ -75,8 +73,7 @@ decodeStringArrayString _xs_ pos0 = do
 decodeFlow2 :: Uint8Array -> Int -> Decode.Result Flow2
 decodeFlow2 _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  tailRecM3 decode end { graph: [] } pos
+  tailRecM3 decode (pos + msglen) { graph: [] } pos
     where
     decode :: Int -> Flow2 -> Int -> Decode.Result' (Step { a :: Int, b :: Flow2, c :: Int } { pos :: Int, val :: Flow2 })
     decode end acc pos1 | pos1 < end = do
@@ -93,8 +90,7 @@ decodeFlow2 _xs_ pos0 = do
 decodeStepIdArrayStepId :: Uint8Array -> Int -> Decode.Result (Tuple StepId (Array StepId))
 decodeStepIdArrayStepId _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { first: Nothing, second: [] } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { first: Nothing, second: [] } pos
   case val of
     { first: Just first, second } -> pure { pos: pos1, val: Tuple first second }
     _ -> Left $ Decode.MissingFields "decodeStepIdArrayStepId"
@@ -117,8 +113,7 @@ decodeStepIdArrayStepId _xs_ pos0 = do
 decodeStepId :: Uint8Array -> Int -> Decode.Result StepId
 decodeStepId _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  tailRecM3 decode end Nothing pos
+  tailRecM3 decode (pos + msglen) Nothing pos
     where
     decode :: Int -> Maybe StepId -> Int -> Decode.Result' (Step { a :: Int, b :: Maybe StepId, c :: Int } { pos :: Int, val :: StepId })
     decode end acc pos1 | pos1 < end = do
@@ -139,11 +134,9 @@ decodeStepId _xs_ pos0 = do
 decodeProd :: Uint8Array -> Int -> Decode.Result Unit
 decodeProd _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  pure { pos: end, val: unit }
+  pure { pos: pos + msglen, val: unit }
 
 decodeDev :: Uint8Array -> Int -> Decode.Result Unit
 decodeDev _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  let end = pos + msglen
-  pure { pos: end, val: unit }
+  pure { pos: pos + msglen, val: unit }
