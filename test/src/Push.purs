@@ -24,11 +24,9 @@ import Common
 
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | ComponentTemplateOk ComponentTemplateOk
 type SiteOpts = { xs :: Array SiteOpt }
-type SiteOpts' = { xs :: Array SiteOpt }
 type SiteOpt = { id :: String, label :: Maybe String }
 type SiteOpt' = { id :: Maybe String, label :: Maybe String }
 type Permissions = { xs :: Array String }
-type Permissions' = { xs :: Array String }
 type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
 type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
 type PageUrl' = { addr :: Maybe String }
@@ -65,11 +63,9 @@ decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts
 decodeSiteOpts _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { xs: [] } pos
-  case val of
-    { xs } -> pure { pos: pos1, val: { xs } }
+  tailRecM3 decode end { xs: [] } pos
     where
-    decode :: Int -> SiteOpts' -> Int -> Decode.Result' (Step { a :: Int, b :: SiteOpts', c :: Int } { pos :: Int, val :: SiteOpts' })
+    decode :: Int -> SiteOpts -> Int -> Decode.Result' (Step { a :: Int, b :: SiteOpts, c :: Int } { pos :: Int, val :: SiteOpts })
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
@@ -109,11 +105,9 @@ decodePermissions :: Uint8Array -> Int -> Decode.Result Permissions
 decodePermissions _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { xs: [] } pos
-  case val of
-    { xs } -> pure { pos: pos1, val: { xs } }
+  tailRecM3 decode end { xs: [] } pos
     where
-    decode :: Int -> Permissions' -> Int -> Decode.Result' (Step { a :: Int, b :: Permissions', c :: Int } { pos :: Int, val :: Permissions' })
+    decode :: Int -> Permissions -> Int -> Decode.Result' (Step { a :: Int, b :: Permissions, c :: Int } { pos :: Int, val :: Permissions })
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
@@ -301,9 +295,9 @@ decodeFieldNode :: Uint8Array -> Int -> Decode.Result FieldNode
 decodeFieldNode _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val: FieldNode' val } <- tailRecM3 decode end (FieldNode' { root: Nothing, forest: [] }) pos
+  { pos: pos1, val } <- tailRecM3 decode end (FieldNode' { root: Nothing, forest: [] }) pos
   case val of
-    { root: Just root, forest } -> pure { pos: pos1, val: FieldNode { root, forest } }
+    FieldNode' { root: Just root, forest } -> pure { pos: pos1, val: FieldNode { root, forest } }
     _ -> Left $ Decode.MissingFields "FieldNode"
     where
     decode :: Int -> FieldNode' -> Int -> Decode.Result' (Step { a :: Int, b :: FieldNode', c :: Int } { pos :: Int, val :: FieldNode' })
@@ -319,4 +313,4 @@ decodeFieldNode _xs_ pos0 = do
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: (FieldNode' acc), c: pos3 }
-    decode end (FieldNode' acc) pos1 = pure $ Done { pos: pos1, val: FieldNode' acc }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }

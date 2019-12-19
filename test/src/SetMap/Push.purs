@@ -17,8 +17,6 @@ import Proto.Decode as Decode
 import SetMap.Common
 
 data Push = Flow1 Flow1 | Flow2 Flow2
-type Flow1' = { graph :: Array (Tuple String (Array String)) }
-type Flow2' = { graph :: Array (Tuple StepId (Array StepId)) }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
@@ -37,11 +35,9 @@ decodeFlow1 :: Uint8Array -> Int -> Decode.Result Flow1
 decodeFlow1 _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { graph: [] } pos
-  case val of
-    { graph } -> pure { pos: pos1, val: { graph } }
+  tailRecM3 decode end { graph: [] } pos
     where
-    decode :: Int -> Flow1' -> Int -> Decode.Result' (Step { a :: Int, b :: Flow1', c :: Int } { pos :: Int, val :: Flow1' })
+    decode :: Int -> Flow1 -> Int -> Decode.Result' (Step { a :: Int, b :: Flow1, c :: Int } { pos :: Int, val :: Flow1 })
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
@@ -81,11 +77,9 @@ decodeFlow2 :: Uint8Array -> Int -> Decode.Result Flow2
 decodeFlow2 _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { graph: [] } pos
-  case val of
-    { graph } -> pure { pos: pos1, val: { graph } }
+  tailRecM3 decode end { graph: [] } pos
     where
-    decode :: Int -> Flow2' -> Int -> Decode.Result' (Step { a :: Int, b :: Flow2', c :: Int } { pos :: Int, val :: Flow2' })
+    decode :: Int -> Flow2 -> Int -> Decode.Result' (Step { a :: Int, b :: Flow2, c :: Int } { pos :: Int, val :: Flow2 })
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of

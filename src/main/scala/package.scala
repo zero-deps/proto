@@ -50,55 +50,6 @@ package object purs {
     tpe.baseClasses.exists(_.asType.toType.typeConstructor <:< typeOf[scala.collection.Iterable[Unit]].typeConstructor)
   }
   
-  def decodeField(recursive: Option[String])(name: String, tpe: Type, n: Int): List[String] = {
-    def tmpl(n: Int, fun: String, mod: String): List[String] = {
-      List(
-        s"${n} -> do"
-      , s"  { pos: pos3, val } <- ${fun} _xs_ pos2"
-      , s"  pure $$ Loop { a: end, b: ${if (recursive.isDefined) s"${recursive.get}' $$ " else ""}acc { ${mod} }, c: pos3 }"
-      )
-    }
-    if (tpe =:= StringClass.selfType) {
-      tmpl(n, "Decode.string", s"$name = Just val")
-    } else if (tpe =:= IntClass.selfType) {
-      tmpl(n, "Decode.int32", s"$name = Just val")
-    } else if (tpe =:= BooleanClass.selfType) {
-      tmpl(n, "Decode.boolean", s"$name = Just val")
-    } else if (tpe =:= DoubleClass.selfType) {
-      tmpl(n, "Decode.double", s"$name = Just val")
-    } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
-      val typeArg = tpe.typeArgs.head.typeSymbol
-      val tpe1 = typeArg.asType.toType
-      if (tpe1 =:= StringClass.selfType) {
-        tmpl(n, "Decode.string", s"$name = Just val")
-      } else if (tpe1 =:= IntClass.selfType) {
-        tmpl(n, "Decode.int32", s"$name = Just val")
-      } else if (tpe1 =:= BooleanClass.selfType) {
-        tmpl(n, "Decode.boolean", s"$name = Just val")
-      } else if (tpe1 =:= DoubleClass.selfType) {
-        tmpl(n, "Decode.double", s"$name = Just val")
-      } else {
-        val typeArgName = typeArg.name.encodedName.toString
-        tmpl(n, s"decode$typeArgName", s"$name = Just val")
-      }
-    } else if (isIterable(tpe)) {
-      iterablePurs(tpe) match {
-        case ArrayPurs(tpe) =>
-          if (tpe =:= StringClass.selfType) {
-            tmpl(n, "Decode.string", s"$name = snoc acc.$name val")
-          } else {
-            val tpeName = tpe.typeSymbol.asClass.name.encodedName.toString
-            tmpl(n, s"decode$tpeName", s"$name = snoc acc.$name val")
-          }
-        case ArrayTuplePurs(tpe1, tpe2) =>
-          tmpl(n, s"decode${tupleFunName(tpe1, tpe2)}", s"$name = snoc acc.$name val")
-      }
-    } else {
-      val name1 = tpe.typeSymbol.name.encodedName.toString
-      tmpl(n, s"decode${name1}", s"$name = Just val")
-    }
-  }
-  
   def encodeField(name: String, tpe: Type, n: Int): List[String] = {
     if (tpe =:= StringClass.selfType) {
       List(
@@ -181,7 +132,7 @@ package object purs {
     }
   }
 
-  private[this] def iterablePurs(tpe: Type): IterablePurs = {
+  def iterablePurs(tpe: Type): IterablePurs = {
     tpe.typeArgs match {
       case x :: Nil => ArrayPurs(x)
       case x :: y :: Nil => ArrayTuplePurs(x, y)

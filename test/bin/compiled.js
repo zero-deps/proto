@@ -1539,16 +1539,9 @@ var PS = {};
           };
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
               var end = v.pos + v.val | 0;
-              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(end)({
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(end)({
                   xs: [  ]
-              })(v.pos))(function (v1) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
-                      pos: v1.pos,
-                      val: {
-                          xs: v1.val.xs
-                      }
-                  });
-              });
+              })(v.pos);
           });
       };
   };
@@ -1589,16 +1582,9 @@ var PS = {};
           };
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
               var end = v.pos + v.val | 0;
-              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(end)({
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(end)({
                   xs: [  ]
-              })(v.pos))(function (v1) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
-                      pos: v1.pos,
-                      val: {
-                          xs: v1.val.xs
-                      }
-                  });
-              });
+              })(v.pos);
           });
       };
   };
@@ -1710,7 +1696,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("PageType"));
                       };
-                      throw new Error("Failed pattern match at Push (line 167, column 5 - line 167, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at Push (line 161, column 5 - line 161, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2396,16 +2382,9 @@ var PS = {};
           };
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
               var end = v.pos + v.val | 0;
-              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(end)({
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(end)({
                   graph: [  ]
-              })(v.pos))(function (v1) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
-                      pos: v1.pos,
-                      val: {
-                          graph: v1.val.graph
-                      }
-                  });
-              });
+              })(v.pos);
           });
       };
   };
@@ -2464,7 +2443,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("StepId"));
                       };
-                      throw new Error("Failed pattern match at SetMap.Push (line 130, column 5 - line 130, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at SetMap.Push (line 124, column 5 - line 124, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2576,16 +2555,9 @@ var PS = {};
           };
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
               var end = v.pos + v.val | 0;
-              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(end)({
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(end)({
                   graph: [  ]
-              })(v.pos))(function (v1) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
-                      pos: v1.pos,
-                      val: {
-                          graph: v1.val.graph
-                      }
-                  });
-              });
+              })(v.pos);
           });
       };
   };

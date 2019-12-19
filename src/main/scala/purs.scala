@@ -84,18 +84,36 @@ import $commonModule"""
         case _: NoargsType => Nil
         case RecursiveType(tpe) =>
           val name = tpe.typeSymbol.name.encodedName.toString
-          val fieldsOf = fields(tpe)
-          val fs = fieldsOf.map{ case (name1, tpe, _) => name1 -> pursType(tpe) }
-          val x = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(s"newtype $name = $name { ", ", ", " }")
-          val x1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(s"newtype $name' = $name' { ", ", ", " }")
-          if (genMaybe) Seq(PursType(Vector(x), s"$name($name)".just), PursType(Seq(x1), Nothing)) else Seq(PursType(Vector(x), s"$name($name)".just))
+          val fs = fields(tpe).map{ case (name1, tpe, _) => name1 -> pursType(tpe) }
+          val params = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(", ")
+          val x = s"newtype $name = $name { $params }"
+          if (genMaybe) {
+            val params1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(", ")
+            if (params == params1) {
+              Seq(PursType(Seq(x), s"$name($name)".just))
+            } else {
+              val x1 = s"newtype $name' = $name' { $params1 }"
+              Seq(PursType(Seq(x), s"$name($name)".just), PursType(Seq(x1), Nothing))
+            }
+          } else {
+            Seq(PursType(Seq(x), s"$name($name)".just))
+          }
         case RegularType(tpe) =>
           val name = tpe.typeSymbol.name.encodedName.toString
-          val fieldsOf = fields(tpe)
-          val fs = fieldsOf.map{ case (name1, tpe, _) => name1 -> pursType(tpe) }
-          val x = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(s"type $name = { ", ", ", " }")
-          val x1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(s"type $name' = { ", ", ", " }")
-          if (genMaybe) Seq(PursType(Vector(x), s"$name".just), PursType(Seq(x1), Nothing)) else Seq(PursType(Vector(x), s"$name".just))
+          val fs = fields(tpe).map{ case (name1, tpe, _) => name1 -> pursType(tpe) }
+          val params = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(", ")
+          val x = if (params.nonEmpty) s"type $name = { $params }" else s"type $name = {}"
+          if (genMaybe) {
+            val params1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(", ")
+            if (params == params1) {
+              Seq(PursType(Seq(x), s"$name".just))
+            } else {
+              val x1 = s"type $name' = { $params1 }"
+              Seq(PursType(Seq(x), s"$name".just), PursType(Seq(x1), Nothing))
+            }
+          } else {
+            Seq(PursType(Seq(x), s"$name".just))
+          }
       }.distinct
     }
 

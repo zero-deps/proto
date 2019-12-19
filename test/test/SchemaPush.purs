@@ -15,7 +15,7 @@ import Prelude (bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import SchemaCommon
 
-type ClassWithMap' = { m :: Array (Tuple String String) }
+
 
 decodeTestSchema :: Uint8Array -> Decode.Result TestSchema
 decodeTestSchema _xs_ = do
@@ -31,11 +31,9 @@ decodeClassWithMap :: Uint8Array -> Int -> Decode.Result ClassWithMap
 decodeClassWithMap _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   let end = pos + msglen
-  { pos: pos1, val } <- tailRecM3 decode end { m: [] } pos
-  case val of
-    { m } -> pure { pos: pos1, val: { m } }
+  tailRecM3 decode end { m: [] } pos
     where
-    decode :: Int -> ClassWithMap' -> Int -> Decode.Result' (Step { a :: Int, b :: ClassWithMap', c :: Int } { pos :: Int, val :: ClassWithMap' })
+    decode :: Int -> ClassWithMap -> Int -> Decode.Result' (Step { a :: Int, b :: ClassWithMap, c :: Int } { pos :: Int, val :: ClassWithMap })
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
