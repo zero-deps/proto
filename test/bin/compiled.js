@@ -299,6 +299,7 @@ var PS = {};
   });
   exports["Left"] = Left;
   exports["Right"] = Right;
+  exports["functorEither"] = functorEither;
   exports["bifunctorEither"] = bifunctorEither;
   exports["applicativeEither"] = applicativeEither;
   exports["bindEither"] = bindEither;
@@ -1307,6 +1308,7 @@ var PS = {};
   var Control_Monad_Rec_Class = $PS["Control.Monad.Rec.Class"];
   var Data_Array = $PS["Data.Array"];
   var Data_Either = $PS["Data.Either"];
+  var Data_Functor = $PS["Data.Functor"];
   var Data_Maybe = $PS["Data.Maybe"];
   var Data_Tuple = $PS["Data.Tuple"];
   var Data_Unit = $PS["Data.Unit"];
@@ -1349,6 +1351,13 @@ var PS = {};
           return new PageTreeItem(value0);
       };
       return PageTreeItem;
+  })();
+  var Ping = (function () {
+      function Ping() {
+
+      };
+      Ping.value = new Ping();
+      return Ping;
   })();
   var ComponentTemplateOk = (function () {
       function ComponentTemplateOk(value0) {
@@ -1532,6 +1541,16 @@ var PS = {};
           });
       };
   };
+  var decodePing = function (_xs_) {
+      return function (pos0) {
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Applicative.pure(Data_Either.applicativeEither)({
+                  pos: v.pos + v.val | 0,
+                  val: Data_Unit.unit
+              });
+          });
+      };
+  };
   var decodePermissions = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
@@ -1680,7 +1699,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("PageType"));
                       };
-                      throw new Error("Failed pattern match at Push (line 155, column 5 - line 155, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at Push (line 146, column 5 - line 146, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2055,44 +2074,52 @@ var PS = {};
       return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(0))(function (v) {
           var v1 = v.val >>> 3;
           if (v1 === 1) {
-              return Control_Bind.bind(Data_Either.bindEither)(decodeSiteOpts(_xs_)(v.pos))(function (v2) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
+              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
+                  return {
                       pos: v2.pos,
                       val: new SiteOpts(v2.val)
-                  });
-              });
+                  };
+              })(decodeSiteOpts(_xs_)(v.pos));
           };
           if (v1 === 2) {
-              return Control_Bind.bind(Data_Either.bindEither)(decodePermissions(_xs_)(v.pos))(function (v2) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
+              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
+                  return {
                       pos: v2.pos,
                       val: new Permissions(v2.val)
-                  });
-              });
+                  };
+              })(decodePermissions(_xs_)(v.pos));
           };
           if (v1 === 3) {
-              return Control_Bind.bind(Data_Either.bindEither)(decodePage(_xs_)(v.pos))(function (v2) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
+              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
+                  return {
                       pos: v2.pos,
                       val: new Page(v2.val)
-                  });
-              });
+                  };
+              })(decodePage(_xs_)(v.pos));
           };
           if (v1 === 4) {
-              return Control_Bind.bind(Data_Either.bindEither)(decodePageTreeItem(_xs_)(v.pos))(function (v2) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
+              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
+                  return {
                       pos: v2.pos,
                       val: new PageTreeItem(v2.val)
-                  });
-              });
+                  };
+              })(decodePageTreeItem(_xs_)(v.pos));
+          };
+          if (v1 === 5) {
+              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
+                  return {
+                      pos: v2.pos,
+                      val: Ping.value
+                  };
+              })(decodePing(_xs_)(v.pos));
           };
           if (v1 === 1300) {
-              return Control_Bind.bind(Data_Either.bindEither)(decodeComponentTemplateOk(_xs_)(v.pos))(function (v2) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
+              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
+                  return {
                       pos: v2.pos,
                       val: new ComponentTemplateOk(v2.val)
-                  });
-              });
+                  };
+              })(decodeComponentTemplateOk(_xs_)(v.pos));
           };
           return Data_Either.Left.create(new Proto_Decode.BadType(v1));
       });
@@ -2101,6 +2128,7 @@ var PS = {};
   exports["Permissions"] = Permissions;
   exports["Page"] = Page;
   exports["PageTreeItem"] = PageTreeItem;
+  exports["Ping"] = Ping;
   exports["ComponentTemplateOk"] = ComponentTemplateOk;
   exports["decodePush"] = decodePush;
 })(PS);
@@ -2218,6 +2246,7 @@ var PS = {};
   var Control_Monad_Rec_Class = $PS["Control.Monad.Rec.Class"];
   var Data_Array = $PS["Data.Array"];
   var Data_Either = $PS["Data.Either"];
+  var Data_Functor = $PS["Data.Functor"];
   var Data_Maybe = $PS["Data.Maybe"];
   var Data_Tuple = $PS["Data.Tuple"];
   var Data_Unit = $PS["Data.Unit"];
@@ -2411,7 +2440,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("StepId"));
                       };
-                      throw new Error("Failed pattern match at SetMap.Push (line 118, column 5 - line 118, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at SetMap.Push (line 114, column 5 - line 114, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2530,20 +2559,20 @@ var PS = {};
       return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(0))(function (v) {
           var v1 = v.val >>> 3;
           if (v1 === 1) {
-              return Control_Bind.bind(Data_Either.bindEither)(decodeFlow1(_xs_)(v.pos))(function (v2) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
+              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
+                  return {
                       pos: v2.pos,
                       val: new Flow1(v2.val)
-                  });
-              });
+                  };
+              })(decodeFlow1(_xs_)(v.pos));
           };
           if (v1 === 2) {
-              return Control_Bind.bind(Data_Either.bindEither)(decodeFlow2(_xs_)(v.pos))(function (v2) {
-                  return Control_Applicative.pure(Data_Either.applicativeEither)({
+              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
+                  return {
                       pos: v2.pos,
                       val: new Flow2(v2.val)
-                  });
-              });
+                  };
+              })(decodeFlow2(_xs_)(v.pos));
           };
           return Data_Either.Left.create(new Proto_Decode.BadType(v1));
       });
