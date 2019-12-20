@@ -18,11 +18,11 @@ import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple))
 import Data.Unit (Unit, unit)
-import Prelude (bind, pure, ($), (+), (<))
+import Prelude (map, bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import Common
 
-data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | ComponentTemplateOk ComponentTemplateOk
+data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | Ping | ComponentTemplateOk ComponentTemplateOk
 type SiteOpts = { xs :: Array SiteOpt }
 type SiteOpt = { id :: String, label :: Maybe String }
 type SiteOpt' = { id :: Maybe String, label :: Maybe String }
@@ -41,21 +41,12 @@ decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
   { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
   case tag `zshr` 3 of
-    1 -> do
-      { pos: pos2, val } <- decodeSiteOpts _xs_ pos1
-      pure { pos: pos2, val: SiteOpts val }
-    2 -> do
-      { pos: pos2, val } <- decodePermissions _xs_ pos1
-      pure { pos: pos2, val: Permissions val }
-    3 -> do
-      { pos: pos2, val } <- decodePage _xs_ pos1
-      pure { pos: pos2, val: Page val }
-    4 -> do
-      { pos: pos2, val } <- decodePageTreeItem _xs_ pos1
-      pure { pos: pos2, val: PageTreeItem val }
-    1300 -> do
-      { pos: pos2, val } <- decodeComponentTemplateOk _xs_ pos1
-      pure { pos: pos2, val: ComponentTemplateOk val }
+    1 -> map (\{ pos, val } -> { pos, val: SiteOpts val }) (decodeSiteOpts _xs_ pos1)
+    2 -> map (\{ pos, val } -> { pos, val: Permissions val }) (decodePermissions _xs_ pos1)
+    3 -> map (\{ pos, val } -> { pos, val: Page val }) (decodePage _xs_ pos1)
+    4 -> map (\{ pos, val } -> { pos, val: PageTreeItem val }) (decodePageTreeItem _xs_ pos1)
+    5 -> map (\{ pos } -> { pos, val: Ping }) (decodePing _xs_ pos1)
+    1300 -> map (\{ pos, val } -> { pos, val: ComponentTemplateOk val }) (decodeComponentTemplateOk _xs_ pos1)
     i -> Left $ Decode.BadType i
 
 decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts
@@ -258,6 +249,11 @@ decodePageTreeItem _xs_ pos0 = do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
+
+decodePing :: Uint8Array -> Int -> Decode.Result Unit
+decodePing _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  pure { pos: pos + msglen, val: unit }
 
 decodeComponentTemplateOk :: Uint8Array -> Int -> Decode.Result ComponentTemplateOk
 decodeComponentTemplateOk _xs_ pos0 = do

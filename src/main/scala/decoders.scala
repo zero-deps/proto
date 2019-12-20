@@ -10,25 +10,15 @@ object Decoders {
     types.map{
       case TraitType(tpe, children, true) =>
         val cases = children.map{ case ChildMeta(name, tpe, n, noargs) =>
-          if (noargs)
-            List(
-              s"$n -> do"
-            , s"  { pos: pos2 } <- decode$name _xs_ pos1"
-            , s"  pure { pos: pos2, val: $name }"
-            )
-          else
-            List(
-              s"$n -> do"
-            , s"  { pos: pos2, val } <- decode$name _xs_ pos1"
-            , s"  pure { pos: pos2, val: $name val }"
-            )
+          if (noargs) s"$n -> map (\\{ pos } -> { pos, val: $name }) (decode$name _xs_ pos1)"
+          else        s"$n -> map (\\{ pos, val } -> { pos, val: $name val }) (decode$name _xs_ pos1)"
         }
         val name = tpe.typeSymbol.name.encodedName.toString
         val tmpl =
           s"""|decode$name :: Uint8Array -> Decode.Result $name
               |decode$name _xs_ = do
               |  { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
-              |  case tag `zshr` 3 of${cases.map(_.map("\n    "+_).mkString("")).mkString("")}
+              |  case tag `zshr` 3 of${cases.map("\n    "+_).mkString("")}
               |    i -> Left $$ Decode.BadType i""".stripMargin
         Coder(tmpl, s"decode$name".just)
       case TraitType(tpe, children, false) =>

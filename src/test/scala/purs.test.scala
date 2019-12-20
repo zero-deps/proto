@@ -58,6 +58,7 @@ sealed trait Push
 @N(3) final case class Page(@N(1) tpe: PageType, @N(2) guest: Boolean, @N(3) seo: PageSeo, @N(4) mobileSeo: Option[PageSeo], @N(5) name: Map[String,String]) extends Push
 final case class PageSeo(@N(1) descr: String, @N(2) order: Double)
 @N(4) final case class PageTreeItem(@N(1) priority: Int) extends Push
+@N(5) final case object Ping extends Push
 
 @N(1300) final case class ComponentTemplateOk
   ( @N(1) fieldNode: FieldNode

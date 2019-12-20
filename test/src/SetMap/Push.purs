@@ -12,7 +12,7 @@ import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple))
 import Data.Unit (Unit, unit)
-import Prelude (bind, pure, ($), (+), (<))
+import Prelude (map, bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import SetMap.Common
 
@@ -22,12 +22,8 @@ decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
   { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
   case tag `zshr` 3 of
-    1 -> do
-      { pos: pos2, val } <- decodeFlow1 _xs_ pos1
-      pure { pos: pos2, val: Flow1 val }
-    2 -> do
-      { pos: pos2, val } <- decodeFlow2 _xs_ pos1
-      pure { pos: pos2, val: Flow2 val }
+    1 -> map (\{ pos, val } -> { pos, val: Flow1 val }) (decodeFlow1 _xs_ pos1)
+    2 -> map (\{ pos, val } -> { pos, val: Flow2 val }) (decodeFlow2 _xs_ pos1)
     i -> Left $ Decode.BadType i
 
 decodeFlow1 :: Uint8Array -> Int -> Decode.Result Flow1

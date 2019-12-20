@@ -11,7 +11,7 @@ import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple))
 import Data.Unit (Unit, unit)
-import Prelude (bind, pure, ($), (+), (<))
+import Prelude (map, bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import SchemaCommon
 
@@ -21,9 +21,7 @@ decodeTestSchema :: Uint8Array -> Decode.Result TestSchema
 decodeTestSchema _xs_ = do
   { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
   case tag `zshr` 3 of
-    1 -> do
-      { pos: pos2, val } <- decodeClassWithMap _xs_ pos1
-      pure { pos: pos2, val: ClassWithMap val }
+    1 -> map (\{ pos, val } -> { pos, val: ClassWithMap val }) (decodeClassWithMap _xs_ pos1)
     i -> Left $ Decode.BadType i
 
 decodeClassWithMap :: Uint8Array -> Int -> Decode.Result ClassWithMap
