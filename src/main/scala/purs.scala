@@ -59,7 +59,13 @@ import Data.Tuple (Tuple(Tuple))
 import Data.Unit (Unit, unit)
 import Prelude (map, bind, pure, ($$), (+), (<))
 import Proto.Decode as Decode
-import $commonModule"""
+import $commonModule
+
+decodeTraitTag :: forall a b. Decode.Result b -> (b -> a) -> Decode.Result a
+decodeTraitTag res con = map (\\{ pos, val } -> { pos, val: con val }) res
+
+decodeTraitTag0 :: forall a. Decode.Result Unit -> a -> Decode.Result a
+decodeTraitTag0 res con = map (\\{ pos } -> { pos, val: con }) res"""
 
     def makePursTypes(types: Seq[Tpe], genMaybe: Boolean): Seq[PursType] = {
       types.flatMap{

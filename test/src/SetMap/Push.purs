@@ -16,14 +16,20 @@ import Prelude (map, bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import SetMap.Common
 
+decodeTraitTag :: forall a b. Decode.Result b -> (b -> a) -> Decode.Result a
+decodeTraitTag res con = map (\{ pos, val } -> { pos, val: con val }) res
+
+decodeTraitTag0 :: forall a. Decode.Result Unit -> a -> Decode.Result a
+decodeTraitTag0 res con = map (\{ pos } -> { pos, val: con }) res
+
 data Push = Flow1 Flow1 | Flow2 Flow2
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
   { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
   case tag `zshr` 3 of
-    1 -> map (\{ pos, val } -> { pos, val: Flow1 val }) (decodeFlow1 _xs_ pos1)
-    2 -> map (\{ pos, val } -> { pos, val: Flow2 val }) (decodeFlow2 _xs_ pos1)
+    1 -> decodeTraitTag (decodeFlow1 _xs_ pos1) Flow1
+    2 -> decodeTraitTag (decodeFlow2 _xs_ pos1) Flow2
     i -> Left $ Decode.BadType i
 
 decodeFlow1 :: Uint8Array -> Int -> Decode.Result Flow1

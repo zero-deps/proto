@@ -22,6 +22,12 @@ import Prelude (map, bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import Common
 
+decodeTraitTag :: forall a b. Decode.Result b -> (b -> a) -> Decode.Result a
+decodeTraitTag res con = map (\{ pos, val } -> { pos, val: con val }) res
+
+decodeTraitTag0 :: forall a. Decode.Result Unit -> a -> Decode.Result a
+decodeTraitTag0 res con = map (\{ pos } -> { pos, val: con }) res
+
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | Ping | ComponentTemplateOk ComponentTemplateOk
 type SiteOpts = { xs :: Array SiteOpt }
 type SiteOpt = { id :: String, label :: Maybe String }
@@ -41,12 +47,12 @@ decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
   { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
   case tag `zshr` 3 of
-    1 -> map (\{ pos, val } -> { pos, val: SiteOpts val }) (decodeSiteOpts _xs_ pos1)
-    2 -> map (\{ pos, val } -> { pos, val: Permissions val }) (decodePermissions _xs_ pos1)
-    3 -> map (\{ pos, val } -> { pos, val: Page val }) (decodePage _xs_ pos1)
-    4 -> map (\{ pos, val } -> { pos, val: PageTreeItem val }) (decodePageTreeItem _xs_ pos1)
-    5 -> map (\{ pos } -> { pos, val: Ping }) (decodePing _xs_ pos1)
-    1300 -> map (\{ pos, val } -> { pos, val: ComponentTemplateOk val }) (decodeComponentTemplateOk _xs_ pos1)
+    1 -> decodeTraitTag (decodeSiteOpts _xs_ pos1) SiteOpts
+    2 -> decodeTraitTag (decodePermissions _xs_ pos1) Permissions
+    3 -> decodeTraitTag (decodePage _xs_ pos1) Page
+    4 -> decodeTraitTag (decodePageTreeItem _xs_ pos1) PageTreeItem
+    5 -> decodeTraitTag0 (decodePing _xs_ pos1) Ping
+    1300 -> decodeTraitTag (decodeComponentTemplateOk _xs_ pos1) ComponentTemplateOk
     i -> Left $ Decode.BadType i
 
 decodeSiteOpts :: Uint8Array -> Int -> Decode.Result SiteOpts

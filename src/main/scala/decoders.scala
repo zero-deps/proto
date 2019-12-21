@@ -10,8 +10,8 @@ object Decoders {
     types.map{
       case TraitType(tpe, children, true) =>
         val cases = children.map{ case ChildMeta(name, tpe, n, noargs) =>
-          if (noargs) s"$n -> map (\\{ pos } -> { pos, val: $name }) (decode$name _xs_ pos1)"
-          else        s"$n -> map (\\{ pos, val } -> { pos, val: $name val }) (decode$name _xs_ pos1)"
+          if (noargs) s"$n -> decodeTraitTag0 (decode$name _xs_ pos1) $name"
+          else        s"$n -> decodeTraitTag (decode$name _xs_ pos1) $name"
         }
         val name = tpe.typeSymbol.name.encodedName.toString
         val tmpl =

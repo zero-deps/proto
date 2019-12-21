@@ -15,13 +15,19 @@ import Prelude (map, bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import SchemaCommon
 
+decodeTraitTag :: forall a b. Decode.Result b -> (b -> a) -> Decode.Result a
+decodeTraitTag res con = map (\{ pos, val } -> { pos, val: con val }) res
+
+decodeTraitTag0 :: forall a. Decode.Result Unit -> a -> Decode.Result a
+decodeTraitTag0 res con = map (\{ pos } -> { pos, val: con }) res
+
 
 
 decodeTestSchema :: Uint8Array -> Decode.Result TestSchema
 decodeTestSchema _xs_ = do
   { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
   case tag `zshr` 3 of
-    1 -> map (\{ pos, val } -> { pos, val: ClassWithMap val }) (decodeClassWithMap _xs_ pos1)
+    1 -> decodeTraitTag (decodeClassWithMap _xs_ pos1) ClassWithMap
     i -> Left $ Decode.BadType i
 
 decodeClassWithMap :: Uint8Array -> Int -> Decode.Result ClassWithMap

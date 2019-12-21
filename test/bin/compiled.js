@@ -1368,6 +1368,26 @@ var PS = {};
       };
       return ComponentTemplateOk;
   })();
+  var decodeTraitTag0 = function (res) {
+      return function (con) {
+          return Data_Functor.map(Data_Either.functorEither)(function (v) {
+              return {
+                  pos: v.pos,
+                  val: con
+              };
+          })(res);
+      };
+  };
+  var decodeTraitTag = function (res) {
+      return function (con) {
+          return Data_Functor.map(Data_Either.functorEither)(function (v) {
+              return {
+                  pos: v.pos,
+                  val: con(v.val)
+              };
+          })(res);
+      };
+  };
   var decodeStringString = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
@@ -1699,7 +1719,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("PageType"));
                       };
-                      throw new Error("Failed pattern match at Push (line 146, column 5 - line 146, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at Push (line 152, column 5 - line 152, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2074,52 +2094,22 @@ var PS = {};
       return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(0))(function (v) {
           var v1 = v.val >>> 3;
           if (v1 === 1) {
-              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
-                  return {
-                      pos: v2.pos,
-                      val: new SiteOpts(v2.val)
-                  };
-              })(decodeSiteOpts(_xs_)(v.pos));
+              return decodeTraitTag(decodeSiteOpts(_xs_)(v.pos))(SiteOpts.create);
           };
           if (v1 === 2) {
-              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
-                  return {
-                      pos: v2.pos,
-                      val: new Permissions(v2.val)
-                  };
-              })(decodePermissions(_xs_)(v.pos));
+              return decodeTraitTag(decodePermissions(_xs_)(v.pos))(Permissions.create);
           };
           if (v1 === 3) {
-              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
-                  return {
-                      pos: v2.pos,
-                      val: new Page(v2.val)
-                  };
-              })(decodePage(_xs_)(v.pos));
+              return decodeTraitTag(decodePage(_xs_)(v.pos))(Page.create);
           };
           if (v1 === 4) {
-              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
-                  return {
-                      pos: v2.pos,
-                      val: new PageTreeItem(v2.val)
-                  };
-              })(decodePageTreeItem(_xs_)(v.pos));
+              return decodeTraitTag(decodePageTreeItem(_xs_)(v.pos))(PageTreeItem.create);
           };
           if (v1 === 5) {
-              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
-                  return {
-                      pos: v2.pos,
-                      val: Ping.value
-                  };
-              })(decodePing(_xs_)(v.pos));
+              return decodeTraitTag0(decodePing(_xs_)(v.pos))(Ping.value);
           };
           if (v1 === 1300) {
-              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
-                  return {
-                      pos: v2.pos,
-                      val: new ComponentTemplateOk(v2.val)
-                  };
-              })(decodeComponentTemplateOk(_xs_)(v.pos));
+              return decodeTraitTag(decodeComponentTemplateOk(_xs_)(v.pos))(ComponentTemplateOk.create);
           };
           return Data_Either.Left.create(new Proto_Decode.BadType(v1));
       });
@@ -2270,6 +2260,16 @@ var PS = {};
       };
       return Flow2;
   })();
+  var decodeTraitTag = function (res) {
+      return function (con) {
+          return Data_Functor.map(Data_Either.functorEither)(function (v) {
+              return {
+                  pos: v.pos,
+                  val: con(v.val)
+              };
+          })(res);
+      };
+  };
   var decodeStringArrayString = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
@@ -2440,7 +2440,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("StepId"));
                       };
-                      throw new Error("Failed pattern match at SetMap.Push (line 114, column 5 - line 114, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at SetMap.Push (line 120, column 5 - line 120, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2559,20 +2559,10 @@ var PS = {};
       return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(0))(function (v) {
           var v1 = v.val >>> 3;
           if (v1 === 1) {
-              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
-                  return {
-                      pos: v2.pos,
-                      val: new Flow1(v2.val)
-                  };
-              })(decodeFlow1(_xs_)(v.pos));
+              return decodeTraitTag(decodeFlow1(_xs_)(v.pos))(Flow1.create);
           };
           if (v1 === 2) {
-              return Data_Functor.map(Data_Either.functorEither)(function (v2) {
-                  return {
-                      pos: v2.pos,
-                      val: new Flow2(v2.val)
-                  };
-              })(decodeFlow2(_xs_)(v.pos));
+              return decodeTraitTag(decodeFlow2(_xs_)(v.pos))(Flow2.create);
           };
           return Data_Either.Left.create(new Proto_Decode.BadType(v1));
       });
