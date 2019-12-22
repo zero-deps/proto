@@ -30,12 +30,7 @@ object Decoders {
             , s"  { pos: pos3 } <- decode$name _xs_ pos2"
             , s"  pure $$ Loop { a: end, b: Just $name, c: pos3 }"
             )
-          else
-            List(
-              s"$n -> do"
-            , s"  { pos: pos3, val } <- decode$name _xs_ pos2"
-            , s"  pure $$ Loop { a: end, b: Just $$ $name val, c: pos3 }"
-            )
+          else s"$n -> decodeField end (decode$name _xs_ pos2) (Just <<< $name)" :: Nil
         }
         val tmpl =
           s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name

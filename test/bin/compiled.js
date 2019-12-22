@@ -1704,12 +1704,8 @@ var PS = {};
                                   });
                               };
                               if (v2 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodePageUrl(_xs_)(v1.pos))(function (v3) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: Data_Maybe.Just.create(new Common.PageUrl(v3.val)),
-                                          c: v3.pos
-                                      }));
+                                  return decodeField(end)(decodePageUrl(_xs_)(v1.pos))(function ($315) {
+                                      return Data_Maybe.Just.create(Common.PageUrl.create($315));
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {

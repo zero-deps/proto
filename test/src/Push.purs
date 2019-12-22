@@ -19,7 +19,7 @@ import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple))
 import Data.Unit (Unit, unit)
-import Prelude (map, bind, pure, ($), (+), (<))
+import Prelude (map, bind, pure, ($), (+), (<), (<<<))
 import Proto.Decode as Decode
 import Common
 
@@ -143,9 +143,7 @@ decodePageType _xs_ pos0 = do
         1 -> do
           { pos: pos3 } <- decodePageWidgets _xs_ pos2
           pure $ Loop { a: end, b: Just PageWidgets, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- decodePageUrl _xs_ pos2
-          pure $ Loop { a: end, b: Just $ PageUrl val, c: pos3 }
+        2 -> decodeField end (decodePageUrl _xs_ pos2) (Just <<< PageUrl)
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
