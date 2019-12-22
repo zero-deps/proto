@@ -12,3 +12,5 @@ final case class NoargsType(tpe: Type) extends Tpe
 final case class TupleType(tpe: Type, tpe_1: Type, tpe_2: Type) extends Tpe
 
 final case class PursType(tmpl: Seq[String], export: Maybe[String])
+
+final case class Coder(tmpl: String, export: Maybe[String])

@@ -1,6 +1,6 @@
 module SchemaCommon
   ( TestSchema(..)
-  , ClassWithMap
+  , ClassWithMap 
   ) where
 
 import Data.Eq (class Eq)
@@ -9,4 +9,3 @@ import Data.Tuple (Tuple)
 
 data TestSchema = ClassWithMap ClassWithMap
 type ClassWithMap = { m :: Array (Tuple String String) }
-
