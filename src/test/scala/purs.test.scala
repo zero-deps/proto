@@ -49,6 +49,7 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
 }
 
 final case class FieldNode(@N(1) root: String, @N(2) forest: List[FieldNode])
+final case class FieldNode1(@N(1) root: Option[String], @N(2) forest: List[FieldNode1])
 sealed trait TestSchema
 @N(1) final case class ClassWithMap(@N(1) m: Map[String,String]) extends TestSchema
 
@@ -62,6 +63,7 @@ final case class PageSeo(@N(1) descr: String, @N(2) order: Double)
 
 @N(1300) final case class ComponentTemplateOk
   ( @N(1) fieldNode: FieldNode
+  , @N(2) fieldNode1: FieldNode1
   ) extends Push
 
 final case class SiteOpt(@N(1) id: String, @N(2) label: Option[String])

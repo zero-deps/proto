@@ -6,6 +6,7 @@ module Push
   , Page
   , PageTreeItem
   , ComponentTemplateOk
+  , FieldNode1(FieldNode1)
   , decodePush
   ) where
 
@@ -39,9 +40,10 @@ type PageUrl' = { addr :: Maybe String }
 type PageSeo' = { descr :: Maybe String, order :: Maybe Number }
 type PageTreeItem = { priority :: Int }
 type PageTreeItem' = { priority :: Maybe Int }
-type ComponentTemplateOk = { fieldNode :: FieldNode }
-type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode }
+type ComponentTemplateOk = { fieldNode :: FieldNode, fieldNode1 :: FieldNode1 }
+type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode, fieldNode1 :: Maybe FieldNode1 }
 newtype FieldNode' = FieldNode' { root :: Maybe String, forest :: Array FieldNode }
+newtype FieldNode1 = FieldNode1 { root :: Maybe String, forest :: Array FieldNode1 }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
@@ -264,9 +266,9 @@ decodePing _xs_ pos0 = do
 decodeComponentTemplateOk :: Uint8Array -> Int -> Decode.Result ComponentTemplateOk
 decodeComponentTemplateOk _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { fieldNode: Nothing } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { fieldNode: Nothing, fieldNode1: Nothing } pos
   case val of
-    { fieldNode: Just fieldNode } -> pure { pos: pos1, val: { fieldNode } }
+    { fieldNode: Just fieldNode, fieldNode1: Just fieldNode1 } -> pure { pos: pos1, val: { fieldNode, fieldNode1 } }
     _ -> Left $ Decode.MissingFields "ComponentTemplateOk"
     where
     decode :: Int -> ComponentTemplateOk' -> Int -> Decode.Result' (Step { a :: Int, b :: ComponentTemplateOk', c :: Int } { pos :: Int, val :: ComponentTemplateOk' })
@@ -276,6 +278,9 @@ decodeComponentTemplateOk _xs_ pos0 = do
         1 -> do
           { pos: pos3, val } <- decodeFieldNode _xs_ pos2
           pure $ Loop { a: end, b: acc { fieldNode = Just val }, c: pos3 }
+        2 -> do
+          { pos: pos3, val } <- decodeFieldNode1 _xs_ pos2
+          pure $ Loop { a: end, b: acc { fieldNode1 = Just val }, c: pos3 }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -290,7 +295,7 @@ decodeFieldNode _xs_ pos0 = do
     _ -> Left $ Decode.MissingFields "FieldNode"
     where
     decode :: Int -> FieldNode' -> Int -> Decode.Result' (Step { a :: Int, b :: FieldNode', c :: Int } { pos :: Int, val :: FieldNode' })
-    decode end (FieldNode' acc) pos1 | pos1 < end = do
+    decode end acc'@(FieldNode' acc) pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> do
@@ -301,5 +306,25 @@ decodeFieldNode _xs_ pos0 = do
           pure $ Loop { a: end, b: FieldNode' $ acc { forest = snoc acc.forest val }, c: pos3 }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
-          pure $ Loop { a: end, b: (FieldNode' acc), c: pos3 }
+          pure $ Loop { a: end, b: acc', c: pos3 }
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
+
+decodeFieldNode1 :: Uint8Array -> Int -> Decode.Result FieldNode1
+decodeFieldNode1 _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  tailRecM3 decode (pos + msglen) (FieldNode1 { root: Nothing, forest: [] }) pos
+    where
+    decode :: Int -> FieldNode1 -> Int -> Decode.Result' (Step { a :: Int, b :: FieldNode1, c :: Int } { pos :: Int, val :: FieldNode1 })
+    decode end (FieldNode1 acc) pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> do
+          { pos: pos3, val } <- Decode.string _xs_ pos2
+          pure $ Loop { a: end, b: FieldNode1 $ acc { root = Just val }, c: pos3 }
+        2 -> do
+          { pos: pos3, val } <- decodeFieldNode1 _xs_ pos2
+          pure $ Loop { a: end, b: FieldNode1 $ acc { forest = snoc acc.forest val }, c: pos3 }
+        _ -> do
+          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
+          pure $ Loop { a: end, b: (FieldNode1 acc), c: pos3 }
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }

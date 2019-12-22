@@ -84,17 +84,16 @@ object Decoders {
               |  pure { pos: pos + msglen, val: unit }""".stripMargin
         Coder(tmpl, Nothing)
       case RecursiveType(tpe) =>
-        val recursive = true
         val fs = fields(tpe)
         val defObj: String = fs.map{ case (name, tpe, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
         val justObj: String = fs.map{ case (name, tpe, _) => justValue(name, tpe) }.mkString("{ ", ", ", " }")
         val unObj: String = fs.map{
           case (name,_,_) => name
         }.mkString("{ ", ", ", " }")
-        val name = tpe.typeSymbol.name.encodedName.toString
-        val cases = fields(tpe).flatMap((decodeField(Some(name).filter(_ => recursive)) _).tupled)
         val tmpl =
-          if (justObj == unObj)
+          if (justObj == unObj) {
+            val name = tpe.typeSymbol.name.encodedName.toString
+            val cases = fields(tpe).flatMap((decodeField(Some(name)) _).tupled)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
@@ -106,28 +105,31 @@ object Decoders {
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
                 |        _ -> do
                 |          { pos: pos3 } <- Decode.skipType _xs_ pos2 $$ tag .&. 7
-                |          pure $$ Loop { a: end, b: ($name' acc), c: pos3 }
+                |          pure $$ Loop { a: end, b: ($name acc), c: pos3 }
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
-          else
+          } else {
+            val name = tpe.typeSymbol.name.encodedName.toString
+            val name1 = tpe.typeSymbol.name.encodedName.toString + "'"
+            val cases = fields(tpe).flatMap((decodeField(Some(name1)) _).tupled)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-                |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) ($name' $defObj) pos
+                |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) ($name1 $defObj) pos
                 |  case val of
-                |    $name' $justObj -> pure { pos: pos1, val: $name $unObj }
+                |    $name1 $justObj -> pure { pos: pos1, val: $name $unObj }
                 |    _ -> Left $$ Decode.MissingFields "$name"
                 |    where
-                |    decode :: Int -> $name' -> Int -> Decode.Result' (Step { a :: Int, b :: $name', c :: Int } { pos :: Int, val :: $name' })
-                |    decode end ($name' acc) pos1 | pos1 < end = do
+                |    decode :: Int -> $name1 -> Int -> Decode.Result' (Step { a :: Int, b :: $name1, c :: Int } { pos :: Int, val :: $name1 })
+                |    decode end acc'@($name1 acc) pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
                 |        _ -> do
                 |          { pos: pos3 } <- Decode.skipType _xs_ pos2 $$ tag .&. 7
-                |          pure $$ Loop { a: end, b: ($name' acc), c: pos3 }
+                |          pure $$ Loop { a: end, b: acc', c: pos3 }
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
+          }
         Coder(tmpl, Nothing)
       case RegularType(tpe) =>
-        val recursive = false
         val fs = fields(tpe)
         val defObj: String = fs.map{ case (name, tpe, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
         val justObj: String = fs.map{ case (name, tpe, _) => justValue(name, tpe) }.mkString("{ ", ", ", " }")
@@ -135,7 +137,7 @@ object Decoders {
           case (name,_,_) => name
         }.mkString("{ ", ", ", " }")
         val name = tpe.typeSymbol.name.encodedName.toString
-        val cases = fields(tpe).flatMap((decodeField(Some(name).filter(_ => recursive)) _).tupled)
+        val cases = fields(tpe).flatMap((decodeField(Nothing) _).tupled)
         val tmpl =
           if (justObj == unObj)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
@@ -177,7 +179,7 @@ object Decoders {
       List(
         s"${n} -> do"
       , s"  { pos: pos3, val } <- $fun _xs_ pos2"
-      , s"  pure $$ Loop { a: end, b: ${if (recursive.isDefined) s"${recursive.get}' $$ " else ""}acc { $mod }, c: pos3 }"
+      , s"  pure $$ Loop { a: end, b: ${if (recursive.isDefined) s"${recursive.get} $$ " else ""}acc { $mod }, c: pos3 }"
       )
     }
     if (tpe =:= StringClass.selfType) {

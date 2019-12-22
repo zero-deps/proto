@@ -1313,6 +1313,9 @@ var PS = {};
   var Data_Tuple = $PS["Data.Tuple"];
   var Data_Unit = $PS["Data.Unit"];
   var Proto_Decode = $PS["Proto.Decode"];                
+  var FieldNode1 = function (x) {
+      return x;
+  };
   var FieldNode$prime = function (x) {
       return x;
   };
@@ -1719,7 +1722,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("PageType"));
                       };
-                      throw new Error("Failed pattern match at Push (line 152, column 5 - line 152, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at Push (line 154, column 5 - line 154, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -1971,6 +1974,62 @@ var PS = {};
           });
       };
   };
+  var decodeFieldNode1 = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (v) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
+                              var v2 = v1.val >>> 3;
+                              if (v2 === 1) {
+                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v1.pos))(function (v3) {
+                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                          a: end,
+                                          b: FieldNode1({
+                                              root: new Data_Maybe.Just(v3.val),
+                                              forest: v.forest
+                                          }),
+                                          c: v3.pos
+                                      }));
+                                  });
+                              };
+                              if (v2 === 2) {
+                                  return Control_Bind.bind(Data_Either.bindEither)(decodeFieldNode1(_xs_)(v1.pos))(function (v3) {
+                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                          a: end,
+                                          b: FieldNode1({
+                                              root: v.root,
+                                              forest: Data_Array.snoc(v.forest)(v3.val)
+                                          }),
+                                          c: v3.pos
+                                      }));
+                                  });
+                              };
+                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
+                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                      a: end,
+                                      b: v,
+                                      c: v3.pos
+                                  }));
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: v
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  root: Data_Maybe.Nothing.value,
+                  forest: [  ]
+              })(v.pos);
+          });
+      };
+  };
   var decodeFieldNode = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
@@ -2051,7 +2110,20 @@ var PS = {};
                                       return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
                                           a: end,
                                           b: {
-                                              fieldNode: new Data_Maybe.Just(v2.val)
+                                              fieldNode: new Data_Maybe.Just(v2.val),
+                                              fieldNode1: acc.fieldNode1
+                                          },
+                                          c: v2.pos
+                                      }));
+                                  });
+                              };
+                              if (v1 === 2) {
+                                  return Control_Bind.bind(Data_Either.bindEither)(decodeFieldNode1(_xs_)(v.pos))(function (v2) {
+                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                          a: end,
+                                          b: {
+                                              fieldNode1: new Data_Maybe.Just(v2.val),
+                                              fieldNode: acc.fieldNode
                                           },
                                           c: v2.pos
                                       }));
@@ -2075,13 +2147,15 @@ var PS = {};
           };
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
               return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
-                  fieldNode: Data_Maybe.Nothing.value
+                  fieldNode: Data_Maybe.Nothing.value,
+                  fieldNode1: Data_Maybe.Nothing.value
               })(v.pos))(function (v1) {
-                  if (v1.val.fieldNode instanceof Data_Maybe.Just) {
+                  if (v1.val.fieldNode instanceof Data_Maybe.Just && v1.val.fieldNode1 instanceof Data_Maybe.Just) {
                       return Control_Applicative.pure(Data_Either.applicativeEither)({
                           pos: v1.pos,
                           val: {
-                              fieldNode: v1.val.fieldNode.value0
+                              fieldNode: v1.val.fieldNode.value0,
+                              fieldNode1: v1.val.fieldNode1.value0
                           }
                       });
                   };
@@ -2120,6 +2194,7 @@ var PS = {};
   exports["PageTreeItem"] = PageTreeItem;
   exports["Ping"] = Ping;
   exports["ComponentTemplateOk"] = ComponentTemplateOk;
+  exports["FieldNode1"] = FieldNode1;
   exports["decodePush"] = decodePush;
 })(PS);
 (function($PS) {
