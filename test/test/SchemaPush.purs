@@ -15,14 +15,8 @@ import Prelude (map, bind, pure, ($), (+), (<), (<<<))
 import Proto.Decode as Decode
 import SchemaCommon
 
-decodeTraitTag :: forall a b. Decode.Result b -> (b -> a) -> Decode.Result a
-decodeTraitTag res con = map (\{ pos, val } -> { pos, val: con val }) res
-
-decodeTraitTag0 :: forall a. Decode.Result Unit -> a -> Decode.Result a
-decodeTraitTag0 res con = map (\{ pos } -> { pos, val: con }) res
-
 decodeField :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
-decodeField end res mod = map (\{ pos, val } -> Loop { a: end, b: mod val, c: pos }) res
+decodeField end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
 
 
@@ -30,8 +24,11 @@ decodeTestSchema :: Uint8Array -> Decode.Result TestSchema
 decodeTestSchema _xs_ = do
   { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
   case tag `zshr` 3 of
-    1 -> decodeTraitTag (decodeClassWithMap _xs_ pos1) ClassWithMap
+    1 -> decode (decodeClassWithMap _xs_ pos1) ClassWithMap
     i -> Left $ Decode.BadType i
+  where
+  decode :: forall a. Decode.Result a -> (a -> TestSchema) -> Decode.Result TestSchema
+  decode res f = map (\{ pos, val } -> { pos, val: f val }) res
 
 decodeClassWithMap :: Uint8Array -> Int -> Decode.Result ClassWithMap
 decodeClassWithMap _xs_ pos0 = do

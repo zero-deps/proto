@@ -16,14 +16,8 @@ import Prelude (map, bind, pure, ($), (+), (<), (<<<))
 import Proto.Decode as Decode
 import SetMap.Common
 
-decodeTraitTag :: forall a b. Decode.Result b -> (b -> a) -> Decode.Result a
-decodeTraitTag res con = map (\{ pos, val } -> { pos, val: con val }) res
-
-decodeTraitTag0 :: forall a. Decode.Result Unit -> a -> Decode.Result a
-decodeTraitTag0 res con = map (\{ pos } -> { pos, val: con }) res
-
 decodeField :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
-decodeField end res mod = map (\{ pos, val } -> Loop { a: end, b: mod val, c: pos }) res
+decodeField end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
 data Push = Flow1 Flow1 | Flow2 Flow2
 
@@ -31,9 +25,12 @@ decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
   { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
   case tag `zshr` 3 of
-    1 -> decodeTraitTag (decodeFlow1 _xs_ pos1) Flow1
-    2 -> decodeTraitTag (decodeFlow2 _xs_ pos1) Flow2
+    1 -> decode (decodeFlow1 _xs_ pos1) Flow1
+    2 -> decode (decodeFlow2 _xs_ pos1) Flow2
     i -> Left $ Decode.BadType i
+  where
+  decode :: forall a. Decode.Result a -> (a -> Push) -> Decode.Result Push
+  decode res f = map (\{ pos, val } -> { pos, val: f val }) res
 
 decodeFlow1 :: Uint8Array -> Int -> Decode.Result Flow1
 decodeFlow1 _xs_ pos0 = do

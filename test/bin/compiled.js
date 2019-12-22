@@ -1371,26 +1371,6 @@ var PS = {};
       };
       return ComponentTemplateOk;
   })();
-  var decodeTraitTag0 = function (res) {
-      return function (con) {
-          return Data_Functor.map(Data_Either.functorEither)(function (v) {
-              return {
-                  pos: v.pos,
-                  val: con
-              };
-          })(res);
-      };
-  };
-  var decodeTraitTag = function (res) {
-      return function (con) {
-          return Data_Functor.map(Data_Either.functorEither)(function (v) {
-              return {
-                  pos: v.pos,
-                  val: con(v.val)
-              };
-          })(res);
-      };
-  };
   var decodePing = function (_xs_) {
       return function (pos0) {
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
@@ -1413,11 +1393,11 @@ var PS = {};
   };
   var decodeField = function (end) {
       return function (res) {
-          return function (mod) {
+          return function (f) {
               return Data_Functor.map(Data_Either.functorEither)(function (v) {
                   return new Control_Monad_Rec_Class.Loop({
                       a: end,
-                      b: mod(v.val),
+                      b: f(v.val),
                       c: v.pos
                   });
               })(res);
@@ -1704,8 +1684,8 @@ var PS = {};
                                   });
                               };
                               if (v2 === 2) {
-                                  return decodeField(end)(decodePageUrl(_xs_)(v1.pos))(function ($315) {
-                                      return Data_Maybe.Just.create(Common.PageUrl.create($315));
+                                  return decodeField(end)(decodePageUrl(_xs_)(v1.pos))(function ($313) {
+                                      return Data_Maybe.Just.create(Common.PageUrl.create($313));
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
@@ -1726,7 +1706,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("PageType"));
                       };
-                      throw new Error("Failed pattern match at Push (line 139, column 5 - line 139, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at Push (line 136, column 5 - line 136, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2090,25 +2070,37 @@ var PS = {};
       };
   };
   var decodePush = function (_xs_) {
+      var decode = function (res) {
+          return function (f) {
+              return Data_Functor.map(Data_Either.functorEither)(function (v) {
+                  return {
+                      pos: v.pos,
+                      val: f(v.val)
+                  };
+              })(res);
+          };
+      };
       return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(0))(function (v) {
           var v1 = v.val >>> 3;
           if (v1 === 1) {
-              return decodeTraitTag(decodeSiteOpts(_xs_)(v.pos))(SiteOpts.create);
+              return decode(decodeSiteOpts(_xs_)(v.pos))(SiteOpts.create);
           };
           if (v1 === 2) {
-              return decodeTraitTag(decodePermissions(_xs_)(v.pos))(Permissions.create);
+              return decode(decodePermissions(_xs_)(v.pos))(Permissions.create);
           };
           if (v1 === 3) {
-              return decodeTraitTag(decodePage(_xs_)(v.pos))(Page.create);
+              return decode(decodePage(_xs_)(v.pos))(Page.create);
           };
           if (v1 === 4) {
-              return decodeTraitTag(decodePageTreeItem(_xs_)(v.pos))(PageTreeItem.create);
+              return decode(decodePageTreeItem(_xs_)(v.pos))(PageTreeItem.create);
           };
           if (v1 === 5) {
-              return decodeTraitTag0(decodePing(_xs_)(v.pos))(Ping.value);
+              return decode(decodePing(_xs_)(v.pos))(function (v2) {
+                  return Ping.value;
+              });
           };
           if (v1 === 1300) {
-              return decodeTraitTag(decodeComponentTemplateOk(_xs_)(v.pos))(ComponentTemplateOk.create);
+              return decode(decodeComponentTemplateOk(_xs_)(v.pos))(ComponentTemplateOk.create);
           };
           return Data_Either.Left.create(new Proto_Decode.BadType(v1));
       });
@@ -2260,16 +2252,6 @@ var PS = {};
       };
       return Flow2;
   })();
-  var decodeTraitTag = function (res) {
-      return function (con) {
-          return Data_Functor.map(Data_Either.functorEither)(function (v) {
-              return {
-                  pos: v.pos,
-                  val: con(v.val)
-              };
-          })(res);
-      };
-  };
   var decodeProd = function (_xs_) {
       return function (pos0) {
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
@@ -2282,11 +2264,11 @@ var PS = {};
   };
   var decodeField = function (end) {
       return function (res) {
-          return function (mod) {
+          return function (f) {
               return Data_Functor.map(Data_Either.functorEither)(function (v) {
                   return new Control_Monad_Rec_Class.Loop({
                       a: end,
-                      b: mod(v.val),
+                      b: f(v.val),
                       c: v.pos
                   });
               })(res);
@@ -2441,7 +2423,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("StepId"));
                       };
-                      throw new Error("Failed pattern match at SetMap.Push (line 111, column 5 - line 111, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at SetMap.Push (line 108, column 5 - line 108, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2545,13 +2527,23 @@ var PS = {};
       };
   };
   var decodePush = function (_xs_) {
+      var decode = function (res) {
+          return function (f) {
+              return Data_Functor.map(Data_Either.functorEither)(function (v) {
+                  return {
+                      pos: v.pos,
+                      val: f(v.val)
+                  };
+              })(res);
+          };
+      };
       return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(0))(function (v) {
           var v1 = v.val >>> 3;
           if (v1 === 1) {
-              return decodeTraitTag(decodeFlow1(_xs_)(v.pos))(Flow1.create);
+              return decode(decodeFlow1(_xs_)(v.pos))(Flow1.create);
           };
           if (v1 === 2) {
-              return decodeTraitTag(decodeFlow2(_xs_)(v.pos))(Flow2.create);
+              return decode(decodeFlow2(_xs_)(v.pos))(Flow2.create);
           };
           return Data_Either.Left.create(new Proto_Decode.BadType(v1));
       });
