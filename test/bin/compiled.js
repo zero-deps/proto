@@ -1428,12 +1428,8 @@ var PS = {};
                                       });
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: v,
-                                      c: v3.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
+                                  return v;
                               });
                           });
                       };
@@ -1487,12 +1483,8 @@ var PS = {};
                                       });
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: v,
-                                      c: v3.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
+                                  return v;
                               });
                           });
                       };
@@ -1535,12 +1527,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -1585,12 +1573,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -1633,12 +1617,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -1675,25 +1655,17 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
                               var v2 = v1.val >>> 3;
                               if (v2 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodePageWidgets(_xs_)(v1.pos))(function (v3) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: new Data_Maybe.Just(Common.PageWidgets.value),
-                                          c: v3.pos
-                                      }));
+                                  return decodeField(end)(decodePageWidgets(_xs_)(v1.pos))(function (v3) {
+                                      return new Data_Maybe.Just(Common.PageWidgets.value);
                                   });
                               };
                               if (v2 === 2) {
-                                  return decodeField(end)(decodePageUrl(_xs_)(v1.pos))(function ($313) {
-                                      return Data_Maybe.Just.create(Common.PageUrl.create($313));
+                                  return decodeField(end)(decodePageUrl(_xs_)(v1.pos))(function ($287) {
+                                      return Data_Maybe.Just.create(Common.PageUrl.create($287));
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: v,
-                                      c: v3.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
+                                  return v;
                               });
                           });
                       };
@@ -1706,7 +1678,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("PageType"));
                       };
-                      throw new Error("Failed pattern match at Push (line 136, column 5 - line 136, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at Push (line 128, column 5 - line 128, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -1730,12 +1702,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -1777,12 +1745,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -1827,12 +1791,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -1874,12 +1834,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -1969,12 +1925,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -2034,12 +1986,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -2299,12 +2247,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -2346,12 +2290,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -2388,29 +2328,17 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
                               var v2 = v1.val >>> 3;
                               if (v2 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeProd(_xs_)(v1.pos))(function (v3) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: new Data_Maybe.Just(SetMap_Common.Prod.value),
-                                          c: v3.pos
-                                      }));
+                                  return decodeField(end)(decodeProd(_xs_)(v1.pos))(function (v3) {
+                                      return new Data_Maybe.Just(SetMap_Common.Prod.value);
                                   });
                               };
                               if (v2 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeDev(_xs_)(v1.pos))(function (v3) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: new Data_Maybe.Just(SetMap_Common.Dev.value),
-                                          c: v3.pos
-                                      }));
+                                  return decodeField(end)(decodeDev(_xs_)(v1.pos))(function (v3) {
+                                      return new Data_Maybe.Just(SetMap_Common.Dev.value);
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: v,
-                                      c: v3.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
+                                  return v;
                               });
                           });
                       };
@@ -2423,7 +2351,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("StepId"));
                       };
-                      throw new Error("Failed pattern match at SetMap.Push (line 108, column 5 - line 108, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at SetMap.Push (line 100, column 5 - line 100, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2456,12 +2384,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
@@ -2503,12 +2427,8 @@ var PS = {};
                                       };
                                   });
                               };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
+                              return decodeField(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };

@@ -40,9 +40,7 @@ decodeClassWithMap _xs_ pos0 = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeField end (decodeStringString _xs_ pos2) \val -> acc { m = snoc acc.m val }
-        _ -> do
-          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
-          pure $ Loop { a: end, b: acc, c: pos3 }
+        _ -> decodeField end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeStringString :: Uint8Array -> Int -> Decode.Result (Tuple String String)
@@ -59,7 +57,5 @@ decodeStringString _xs_ pos0 = do
       case tag `zshr` 3 of
         1 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { first = Just val }
         2 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { second = Just val }
-        _ -> do
-          { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
-          pure $ Loop { a: end, b: acc, c: pos3 }
+        _ -> decodeField end (Decode.skipType _xs_ pos2 $ tag .&. 7) (\_ -> acc)
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }

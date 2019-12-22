@@ -27,12 +27,7 @@ object Decoders {
       case TraitType(tpe, children, false) =>
         val name = tpe.typeSymbol.name.encodedName.toString
         val cases = children.flatMap{ case ChildMeta(name, tpe, n, noargs) =>
-          if (noargs)
-            List(
-              s"$n -> do"
-            , s"  { pos: pos3 } <- decode$name _xs_ pos2"
-            , s"  pure $$ Loop { a: end, b: Just $name, c: pos3 }"
-            )
+          if (noargs) s"$n -> decodeField end (decode$name _xs_ pos2) \\_ -> Just $name" :: Nil
           else s"$n -> decodeField end (decode$name _xs_ pos2) (Just <<< $name)" :: Nil
         }
         val tmpl =
@@ -45,9 +40,7 @@ object Decoders {
               |    decode end acc pos1 | pos1 < end = do
               |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
               |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString}
-              |        _ -> do
-              |          { pos: pos3 } <- Decode.skipType _xs_ pos2 $$ tag .&. 7
-              |          pure $$ Loop { a: end, b: acc, c: pos3 }
+              |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
               |    decode end (Just acc) pos1 = pure $$ Done { pos: pos1, val: acc }
               |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "$name"""".stripMargin
         Coder(tmpl, Nothing)
@@ -68,9 +61,7 @@ object Decoders {
               |    decode end acc pos1 | pos1 < end = do
               |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
               |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-              |        _ -> do
-              |          { pos: pos3 } <- Decode.skipType _xs_ pos2 $$ tag .&. 7
-              |          pure $$ Loop { a: end, b: acc, c: pos3 }
+              |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) (\\_ -> acc)
               |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
         Coder(tmpl, Nothing)
       case NoargsType(tpe) =>
@@ -98,12 +89,10 @@ object Decoders {
                 |  tailRecM3 decode (pos + msglen) ($name $defObj) pos
                 |    where
                 |    decode :: Int -> $name -> Int -> Decode.Result' (Step { a :: Int, b :: $name, c :: Int } { pos :: Int, val :: $name })
-                |    decode end ($name acc) pos1 | pos1 < end = do
+                |    decode end acc'@($name acc) pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> do
-                |          { pos: pos3 } <- Decode.skipType _xs_ pos2 $$ tag .&. 7
-                |          pure $$ Loop { a: end, b: ($name acc), c: pos3 }
+                |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc'
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
           } else {
             val name = tpe.typeSymbol.name.encodedName.toString
@@ -121,9 +110,7 @@ object Decoders {
                 |    decode end acc'@($name1 acc) pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> do
-                |          { pos: pos3 } <- Decode.skipType _xs_ pos2 $$ tag .&. 7
-                |          pure $$ Loop { a: end, b: acc', c: pos3 }
+                |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc'
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
           }
         Coder(tmpl, Nothing)
@@ -147,9 +134,7 @@ object Decoders {
                 |    decode end acc pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> do
-                |          { pos: pos3 } <- Decode.skipType _xs_ pos2 $$ tag .&. 7
-                |          pure $$ Loop { a: end, b: acc, c: pos3 }
+                |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
           else
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
@@ -164,9 +149,7 @@ object Decoders {
                 |    decode end acc pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> do
-                |          { pos: pos3 } <- Decode.skipType _xs_ pos2 $$ tag .&. 7
-                |          pure $$ Loop { a: end, b: acc, c: pos3 }
+                |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
         Coder(tmpl, Nothing)
     }.distinct
