@@ -3,6 +3,7 @@ package zd.proto
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 import scala.annotation.tailrec
+import zd.gs.z._
 
 package object purs {
   def pursTypePars(tpe: Type): (String, String) = {
@@ -48,67 +49,6 @@ package object purs {
 
   def isIterable(tpe: Type): Boolean = {
     tpe.baseClasses.exists(_.asType.toType.typeConstructor <:< typeOf[scala.collection.Iterable[Unit]].typeConstructor)
-  }
-  
-  def encodeField(name: String, tpe: Type, n: Int): List[String] = {
-    if (tpe =:= StringClass.selfType) {
-      List(
-        s"""Encode.uint32 ${(n<<3)+2}"""
-      , s"""Encode.string msg.$name"""
-      )
-    } else if (tpe =:= IntClass.selfType) {
-      List(
-        s"""Encode.uint32 ${(n<<3)+0}"""
-      , s"""Encode.uint32 msg.$name"""
-      )
-    } else if (tpe =:= BooleanClass.selfType) {
-      List(
-        s"""Encode.uint32 ${(n<<3)+0}"""
-      , s"""Encode.boolean msg.$name"""
-      )
-    } else if (tpe =:= DoubleClass.selfType) {
-      List(
-        s"""Encode.uint32 ${(n<<3)+1}"""
-      , s"""Encode.double msg.$name"""
-      )
-    } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
-      val typeArg = tpe.typeArgs.head.typeSymbol
-      val tpe1 = typeArg.asType.toType
-      if (tpe1 =:= StringClass.selfType) {
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.$name""" :: Nil
-      } else if (tpe1 =:= IntClass.selfType) {
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.uint32 x ]) msg.$name""" :: Nil
-      } else if (tpe1 =:= BooleanClass.selfType) {
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.boolean x ]) msg.$name""" :: Nil
-      } else if (tpe1 =:= DoubleClass.selfType) {
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+1}, Encode.double x ]) msg.$name""" :: Nil
-      } else {
-        val typeArgName = typeArg.name.encodedName.toString
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, encode$typeArgName x ]) msg.$name""" :: Nil
-      }
-    } else if (tpe =:= typeOf[Array[Byte]]) {
-      List(
-        s"""Encode.uint32 ${(n<<3)+2}"""
-      , s"""Encode.bytes msg.$name"""
-      )
-    } else if (isIterable(tpe)) {
-      iterablePurs(tpe) match {
-        case ArrayPurs(x) =>
-          if (x =:= StringClass.selfType) {
-            s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.$name""" :: Nil
-          } else {
-            s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, encode${x.typeSymbol.asClass.name.encodedName.toString} x ]) msg.$name""" :: Nil
-          }
-        case ArrayTuplePurs(tpe1, tpe2) =>
-          s"concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, encode${tupleFunName(tpe1, tpe2)} x ]) msg.$name" :: Nil
-      }
-    } else {
-      val tpeName = tpe.typeSymbol.name.encodedName.toString
-      List(
-        s"""Encode.uint32 ${(n<<3)+2}"""
-      , s"""encode${tpeName} msg.$name"""
-      )
-    }
   }
   
   def tupleFunName(tpe_1: Type, tpe_2: Type): String = {
@@ -221,5 +161,61 @@ package object purs {
       val term = x.asTerm
       (term.name.encodedName.toString, term.info, findN(x))
     }.collect{ case (a, b, Some(n)) => (a, b, n) }.sortBy(_._3)
+  }
+
+  def makePursTypes(types: Seq[Tpe], genMaybe: Boolean): Seq[PursType] = {
+    types.flatMap{
+      case TraitType(tpe, children, true) =>
+        val name = tpe.typeSymbol.name.encodedName.toString
+        List(PursType(List(
+          s"data $name = ${children.map{
+            case x if x.noargs => x.name
+            case x => s"${x.name} ${x.name}"
+          }.mkString(" | ")}"
+        ), export=s"$name(..)".just))
+      case TraitType(tpe, children, false) =>
+        val name = tpe.typeSymbol.name.encodedName.toString
+        List(PursType(List(
+          s"data $name = ${children.map{
+            case x if x.noargs => x.name
+            case x => s"${x.name} ${x.name}"
+          }.mkString(" | ")}"
+        , s"derive instance eq$name :: Eq $name"
+        ), export=s"$name(..)".just))
+      case _: TupleType => Nil
+      case _: NoargsType => Nil
+      case RecursiveType(tpe) =>
+        val name = tpe.typeSymbol.name.encodedName.toString
+        val fs = fields(tpe).map{ case (name1, tpe, _) => name1 -> pursType(tpe) }
+        val params = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(", ")
+        val x = s"newtype $name = $name { $params }"
+        if (genMaybe) {
+          val params1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(", ")
+          if (params == params1) {
+            Seq(PursType(Seq(x), s"$name($name)".just))
+          } else {
+            val x1 = s"newtype $name' = $name' { $params1 }"
+            Seq(PursType(Seq(x), s"$name($name)".just), PursType(Seq(x1), Nothing))
+          }
+        } else {
+          Seq(PursType(Seq(x), s"$name($name)".just))
+        }
+      case RegularType(tpe) =>
+        val name = tpe.typeSymbol.name.encodedName.toString
+        val fs = fields(tpe).map{ case (name1, tpe, _) => name1 -> pursType(tpe) }
+        val params = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(", ")
+        val x = if (params.nonEmpty) s"type $name = { $params }" else s"type $name = {}"
+        if (genMaybe) {
+          val params1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(", ")
+          if (params == params1) {
+            Seq(PursType(Seq(x), s"$name".just))
+          } else {
+            val x1 = s"type $name' = { $params1 }"
+            Seq(PursType(Seq(x), s"$name".just), PursType(Seq(x1), Nothing))
+          }
+        } else {
+          Seq(PursType(Seq(x), s"$name".just))
+        }
+    }.distinct
   }
 }

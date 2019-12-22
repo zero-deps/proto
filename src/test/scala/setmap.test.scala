@@ -22,7 +22,7 @@ class SetMapSpec extends AnyFreeSpec with Matchers {
   "set/map" - {
     "print" in {
       res.foreach{ case (filename, content) =>
-        io.writeToFile(s"test/src/SetMap/$filename.purs", content)
+        io.writeToFile(s"test/src/$filename.purs", content)
       }
     }
   }

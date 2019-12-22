@@ -1,5 +1,7 @@
 package zd.proto.purs
 
+import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.definitions._
 import zd.proto.api.MessageCodec
 import zd.gs.z._
 
@@ -96,5 +98,66 @@ object Encoders {
           }
         Coder(tmpl, Nothing)
     }.distinct
+  }
+
+  def encodeField(name: String, tpe: Type, n: Int): List[String] = {
+    if (tpe =:= StringClass.selfType) {
+      List(
+        s"""Encode.uint32 ${(n<<3)+2}"""
+      , s"""Encode.string msg.$name"""
+      )
+    } else if (tpe =:= IntClass.selfType) {
+      List(
+        s"""Encode.uint32 ${(n<<3)+0}"""
+      , s"""Encode.uint32 msg.$name"""
+      )
+    } else if (tpe =:= BooleanClass.selfType) {
+      List(
+        s"""Encode.uint32 ${(n<<3)+0}"""
+      , s"""Encode.boolean msg.$name"""
+      )
+    } else if (tpe =:= DoubleClass.selfType) {
+      List(
+        s"""Encode.uint32 ${(n<<3)+1}"""
+      , s"""Encode.double msg.$name"""
+      )
+    } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+      val typeArg = tpe.typeArgs.head.typeSymbol
+      val tpe1 = typeArg.asType.toType
+      if (tpe1 =:= StringClass.selfType) {
+        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.$name""" :: Nil
+      } else if (tpe1 =:= IntClass.selfType) {
+        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.uint32 x ]) msg.$name""" :: Nil
+      } else if (tpe1 =:= BooleanClass.selfType) {
+        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.boolean x ]) msg.$name""" :: Nil
+      } else if (tpe1 =:= DoubleClass.selfType) {
+        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+1}, Encode.double x ]) msg.$name""" :: Nil
+      } else {
+        val typeArgName = typeArg.name.encodedName.toString
+        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, encode$typeArgName x ]) msg.$name""" :: Nil
+      }
+    } else if (tpe =:= typeOf[Array[Byte]]) {
+      List(
+        s"""Encode.uint32 ${(n<<3)+2}"""
+      , s"""Encode.bytes msg.$name"""
+      )
+    } else if (isIterable(tpe)) {
+      iterablePurs(tpe) match {
+        case ArrayPurs(x) =>
+          if (x =:= StringClass.selfType) {
+            s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.$name""" :: Nil
+          } else {
+            s"""concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, encode${x.typeSymbol.asClass.name.encodedName.toString} x ]) msg.$name""" :: Nil
+          }
+        case ArrayTuplePurs(tpe1, tpe2) =>
+          s"concatAll $$ concatMap (\\x -> [ Encode.uint32 ${(n<<3)+2}, encode${tupleFunName(tpe1, tpe2)} x ]) msg.$name" :: Nil
+      }
+    } else {
+      val tpeName = tpe.typeSymbol.name.encodedName.toString
+      List(
+        s"""Encode.uint32 ${(n<<3)+2}"""
+      , s"""encode${tpeName} msg.$name"""
+      )
+    }
   }
 }

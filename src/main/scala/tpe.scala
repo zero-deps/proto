@@ -14,3 +14,7 @@ final case class TupleType(tpe: Type, tpe_1: Type, tpe_2: Type) extends Tpe
 final case class PursType(tmpl: Seq[String], export: Maybe[String])
 
 final case class Coder(tmpl: String, export: Maybe[String])
+
+sealed trait IterablePurs
+final case class ArrayPurs(tpe: Type) extends IterablePurs
+final case class ArrayTuplePurs(tpe1: Type, tpe2: Type) extends IterablePurs
