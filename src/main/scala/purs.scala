@@ -65,7 +65,10 @@ decodeTraitTag :: forall a b. Decode.Result b -> (b -> a) -> Decode.Result a
 decodeTraitTag res con = map (\\{ pos, val } -> { pos, val: con val }) res
 
 decodeTraitTag0 :: forall a. Decode.Result Unit -> a -> Decode.Result a
-decodeTraitTag0 res con = map (\\{ pos } -> { pos, val: con }) res"""
+decodeTraitTag0 res con = map (\\{ pos } -> { pos, val: con }) res
+
+decodeField :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
+decodeField end res mod = map (\\{ pos, val } -> Loop { a: end, b: mod val, c: pos }) res"""
 
     def makePursTypes(types: Seq[Tpe], genMaybe: Boolean): Seq[PursType] = {
       types.flatMap{

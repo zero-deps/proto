@@ -29,6 +29,9 @@ decodeTraitTag res con = map (\{ pos, val } -> { pos, val: con val }) res
 decodeTraitTag0 :: forall a. Decode.Result Unit -> a -> Decode.Result a
 decodeTraitTag0 res con = map (\{ pos } -> { pos, val: con }) res
 
+decodeField :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
+decodeField end res mod = map (\{ pos, val } -> Loop { a: end, b: mod val, c: pos }) res
+
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | Ping | ComponentTemplateOk ComponentTemplateOk
 type SiteOpts = { xs :: Array SiteOpt }
 type SiteOpt = { id :: String, label :: Maybe String }
@@ -66,9 +69,7 @@ decodeSiteOpts _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- decodeSiteOpt _xs_ pos2
-          pure $ Loop { a: end, b: acc { xs = snoc acc.xs val }, c: pos3 }
+        1 -> decodeField end (decodeSiteOpt _xs_ pos2) \val -> acc { xs = snoc acc.xs val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -86,12 +87,8 @@ decodeSiteOpt _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: acc { id = Just val }, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: acc { label = Just val }, c: pos3 }
+        1 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { id = Just val }
+        2 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { label = Just val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -106,9 +103,7 @@ decodePermissions _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: acc { xs = snoc acc.xs val }, c: pos3 }
+        1 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { xs = snoc acc.xs val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -126,21 +121,11 @@ decodePage _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- decodePageType _xs_ pos2
-          pure $ Loop { a: end, b: acc { tpe = Just val }, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- Decode.boolean _xs_ pos2
-          pure $ Loop { a: end, b: acc { guest = Just val }, c: pos3 }
-        3 -> do
-          { pos: pos3, val } <- decodePageSeo _xs_ pos2
-          pure $ Loop { a: end, b: acc { seo = Just val }, c: pos3 }
-        4 -> do
-          { pos: pos3, val } <- decodePageSeo _xs_ pos2
-          pure $ Loop { a: end, b: acc { mobileSeo = Just val }, c: pos3 }
-        5 -> do
-          { pos: pos3, val } <- decodeStringString _xs_ pos2
-          pure $ Loop { a: end, b: acc { name = snoc acc.name val }, c: pos3 }
+        1 -> decodeField end (decodePageType _xs_ pos2) \val -> acc { tpe = Just val }
+        2 -> decodeField end (Decode.boolean _xs_ pos2) \val -> acc { guest = Just val }
+        3 -> decodeField end (decodePageSeo _xs_ pos2) \val -> acc { seo = Just val }
+        4 -> decodeField end (decodePageSeo _xs_ pos2) \val -> acc { mobileSeo = Just val }
+        5 -> decodeField end (decodeStringString _xs_ pos2) \val -> acc { name = snoc acc.name val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -184,9 +169,7 @@ decodePageUrl _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: acc { addr = Just val }, c: pos3 }
+        1 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { addr = Just val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -204,12 +187,8 @@ decodePageSeo _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: acc { descr = Just val }, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- Decode.double _xs_ pos2
-          pure $ Loop { a: end, b: acc { order = Just val }, c: pos3 }
+        1 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { descr = Just val }
+        2 -> decodeField end (Decode.double _xs_ pos2) \val -> acc { order = Just val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -227,12 +206,8 @@ decodeStringString _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: acc { first = Just val }, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: acc { second = Just val }, c: pos3 }
+        1 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { first = Just val }
+        2 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { second = Just val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -250,9 +225,7 @@ decodePageTreeItem _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- Decode.int32 _xs_ pos2
-          pure $ Loop { a: end, b: acc { priority = Just val }, c: pos3 }
+        1 -> decodeField end (Decode.int32 _xs_ pos2) \val -> acc { priority = Just val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -275,12 +248,8 @@ decodeComponentTemplateOk _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- decodeFieldNode _xs_ pos2
-          pure $ Loop { a: end, b: acc { fieldNode = Just val }, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- decodeFieldNode1 _xs_ pos2
-          pure $ Loop { a: end, b: acc { fieldNode1 = Just val }, c: pos3 }
+        1 -> decodeField end (decodeFieldNode _xs_ pos2) \val -> acc { fieldNode = Just val }
+        2 -> decodeField end (decodeFieldNode1 _xs_ pos2) \val -> acc { fieldNode1 = Just val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -298,12 +267,8 @@ decodeFieldNode _xs_ pos0 = do
     decode end acc'@(FieldNode' acc) pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: FieldNode' $ acc { root = Just val }, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- decodeFieldNode _xs_ pos2
-          pure $ Loop { a: end, b: FieldNode' $ acc { forest = snoc acc.forest val }, c: pos3 }
+        1 -> decodeField end (Decode.string _xs_ pos2) \val -> FieldNode' $ acc { root = Just val }
+        2 -> decodeField end (decodeFieldNode _xs_ pos2) \val -> FieldNode' $ acc { forest = snoc acc.forest val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc', c: pos3 }
@@ -318,12 +283,8 @@ decodeFieldNode1 _xs_ pos0 = do
     decode end (FieldNode1 acc) pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: FieldNode1 $ acc { root = Just val }, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- decodeFieldNode1 _xs_ pos2
-          pure $ Loop { a: end, b: FieldNode1 $ acc { forest = snoc acc.forest val }, c: pos3 }
+        1 -> decodeField end (Decode.string _xs_ pos2) \val -> FieldNode1 $ acc { root = Just val }
+        2 -> decodeField end (decodeFieldNode1 _xs_ pos2) \val -> FieldNode1 $ acc { forest = snoc acc.forest val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: (FieldNode1 acc), c: pos3 }

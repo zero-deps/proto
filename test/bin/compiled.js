@@ -1391,179 +1391,6 @@ var PS = {};
           })(res);
       };
   };
-  var decodeStringString = function (_xs_) {
-      return function (pos0) {
-          var decode = function (end) {
-              return function (acc) {
-                  return function (pos1) {
-                      if (pos1 < end) {
-                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
-                              var v1 = v.val >>> 3;
-                              if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              first: new Data_Maybe.Just(v2.val),
-                                              second: acc.second
-                                          },
-                                          c: v2.pos
-                                      }));
-                                  });
-                              };
-                              if (v1 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              second: new Data_Maybe.Just(v2.val),
-                                              first: acc.first
-                                          },
-                                          c: v2.pos
-                                      }));
-                                  });
-                              };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
-                              });
-                          });
-                      };
-                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
-                          pos: pos1,
-                          val: acc
-                      }));
-                  };
-              };
-          };
-          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
-              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
-                  first: Data_Maybe.Nothing.value,
-                  second: Data_Maybe.Nothing.value
-              })(v.pos))(function (v1) {
-                  if (v1.val.first instanceof Data_Maybe.Just && v1.val.second instanceof Data_Maybe.Just) {
-                      return Control_Applicative.pure(Data_Either.applicativeEither)({
-                          pos: v1.pos,
-                          val: new Data_Tuple.Tuple(v1.val.first.value0, v1.val.second.value0)
-                      });
-                  };
-                  return Data_Either.Left.create(new Proto_Decode.MissingFields("decodeStringString"));
-              });
-          });
-      };
-  };
-  var decodeSiteOpt = function (_xs_) {
-      return function (pos0) {
-          var decode = function (end) {
-              return function (acc) {
-                  return function (pos1) {
-                      if (pos1 < end) {
-                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
-                              var v1 = v.val >>> 3;
-                              if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              id: new Data_Maybe.Just(v2.val),
-                                              label: acc.label
-                                          },
-                                          c: v2.pos
-                                      }));
-                                  });
-                              };
-                              if (v1 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              label: new Data_Maybe.Just(v2.val),
-                                              id: acc.id
-                                          },
-                                          c: v2.pos
-                                      }));
-                                  });
-                              };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
-                              });
-                          });
-                      };
-                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
-                          pos: pos1,
-                          val: acc
-                      }));
-                  };
-              };
-          };
-          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
-              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
-                  id: Data_Maybe.Nothing.value,
-                  label: Data_Maybe.Nothing.value
-              })(v.pos))(function (v1) {
-                  if (v1.val.id instanceof Data_Maybe.Just) {
-                      return Control_Applicative.pure(Data_Either.applicativeEither)({
-                          pos: v1.pos,
-                          val: {
-                              id: v1.val.id.value0,
-                              label: v1.val.label
-                          }
-                      });
-                  };
-                  return Data_Either.Left.create(new Proto_Decode.MissingFields("SiteOpt"));
-              });
-          });
-      };
-  };
-  var decodeSiteOpts = function (_xs_) {
-      return function (pos0) {
-          var decode = function (end) {
-              return function (acc) {
-                  return function (pos1) {
-                      if (pos1 < end) {
-                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
-                              var v1 = v.val >>> 3;
-                              if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeSiteOpt(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              xs: Data_Array.snoc(acc.xs)(v2.val)
-                                          },
-                                          c: v2.pos
-                                      }));
-                                  });
-                              };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
-                              });
-                          });
-                      };
-                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
-                          pos: pos1,
-                          val: acc
-                      }));
-                  };
-              };
-          };
-          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
-              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
-                  xs: [  ]
-              })(v.pos);
-          });
-      };
-  };
   var decodePing = function (_xs_) {
       return function (pos0) {
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
@@ -1571,48 +1398,6 @@ var PS = {};
                   pos: v.pos + v.val | 0,
                   val: Data_Unit.unit
               });
-          });
-      };
-  };
-  var decodePermissions = function (_xs_) {
-      return function (pos0) {
-          var decode = function (end) {
-              return function (acc) {
-                  return function (pos1) {
-                      if (pos1 < end) {
-                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
-                              var v1 = v.val >>> 3;
-                              if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              xs: Data_Array.snoc(acc.xs)(v2.val)
-                                          },
-                                          c: v2.pos
-                                      }));
-                                  });
-                              };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: acc,
-                                      c: v2.pos
-                                  }));
-                              });
-                          });
-                      };
-                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
-                          pos: pos1,
-                          val: acc
-                      }));
-                  };
-              };
-          };
-          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
-              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
-                  xs: [  ]
-              })(v.pos);
           });
       };
   };
@@ -1626,6 +1411,233 @@ var PS = {};
           });
       };
   };
+  var decodeField = function (end) {
+      return function (res) {
+          return function (mod) {
+              return Data_Functor.map(Data_Either.functorEither)(function (v) {
+                  return new Control_Monad_Rec_Class.Loop({
+                      a: end,
+                      b: mod(v.val),
+                      c: v.pos
+                  });
+              })(res);
+          };
+      };
+  };
+  var decodeFieldNode = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (v) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
+                              var v2 = v1.val >>> 3;
+                              if (v2 === 1) {
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v1.pos))(function (val) {
+                                      return FieldNode$prime({
+                                          root: new Data_Maybe.Just(val),
+                                          forest: v.forest
+                                      });
+                                  });
+                              };
+                              if (v2 === 2) {
+                                  return decodeField(end)(decodeFieldNode(_xs_)(v1.pos))(function (val) {
+                                      return FieldNode$prime({
+                                          root: v.root,
+                                          forest: Data_Array.snoc(v.forest)(val)
+                                      });
+                                  });
+                              };
+                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
+                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                      a: end,
+                                      b: v,
+                                      c: v3.pos
+                                  }));
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: v
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  root: Data_Maybe.Nothing.value,
+                  forest: [  ]
+              })(v.pos))(function (v1) {
+                  if (v1.val.root instanceof Data_Maybe.Just) {
+                      return Control_Applicative.pure(Data_Either.applicativeEither)({
+                          pos: v1.pos,
+                          val: {
+                              root: v1.val.root.value0,
+                              forest: v1.val.forest
+                          }
+                      });
+                  };
+                  return Data_Either.Left.create(new Proto_Decode.MissingFields("FieldNode"));
+              });
+          });
+      };
+  };
+  var decodeFieldNode1 = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (v) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
+                              var v2 = v1.val >>> 3;
+                              if (v2 === 1) {
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v1.pos))(function (val) {
+                                      return FieldNode1({
+                                          root: new Data_Maybe.Just(val),
+                                          forest: v.forest
+                                      });
+                                  });
+                              };
+                              if (v2 === 2) {
+                                  return decodeField(end)(decodeFieldNode1(_xs_)(v1.pos))(function (val) {
+                                      return FieldNode1({
+                                          root: v.root,
+                                          forest: Data_Array.snoc(v.forest)(val)
+                                      });
+                                  });
+                              };
+                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
+                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                      a: end,
+                                      b: v,
+                                      c: v3.pos
+                                  }));
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: v
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  root: Data_Maybe.Nothing.value,
+                  forest: [  ]
+              })(v.pos);
+          });
+      };
+  };
+  var decodePageSeo = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (acc) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
+                              var v1 = v.val >>> 3;
+                              if (v1 === 1) {
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          descr: new Data_Maybe.Just(val),
+                                          order: acc.order
+                                      };
+                                  });
+                              };
+                              if (v1 === 2) {
+                                  return decodeField(end)(Proto_Decode["double"](_xs_)(v.pos))(function (val) {
+                                      return {
+                                          order: new Data_Maybe.Just(val),
+                                          descr: acc.descr
+                                      };
+                                  });
+                              };
+                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                      a: end,
+                                      b: acc,
+                                      c: v2.pos
+                                  }));
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: acc
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  descr: Data_Maybe.Nothing.value,
+                  order: Data_Maybe.Nothing.value
+              })(v.pos))(function (v1) {
+                  if (v1.val.descr instanceof Data_Maybe.Just && v1.val.order instanceof Data_Maybe.Just) {
+                      return Control_Applicative.pure(Data_Either.applicativeEither)({
+                          pos: v1.pos,
+                          val: {
+                              descr: v1.val.descr.value0,
+                              order: v1.val.order.value0
+                          }
+                      });
+                  };
+                  return Data_Either.Left.create(new Proto_Decode.MissingFields("PageSeo"));
+              });
+          });
+      };
+  };
+  var decodePageTreeItem = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (acc) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
+                              var v1 = v.val >>> 3;
+                              if (v1 === 1) {
+                                  return decodeField(end)(Proto_Decode.int32(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          priority: new Data_Maybe.Just(val)
+                                      };
+                                  });
+                              };
+                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                      a: end,
+                                      b: acc,
+                                      c: v2.pos
+                                  }));
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: acc
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  priority: Data_Maybe.Nothing.value
+              })(v.pos))(function (v1) {
+                  if (v1.val.priority instanceof Data_Maybe.Just) {
+                      return Control_Applicative.pure(Data_Either.applicativeEither)({
+                          pos: v1.pos,
+                          val: {
+                              priority: v1.val.priority.value0
+                          }
+                      });
+                  };
+                  return Data_Either.Left.create(new Proto_Decode.MissingFields("PageTreeItem"));
+              });
+          });
+      };
+  };
   var decodePageUrl = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
@@ -1635,14 +1647,10 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              addr: new Data_Maybe.Just(v2.val)
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          addr: new Data_Maybe.Just(val)
+                                      };
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
@@ -1722,7 +1730,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("PageType"));
                       };
-                      throw new Error("Failed pattern match at Push (line 154, column 5 - line 154, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at Push (line 139, column 5 - line 139, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -1731,7 +1739,7 @@ var PS = {};
           });
       };
   };
-  var decodePageTreeItem = function (_xs_) {
+  var decodePermissions = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
               return function (acc) {
@@ -1740,14 +1748,57 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.int32(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              priority: new Data_Maybe.Just(v2.val)
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          xs: Data_Array.snoc(acc.xs)(val)
+                                      };
+                                  });
+                              };
+                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                      a: end,
+                                      b: acc,
+                                      c: v2.pos
+                                  }));
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: acc
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  xs: [  ]
+              })(v.pos);
+          });
+      };
+  };
+  var decodeSiteOpt = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (acc) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
+                              var v1 = v.val >>> 3;
+                              if (v1 === 1) {
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          id: new Data_Maybe.Just(val),
+                                          label: acc.label
+                                      };
+                                  });
+                              };
+                              if (v1 === 2) {
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          label: new Data_Maybe.Just(val),
+                                          id: acc.id
+                                      };
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
@@ -1768,22 +1819,24 @@ var PS = {};
           };
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
               return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
-                  priority: Data_Maybe.Nothing.value
+                  id: Data_Maybe.Nothing.value,
+                  label: Data_Maybe.Nothing.value
               })(v.pos))(function (v1) {
-                  if (v1.val.priority instanceof Data_Maybe.Just) {
+                  if (v1.val.id instanceof Data_Maybe.Just) {
                       return Control_Applicative.pure(Data_Either.applicativeEither)({
                           pos: v1.pos,
                           val: {
-                              priority: v1.val.priority.value0
+                              id: v1.val.id.value0,
+                              label: v1.val.label
                           }
                       });
                   };
-                  return Data_Either.Left.create(new Proto_Decode.MissingFields("PageTreeItem"));
+                  return Data_Either.Left.create(new Proto_Decode.MissingFields("SiteOpt"));
               });
           });
       };
   };
-  var decodePageSeo = function (_xs_) {
+  var decodeSiteOpts = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
               return function (acc) {
@@ -1792,27 +1845,57 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              descr: new Data_Maybe.Just(v2.val),
-                                              order: acc.order
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodeSiteOpt(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          xs: Data_Array.snoc(acc.xs)(val)
+                                      };
+                                  });
+                              };
+                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
+                                      a: end,
+                                      b: acc,
+                                      c: v2.pos
+                                  }));
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: acc
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  xs: [  ]
+              })(v.pos);
+          });
+      };
+  };
+  var decodeStringString = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (acc) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
+                              var v1 = v.val >>> 3;
+                              if (v1 === 1) {
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          first: new Data_Maybe.Just(val),
+                                          second: acc.second
+                                      };
                                   });
                               };
                               if (v1 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode["double"](_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              order: new Data_Maybe.Just(v2.val),
-                                              descr: acc.descr
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          second: new Data_Maybe.Just(val),
+                                          first: acc.first
+                                      };
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
@@ -1833,19 +1916,16 @@ var PS = {};
           };
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
               return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
-                  descr: Data_Maybe.Nothing.value,
-                  order: Data_Maybe.Nothing.value
+                  first: Data_Maybe.Nothing.value,
+                  second: Data_Maybe.Nothing.value
               })(v.pos))(function (v1) {
-                  if (v1.val.descr instanceof Data_Maybe.Just && v1.val.order instanceof Data_Maybe.Just) {
+                  if (v1.val.first instanceof Data_Maybe.Just && v1.val.second instanceof Data_Maybe.Just) {
                       return Control_Applicative.pure(Data_Either.applicativeEither)({
                           pos: v1.pos,
-                          val: {
-                              descr: v1.val.descr.value0,
-                              order: v1.val.order.value0
-                          }
+                          val: new Data_Tuple.Tuple(v1.val.first.value0, v1.val.second.value0)
                       });
                   };
-                  return Data_Either.Left.create(new Proto_Decode.MissingFields("PageSeo"));
+                  return Data_Either.Left.create(new Proto_Decode.MissingFields("decodeStringString"));
               });
           });
       };
@@ -1859,78 +1939,58 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodePageType(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              tpe: new Data_Maybe.Just(v2.val),
-                                              guest: acc.guest,
-                                              mobileSeo: acc.mobileSeo,
-                                              name: acc.name,
-                                              seo: acc.seo
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodePageType(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          tpe: new Data_Maybe.Just(val),
+                                          guest: acc.guest,
+                                          mobileSeo: acc.mobileSeo,
+                                          name: acc.name,
+                                          seo: acc.seo
+                                      };
                                   });
                               };
                               if (v1 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode["boolean"](_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              guest: new Data_Maybe.Just(v2.val),
-                                              mobileSeo: acc.mobileSeo,
-                                              name: acc.name,
-                                              seo: acc.seo,
-                                              tpe: acc.tpe
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(Proto_Decode["boolean"](_xs_)(v.pos))(function (val) {
+                                      return {
+                                          guest: new Data_Maybe.Just(val),
+                                          mobileSeo: acc.mobileSeo,
+                                          name: acc.name,
+                                          seo: acc.seo,
+                                          tpe: acc.tpe
+                                      };
                                   });
                               };
                               if (v1 === 3) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodePageSeo(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              seo: new Data_Maybe.Just(v2.val),
-                                              guest: acc.guest,
-                                              mobileSeo: acc.mobileSeo,
-                                              name: acc.name,
-                                              tpe: acc.tpe
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodePageSeo(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          seo: new Data_Maybe.Just(val),
+                                          guest: acc.guest,
+                                          mobileSeo: acc.mobileSeo,
+                                          name: acc.name,
+                                          tpe: acc.tpe
+                                      };
                                   });
                               };
                               if (v1 === 4) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodePageSeo(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              mobileSeo: new Data_Maybe.Just(v2.val),
-                                              guest: acc.guest,
-                                              name: acc.name,
-                                              seo: acc.seo,
-                                              tpe: acc.tpe
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodePageSeo(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          mobileSeo: new Data_Maybe.Just(val),
+                                          guest: acc.guest,
+                                          name: acc.name,
+                                          seo: acc.seo,
+                                          tpe: acc.tpe
+                                      };
                                   });
                               };
                               if (v1 === 5) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeStringString(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              name: Data_Array.snoc(acc.name)(v2.val),
-                                              guest: acc.guest,
-                                              mobileSeo: acc.mobileSeo,
-                                              seo: acc.seo,
-                                              tpe: acc.tpe
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodeStringString(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          name: Data_Array.snoc(acc.name)(val),
+                                          guest: acc.guest,
+                                          mobileSeo: acc.mobileSeo,
+                                          seo: acc.seo,
+                                          tpe: acc.tpe
+                                      };
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
@@ -1974,129 +2034,6 @@ var PS = {};
           });
       };
   };
-  var decodeFieldNode1 = function (_xs_) {
-      return function (pos0) {
-          var decode = function (end) {
-              return function (v) {
-                  return function (pos1) {
-                      if (pos1 < end) {
-                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
-                              var v2 = v1.val >>> 3;
-                              if (v2 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v1.pos))(function (v3) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: FieldNode1({
-                                              root: new Data_Maybe.Just(v3.val),
-                                              forest: v.forest
-                                          }),
-                                          c: v3.pos
-                                      }));
-                                  });
-                              };
-                              if (v2 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeFieldNode1(_xs_)(v1.pos))(function (v3) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: FieldNode1({
-                                              root: v.root,
-                                              forest: Data_Array.snoc(v.forest)(v3.val)
-                                          }),
-                                          c: v3.pos
-                                      }));
-                                  });
-                              };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: v,
-                                      c: v3.pos
-                                  }));
-                              });
-                          });
-                      };
-                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
-                          pos: pos1,
-                          val: v
-                      }));
-                  };
-              };
-          };
-          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
-              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
-                  root: Data_Maybe.Nothing.value,
-                  forest: [  ]
-              })(v.pos);
-          });
-      };
-  };
-  var decodeFieldNode = function (_xs_) {
-      return function (pos0) {
-          var decode = function (end) {
-              return function (v) {
-                  return function (pos1) {
-                      if (pos1 < end) {
-                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
-                              var v2 = v1.val >>> 3;
-                              if (v2 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v1.pos))(function (v3) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: FieldNode$prime({
-                                              root: new Data_Maybe.Just(v3.val),
-                                              forest: v.forest
-                                          }),
-                                          c: v3.pos
-                                      }));
-                                  });
-                              };
-                              if (v2 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeFieldNode(_xs_)(v1.pos))(function (v3) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: FieldNode$prime({
-                                              root: v.root,
-                                              forest: Data_Array.snoc(v.forest)(v3.val)
-                                          }),
-                                          c: v3.pos
-                                      }));
-                                  });
-                              };
-                              return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
-                                  return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                      a: end,
-                                      b: v,
-                                      c: v3.pos
-                                  }));
-                              });
-                          });
-                      };
-                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
-                          pos: pos1,
-                          val: v
-                      }));
-                  };
-              };
-          };
-          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
-              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
-                  root: Data_Maybe.Nothing.value,
-                  forest: [  ]
-              })(v.pos))(function (v1) {
-                  if (v1.val.root instanceof Data_Maybe.Just) {
-                      return Control_Applicative.pure(Data_Either.applicativeEither)({
-                          pos: v1.pos,
-                          val: {
-                              root: v1.val.root.value0,
-                              forest: v1.val.forest
-                          }
-                      });
-                  };
-                  return Data_Either.Left.create(new Proto_Decode.MissingFields("FieldNode"));
-              });
-          });
-      };
-  };
   var decodeComponentTemplateOk = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
@@ -2106,27 +2043,19 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeFieldNode(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              fieldNode: new Data_Maybe.Just(v2.val),
-                                              fieldNode1: acc.fieldNode1
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodeFieldNode(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          fieldNode: new Data_Maybe.Just(val),
+                                          fieldNode1: acc.fieldNode1
+                                      };
                                   });
                               };
                               if (v1 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeFieldNode1(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              fieldNode1: new Data_Maybe.Just(v2.val),
-                                              fieldNode: acc.fieldNode
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodeFieldNode1(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          fieldNode1: new Data_Maybe.Just(val),
+                                          fieldNode: acc.fieldNode
+                                      };
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
@@ -2345,6 +2274,29 @@ var PS = {};
           })(res);
       };
   };
+  var decodeProd = function (_xs_) {
+      return function (pos0) {
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Applicative.pure(Data_Either.applicativeEither)({
+                  pos: v.pos + v.val | 0,
+                  val: Data_Unit.unit
+              });
+          });
+      };
+  };
+  var decodeField = function (end) {
+      return function (res) {
+          return function (mod) {
+              return Data_Functor.map(Data_Either.functorEither)(function (v) {
+                  return new Control_Monad_Rec_Class.Loop({
+                      a: end,
+                      b: mod(v.val),
+                      c: v.pos
+                  });
+              })(res);
+          };
+      };
+  };
   var decodeStringArrayString = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
@@ -2354,27 +2306,19 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              first: new Data_Maybe.Just(v2.val),
-                                              second: acc.second
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          first: new Data_Maybe.Just(val),
+                                          second: acc.second
+                                      };
                                   });
                               };
                               if (v1 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.string(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              second: Data_Array.snoc(acc.second)(v2.val),
-                                              first: acc.first
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          second: Data_Array.snoc(acc.second)(val),
+                                          first: acc.first
+                                      };
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
@@ -2409,16 +2353,6 @@ var PS = {};
           });
       };
   };
-  var decodeProd = function (_xs_) {
-      return function (pos0) {
-          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
-              return Control_Applicative.pure(Data_Either.applicativeEither)({
-                  pos: v.pos + v.val | 0,
-                  val: Data_Unit.unit
-              });
-          });
-      };
-  };
   var decodeFlow1 = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
@@ -2428,14 +2362,10 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeStringArrayString(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              graph: Data_Array.snoc(acc.graph)(v2.val)
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodeStringArrayString(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          graph: Data_Array.snoc(acc.graph)(val)
+                                      };
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
@@ -2515,7 +2445,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("StepId"));
                       };
-                      throw new Error("Failed pattern match at SetMap.Push (line 120, column 5 - line 120, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at SetMap.Push (line 111, column 5 - line 111, column 138): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2533,27 +2463,19 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeStepId(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              first: new Data_Maybe.Just(v2.val),
-                                              second: acc.second
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodeStepId(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          first: new Data_Maybe.Just(val),
+                                          second: acc.second
+                                      };
                                   });
                               };
                               if (v1 === 2) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeStepId(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              second: Data_Array.snoc(acc.second)(v2.val),
-                                              first: acc.first
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodeStepId(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          second: Data_Array.snoc(acc.second)(val),
+                                          first: acc.first
+                                      };
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
@@ -2597,14 +2519,10 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return Control_Bind.bind(Data_Either.bindEither)(decodeStepIdArrayStepId(_xs_)(v.pos))(function (v2) {
-                                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Loop({
-                                          a: end,
-                                          b: {
-                                              graph: Data_Array.snoc(acc.graph)(v2.val)
-                                          },
-                                          c: v2.pos
-                                      }));
+                                  return decodeField(end)(decodeStepIdArrayStepId(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          graph: Data_Array.snoc(acc.graph)(val)
+                                      };
                                   });
                               };
                               return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {

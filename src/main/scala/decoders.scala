@@ -176,11 +176,10 @@ object Decoders {
   
   private[this] def decodeField(recursive: Option[String])(name: String, tpe: Type, n: Int): List[String] = {
     def tmpl(n: Int, fun: String, mod: String): List[String] = {
-      List(
-        s"${n} -> do"
-      , s"  { pos: pos3, val } <- $fun _xs_ pos2"
-      , s"  pure $$ Loop { a: end, b: ${if (recursive.isDefined) s"${recursive.get} $$ " else ""}acc { $mod }, c: pos3 }"
-      )
+      recursive.cata(
+        rec => s"${n} -> decodeField end ($fun _xs_ pos2) \\val -> $rec $$ acc { $mod }"
+      , s"${n} -> decodeField end ($fun _xs_ pos2) \\val -> acc { $mod }"
+      ) :: Nil
     }
     if (tpe =:= StringClass.selfType) {
       tmpl(n, "Decode.string", s"$name = Just val")

@@ -22,6 +22,9 @@ decodeTraitTag res con = map (\{ pos, val } -> { pos, val: con val }) res
 decodeTraitTag0 :: forall a. Decode.Result Unit -> a -> Decode.Result a
 decodeTraitTag0 res con = map (\{ pos } -> { pos, val: con }) res
 
+decodeField :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
+decodeField end res mod = map (\{ pos, val } -> Loop { a: end, b: mod val, c: pos }) res
+
 data Push = Flow1 Flow1 | Flow2 Flow2
 
 decodePush :: Uint8Array -> Decode.Result Push
@@ -41,9 +44,7 @@ decodeFlow1 _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- decodeStringArrayString _xs_ pos2
-          pure $ Loop { a: end, b: acc { graph = snoc acc.graph val }, c: pos3 }
+        1 -> decodeField end (decodeStringArrayString _xs_ pos2) \val -> acc { graph = snoc acc.graph val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -61,12 +62,8 @@ decodeStringArrayString _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: acc { first = Just val }, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- Decode.string _xs_ pos2
-          pure $ Loop { a: end, b: acc { second = snoc acc.second val }, c: pos3 }
+        1 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { first = Just val }
+        2 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { second = snoc acc.second val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -81,9 +78,7 @@ decodeFlow2 _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- decodeStepIdArrayStepId _xs_ pos2
-          pure $ Loop { a: end, b: acc { graph = snoc acc.graph val }, c: pos3 }
+        1 -> decodeField end (decodeStepIdArrayStepId _xs_ pos2) \val -> acc { graph = snoc acc.graph val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
@@ -101,12 +96,8 @@ decodeStepIdArrayStepId _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> do
-          { pos: pos3, val } <- decodeStepId _xs_ pos2
-          pure $ Loop { a: end, b: acc { first = Just val }, c: pos3 }
-        2 -> do
-          { pos: pos3, val } <- decodeStepId _xs_ pos2
-          pure $ Loop { a: end, b: acc { second = snoc acc.second val }, c: pos3 }
+        1 -> decodeField end (decodeStepId _xs_ pos2) \val -> acc { first = Just val }
+        2 -> decodeField end (decodeStepId _xs_ pos2) \val -> acc { second = snoc acc.second val }
         _ -> do
           { pos: pos3 } <- Decode.skipType _xs_ pos2 $ tag .&. 7
           pure $ Loop { a: end, b: acc, c: pos3 }
