@@ -27,8 +27,8 @@ object Decoders {
       case TraitType(tpe, children, false) =>
         val name = tpe.typeSymbol.name.encodedName.toString
         val cases = children.flatMap{ case ChildMeta(name, tpe, n, noargs) =>
-          if (noargs) s"$n -> decodeField end (decode$name _xs_ pos2) \\_ -> Just $name" :: Nil
-          else s"$n -> decodeField end (decode$name _xs_ pos2) (Just <<< $name)" :: Nil
+          if (noargs) s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) \\_ -> Just $name" :: Nil
+          else s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) (Just <<< $name)" :: Nil
         }
         val tmpl =
           s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
@@ -40,14 +40,14 @@ object Decoders {
               |    decode end acc pos1 | pos1 < end = do
               |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
               |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString}
-              |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
+              |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
               |    decode end (Just acc) pos1 = pure $$ Done { pos: pos1, val: acc }
               |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "$name"""".stripMargin
         Coder(tmpl, Nothing)
       case TupleType(tpe, tpe_1, tpe_2) =>
         val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
         val fun = "decode" + tupleFunName(tpe_1, tpe_2)
-        val cases = List(("first", tpe_1, xs("_1")), ("second", tpe_2, xs("_2"))).flatMap((decodeField(None) _).tupled)
+        val cases = List(("first", tpe_1, xs("_1")), ("second", tpe_2, xs("_2"))).flatMap((decodeFieldLoop(None) _).tupled)
         val tmpl =
           s"""|$fun :: Uint8Array -> Int -> Decode.Result (Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1})
               |$fun _xs_ pos0 = do
@@ -61,7 +61,7 @@ object Decoders {
               |    decode end acc pos1 | pos1 < end = do
               |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
               |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-              |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) (\\_ -> acc)
+              |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) (\\_ -> acc)
               |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
         Coder(tmpl, Nothing)
       case NoargsType(tpe) =>
@@ -82,7 +82,7 @@ object Decoders {
         val tmpl =
           if (justObj == unObj) {
             val name = tpe.typeSymbol.name.encodedName.toString
-            val cases = fields(tpe).flatMap((decodeField(Some(name)) _).tupled)
+            val cases = fields(tpe).flatMap((decodeFieldLoop(Some(name)) _).tupled)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
@@ -92,12 +92,12 @@ object Decoders {
                 |    decode end acc'@($name acc) pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc'
+                |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc'
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
           } else {
             val name = tpe.typeSymbol.name.encodedName.toString
             val name1 = tpe.typeSymbol.name.encodedName.toString + "'"
-            val cases = fields(tpe).flatMap((decodeField(Some(name1)) _).tupled)
+            val cases = fields(tpe).flatMap((decodeFieldLoop(Some(name1)) _).tupled)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
@@ -110,7 +110,7 @@ object Decoders {
                 |    decode end acc'@($name1 acc) pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc'
+                |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc'
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
           }
         Coder(tmpl, Nothing)
@@ -122,7 +122,7 @@ object Decoders {
           case (name,_,_) => name
         }.mkString("{ ", ", ", " }")
         val name = tpe.typeSymbol.name.encodedName.toString
-        val cases = fields(tpe).flatMap((decodeField(Nothing) _).tupled)
+        val cases = fields(tpe).flatMap((decodeFieldLoop(Nothing) _).tupled)
         val tmpl =
           if (justObj == unObj)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
@@ -134,7 +134,7 @@ object Decoders {
                 |    decode end acc pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
+                |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
           else
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
@@ -149,17 +149,17 @@ object Decoders {
                 |    decode end acc pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> decodeField end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
+                |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
         Coder(tmpl, Nothing)
     }.distinct
   }
   
-  private[this] def decodeField(recursive: Option[String])(name: String, tpe: Type, n: Int): List[String] = {
+  private[this] def decodeFieldLoop(recursive: Option[String])(name: String, tpe: Type, n: Int): List[String] = {
     def tmpl(n: Int, fun: String, mod: String): List[String] = {
       recursive.cata(
-        rec => s"${n} -> decodeField end ($fun _xs_ pos2) \\val -> $rec $$ acc { $mod }"
-      , s"${n} -> decodeField end ($fun _xs_ pos2) \\val -> acc { $mod }"
+        rec => s"${n} -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> $rec $$ acc { $mod }"
+      , s"${n} -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> acc { $mod }"
       ) :: Nil
     }
     if (tpe =:= StringClass.selfType) {

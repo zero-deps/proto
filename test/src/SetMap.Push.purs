@@ -16,8 +16,8 @@ import Prelude (map, bind, pure, ($), (+), (<), (<<<))
 import Proto.Decode as Decode
 import SetMap.Common
 
-decodeField :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
-decodeField end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
+decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
+decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
 data Push = Flow1 Flow1 | Flow2 Flow2
 
@@ -41,8 +41,8 @@ decodeFlow1 _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeField end (decodeStringArrayString _xs_ pos2) \val -> acc { graph = snoc acc.graph val }
-        _ -> decodeField end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
+        1 -> decodeFieldLoop end (decodeStringArrayString _xs_ pos2) \val -> acc { graph = snoc acc.graph val }
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeStringArrayString :: Uint8Array -> Int -> Decode.Result (Tuple String (Array String))
@@ -57,9 +57,9 @@ decodeStringArrayString _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { first = Just val }
-        2 -> decodeField end (Decode.string _xs_ pos2) \val -> acc { second = snoc acc.second val }
-        _ -> decodeField end (Decode.skipType _xs_ pos2 $ tag .&. 7) (\_ -> acc)
+        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { first = Just val }
+        2 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { second = snoc acc.second val }
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) (\_ -> acc)
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeFlow2 :: Uint8Array -> Int -> Decode.Result Flow2
@@ -71,8 +71,8 @@ decodeFlow2 _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeField end (decodeStepIdArrayStepId _xs_ pos2) \val -> acc { graph = snoc acc.graph val }
-        _ -> decodeField end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
+        1 -> decodeFieldLoop end (decodeStepIdArrayStepId _xs_ pos2) \val -> acc { graph = snoc acc.graph val }
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeStepIdArrayStepId :: Uint8Array -> Int -> Decode.Result (Tuple StepId (Array StepId))
@@ -87,9 +87,9 @@ decodeStepIdArrayStepId _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeField end (decodeStepId _xs_ pos2) \val -> acc { first = Just val }
-        2 -> decodeField end (decodeStepId _xs_ pos2) \val -> acc { second = snoc acc.second val }
-        _ -> decodeField end (Decode.skipType _xs_ pos2 $ tag .&. 7) (\_ -> acc)
+        1 -> decodeFieldLoop end (decodeStepId _xs_ pos2) \val -> acc { first = Just val }
+        2 -> decodeFieldLoop end (decodeStepId _xs_ pos2) \val -> acc { second = snoc acc.second val }
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) (\_ -> acc)
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeStepId :: Uint8Array -> Int -> Decode.Result StepId
@@ -101,9 +101,9 @@ decodeStepId _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeField end (decodeProd _xs_ pos2) \_ -> Just Prod
-        2 -> decodeField end (decodeDev _xs_ pos2) \_ -> Just Dev
-        _ -> decodeField end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
+        1 -> decodeFieldLoop end (decodeProd _xs_ pos2) \_ -> Just Prod
+        2 -> decodeFieldLoop end (decodeDev _xs_ pos2) \_ -> Just Dev
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end (Just acc) pos1 = pure $ Done { pos: pos1, val: acc }
     decode end acc@Nothing pos1 = Left $ Decode.MissingFields "StepId"
 

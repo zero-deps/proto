@@ -65,8 +65,8 @@ object Purescript {
             |import Proto.Decode as Decode
             |import $moduleCommon
             |
-            |decodeField :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
-            |decodeField end res f = map (\\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
+            |decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
+            |decodeFieldLoop end res f = map (\\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
             |
             |${decodePursTypes.flatMap(_.tmpl).mkString("\n")}
             |
