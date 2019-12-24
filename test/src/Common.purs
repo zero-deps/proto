@@ -6,8 +6,6 @@ module Common
   ) where
 
 import Data.Eq (class Eq)
-import Data.Maybe (Maybe)
-import Data.Tuple (Tuple)
 
 data PageType = PageWidgets | PageUrl PageUrl
 derive instance eqPageType :: Eq PageType

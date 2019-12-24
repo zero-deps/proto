@@ -5,7 +5,6 @@ module SetMap.Common
   ) where
 
 import Data.Eq (class Eq)
-import Data.Maybe (Maybe)
 import Data.Tuple (Tuple)
 
 type Flow1 = { graph :: Array (Tuple String (Array String)) }

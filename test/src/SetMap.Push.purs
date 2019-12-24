@@ -7,12 +7,11 @@ import Control.Monad.Rec.Class (Step(Loop, Done), tailRecM3)
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left))
-import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple))
 import Data.Unit (Unit, unit)
-import Prelude (map, bind, pure, ($), (+), (<), (<<<))
+import Prelude (map, bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
 import SetMap.Common
 

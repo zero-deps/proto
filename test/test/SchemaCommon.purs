@@ -3,8 +3,6 @@ module SchemaCommon
   , ClassWithMap 
   ) where
 
-import Data.Eq (class Eq)
-import Data.Maybe (Maybe)
 import Data.Tuple (Tuple)
 
 data TestSchema = ClassWithMap ClassWithMap

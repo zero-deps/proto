@@ -9,7 +9,6 @@ module Pull
 
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Eq (class Eq)
 import Data.Maybe (Maybe, fromMaybe)
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($))

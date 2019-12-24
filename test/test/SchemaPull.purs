@@ -4,12 +4,10 @@ module SchemaPull
 
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Eq (class Eq)
-import Data.Maybe (Maybe, fromMaybe)
 import Data.Tuple (Tuple(Tuple))
-import Prelude (map, ($))
+import Prelude (($))
 import Proto.Encode as Encode
-import Proto.Uint8ArrayExt (length, concatAll, fromArray)
+import Proto.Uint8ArrayExt (length, concatAll)
 import SchemaCommon
 
 
