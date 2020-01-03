@@ -435,11 +435,55 @@ var PS = {};
   exports["concatMap"] = concatMap;
   exports["snoc"] = $foreign.snoc;
 })(PS);
+(function(exports) {
+  "use strict";
+
+  var refEq = function (r1) {
+    return function (r2) {
+      return r1 === r2;
+    };
+  };                         
+  exports.eqStringImpl = refEq;
+
+  exports.eqArrayImpl = function (f) {
+    return function (xs) {
+      return function (ys) {
+        if (xs === ys) return true;
+        if (xs.length !== ys.length) return false;
+        for (var i = 0; i < xs.length; i++) {
+          if (!f(xs[i])(ys[i])) return false;
+        }
+        return true;
+      };
+    };
+  };
+})(PS["Data.Eq"] = PS["Data.Eq"] || {});
+(function($PS) {
+  "use strict";
+  $PS["Data.Eq"] = $PS["Data.Eq"] || {};
+  var exports = $PS["Data.Eq"];
+  var $foreign = $PS["Data.Eq"];
+  var Eq = function (eq) {
+      this.eq = eq;
+  }; 
+  var eqString = new Eq($foreign.eqStringImpl);
+  var eq = function (dict) {
+      return dict.eq;
+  };
+  var eqArray = function (dictEq) {
+      return new Eq($foreign.eqArrayImpl(eq(dictEq)));
+  };
+  exports["Eq"] = Eq;
+  exports["eq"] = eq;
+  exports["eqString"] = eqString;
+  exports["eqArray"] = eqArray;
+})(PS);
 (function($PS) {
   "use strict";
   $PS["Data.Maybe"] = $PS["Data.Maybe"] || {};
   var exports = $PS["Data.Maybe"];
   var Control_Category = $PS["Control.Category"];
+  var Data_Eq = $PS["Data.Eq"];
   var Data_Functor = $PS["Data.Functor"];          
   var Nothing = (function () {
       function Nothing() {
@@ -480,11 +524,25 @@ var PS = {};
   });
   var fromMaybe = function (a) {
       return maybe(a)(Control_Category.identity(Control_Category.categoryFn));
+  }; 
+  var eqMaybe = function (dictEq) {
+      return new Data_Eq.Eq(function (x) {
+          return function (y) {
+              if (x instanceof Nothing && y instanceof Nothing) {
+                  return true;
+              };
+              if (x instanceof Just && y instanceof Just) {
+                  return Data_Eq.eq(dictEq)(x.value0)(y.value0);
+              };
+              return false;
+          };
+      });
   };
   exports["Nothing"] = Nothing;
   exports["Just"] = Just;
   exports["fromMaybe"] = fromMaybe;
   exports["functorMaybe"] = functorMaybe;
+  exports["eqMaybe"] = eqMaybe;
 })(PS);
 (function($PS) {
   "use strict";
@@ -516,36 +574,81 @@ var PS = {};
   var $foreign = $PS["Data.Unit"];
   exports["unit"] = $foreign.unit;
 })(PS);
+(function($PS) {
+  "use strict";
+  $PS["EqSpec.Common"] = $PS["EqSpec.Common"] || {};
+  var exports = $PS["EqSpec.Common"];
+  var Start = (function () {
+      function Start() {
+
+      };
+      Start.value = new Start();
+      return Start;
+  })();
+  var Ext = (function () {
+      function Ext(value0) {
+          this.value0 = value0;
+      };
+      Ext.create = function (value0) {
+          return new Ext(value0);
+      };
+      return Ext;
+  })();
+  exports["Start"] = Start;
+  exports["Ext"] = Ext;
+})(PS);
 (function(exports) {
   "use strict"
 
+  var FLOAT64_MAX = 1.7976931348623157e+308
+  var FLOAT64_MIN = 2.2250738585072014e-308
+  var TWO_TO_20 = 1048576
   var TWO_TO_32 = 4294967296
   var TWO_TO_52 = 4503599627370496
 
-  exports.joinFloat64 = function(bitsLow) {
-    return function(bitsHigh) {
-      var sign = ((bitsHigh >> 31) * 2 + 1)
-      var exp = (bitsHigh >>> 20) & 0x7FF
-      var mant = TWO_TO_32 * (bitsHigh & 0xFFFFF) + bitsLow
+  exports.splitFloat64 = function(value) {
+    var sign = (value < 0) ? 1 : 0
+    value = sign ? -value : value
 
-      if (exp == 0x7FF) {
-        if (mant) {
-          return NaN
-        } else {
-          return sign * Infinity
-        }
-      }
-
-      if (exp == 0) {
-        // Denormal.
-        return sign * Math.pow(2, -1074) * mant
+    // Handle zeros.
+    if (value === 0) {
+      if ((1 / value) > 0) {
+        // Positive zero.
+        return { low: 0x00000000, high: 0x00000000 }
       } else {
-        return sign * Math.pow(2, exp - 1075) *
-               (mant + TWO_TO_52)
+        // Negative zero.
+        return { low: 0x00000000, high: 0x80000000 }
       }
     }
+
+    // Handle nans.
+    if (isNaN(value)) {
+      return { low: 0xFFFFFFFF, high: 0x7FFFFFFF }
+    }
+
+    // Handle infinities.
+    if (value > FLOAT64_MAX) {
+      return { low: 0, high: ((sign << 31) | (0x7FF00000)) >>> 0 }
+    }
+
+    // Handle denormals.
+    if (value < FLOAT64_MIN) {
+      // Number is a denormal.
+      var mant = value / Math.pow(2, -1074)
+      var mantHigh = (mant / TWO_TO_32)
+      return { low: (mant >>> 0), high: ((sign << 31) | mantHigh) >>> 0 }
+    }
+
+    var exp = Math.floor(Math.log(value) / Math.LN2)
+    if (exp == 1024) exp = 1023
+    var mant = value * Math.pow(2, -exp)
+
+    var mantHigh = (mant * TWO_TO_20) & 0xFFFFF
+    var mantLow = (mant * TWO_TO_52) >>> 0
+
+    return { low: mantLow, high: ((sign << 31) | ((exp + 1023) << 20) | mantHigh) >>> 0 }
   }
-})(PS["Proto.Decode"] = PS["Proto.Decode"] || {});
+})(PS["Proto.Encode"] = PS["Proto.Encode"] || {});
 (function(exports) {
   "use strict"
 
@@ -702,6 +805,160 @@ var PS = {};
   exports["toString"] = $foreign.toString;
   exports["toUint8Array"] = $foreign.toUint8Array;
 })(PS);
+(function($PS) {
+  "use strict";
+  $PS["Proto.Encode"] = $PS["Proto.Encode"] || {};
+  var exports = $PS["Proto.Encode"];
+  var $foreign = $PS["Proto.Encode"];
+  var Data_Array = $PS["Data.Array"];
+  var Proto_Uint8ArrayExt = $PS["Proto.Uint8ArrayExt"];
+  var Proto_Utf8 = $PS["Proto.Utf8"];                
+  var uint32 = (function () {
+      var loop = function ($copy_acc) {
+          return function ($copy_val) {
+              var $tco_var_acc = $copy_acc;
+              var $tco_done = false;
+              var $tco_result;
+              function $tco_loop(acc, val) {
+                  var $1 = val > 127;
+                  if ($1) {
+                      $tco_var_acc = Data_Array.snoc(acc)(val & 127 | 128);
+                      $copy_val = val >>> 7;
+                      return;
+                  };
+                  $tco_done = true;
+                  return Data_Array.snoc(acc)(val);
+              };
+              while (!$tco_done) {
+                  $tco_result = $tco_loop($tco_var_acc, $copy_val);
+              };
+              return $tco_result;
+          };
+      };
+      var $9 = loop([  ]);
+      return function ($10) {
+          return Proto_Uint8ArrayExt.fromArray($9($10));
+      };
+  })();
+  var string = function (x) {
+      var len = Proto_Utf8.numOfBytes(x);
+      var $2 = len === 0;
+      if ($2) {
+          return uint32(0);
+      };
+      return Proto_Uint8ArrayExt.concatAll([ uint32(len), Proto_Utf8.toUint8Array(x)(len) ]);
+  };
+  var $$double = function (y) {
+      var fixedUint32 = function (x) {
+          return Proto_Uint8ArrayExt.fromArray([ x >>> 0 & 255, x >>> 8 & 255, x >>> 16 & 255, x >>> 24 & 255 ]);
+      };
+      var x = $foreign.splitFloat64(y);
+      return Proto_Uint8ArrayExt.concatAll([ fixedUint32(x.low), fixedUint32(x.high) ]);
+  };
+  var bytes = function (xs) {
+      var len = Proto_Uint8ArrayExt.length(xs);
+      var $7 = len === 0;
+      if ($7) {
+          return uint32(0);
+      };
+      return Proto_Uint8ArrayExt.concatAll([ uint32(len), xs ]);
+  };
+  var $$boolean = function (v) {
+      if (v) {
+          return Proto_Uint8ArrayExt.fromArray([ 1 ]);
+      };
+      if (!v) {
+          return Proto_Uint8ArrayExt.fromArray([ 0 ]);
+      };
+      throw new Error("Failed pattern match at Proto.Encode (line 39, column 1 - line 39, column 33): " + [ v.constructor.name ]);
+  };
+  exports["uint32"] = uint32;
+  exports["double"] = $$double;
+  exports["string"] = string;
+  exports["boolean"] = $$boolean;
+  exports["bytes"] = bytes;
+})(PS);
+(function($PS) {
+  "use strict";
+  $PS["EqSpec.Pull"] = $PS["EqSpec.Pull"] || {};
+  var exports = $PS["EqSpec.Pull"];
+  var Data_Array = $PS["Data.Array"];
+  var EqSpec_Common = $PS["EqSpec.Common"];
+  var Proto_Encode = $PS["Proto.Encode"];
+  var Proto_Uint8ArrayExt = $PS["Proto.Uint8ArrayExt"];                
+  var Flow = (function () {
+      function Flow(value0) {
+          this.value0 = value0;
+      };
+      Flow.create = function (value0) {
+          return new Flow(value0);
+      };
+      return Flow;
+  })();
+  var encodeStart = Proto_Encode.uint32(0);
+  var encodeNode = function (v) {
+      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(v.root), Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+          return [ Proto_Encode.uint32(18), encodeNode(x) ];
+      })(v.forest)) ]);
+      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+  };
+  var encodeExt = function (msg) {
+      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeNode(msg.tree) ]);
+      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+  };
+  var encodeFlowStep = function (v) {
+      if (v instanceof EqSpec_Common.Start) {
+          var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeStart ]);
+          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      };
+      if (v instanceof EqSpec_Common.Ext) {
+          var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(18), encodeExt(v.value0) ]);
+          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      };
+      throw new Error("Failed pattern match at EqSpec.Pull (line 25, column 1 - line 25, column 41): " + [ v.constructor.name ]);
+  };
+  var encodeFlow = function (msg) {
+      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+          return [ Proto_Encode.uint32(10), encodeFlowStep(x) ];
+      })(msg.steps)) ]);
+      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+  };
+  var encodePull = function (v) {
+      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeFlow(v.value0) ]);
+  };
+  exports["Flow"] = Flow;
+  exports["encodePull"] = encodePull;
+})(PS);
+(function(exports) {
+  "use strict"
+
+  var TWO_TO_32 = 4294967296
+  var TWO_TO_52 = 4503599627370496
+
+  exports.joinFloat64 = function(bitsLow) {
+    return function(bitsHigh) {
+      var sign = ((bitsHigh >> 31) * 2 + 1)
+      var exp = (bitsHigh >>> 20) & 0x7FF
+      var mant = TWO_TO_32 * (bitsHigh & 0xFFFFF) + bitsLow
+
+      if (exp == 0x7FF) {
+        if (mant) {
+          return NaN
+        } else {
+          return sign * Infinity
+        }
+      }
+
+      if (exp == 0) {
+        // Denormal.
+        return sign * Math.pow(2, -1074) * mant
+      } else {
+        return sign * Math.pow(2, exp - 1075) *
+               (mant + TWO_TO_52)
+      }
+    }
+  }
+})(PS["Proto.Decode"] = PS["Proto.Decode"] || {});
 (function($PS) {
   "use strict";
   $PS["Proto.Decode"] = $PS["Proto.Decode"] || {};
@@ -1036,130 +1293,250 @@ var PS = {};
   exports["string"] = string;
   exports["skipType"] = skipType;
 })(PS);
-(function(exports) {
-  "use strict"
-
-  var FLOAT64_MAX = 1.7976931348623157e+308
-  var FLOAT64_MIN = 2.2250738585072014e-308
-  var TWO_TO_20 = 1048576
-  var TWO_TO_32 = 4294967296
-  var TWO_TO_52 = 4503599627370496
-
-  exports.splitFloat64 = function(value) {
-    var sign = (value < 0) ? 1 : 0
-    value = sign ? -value : value
-
-    // Handle zeros.
-    if (value === 0) {
-      if ((1 / value) > 0) {
-        // Positive zero.
-        return { low: 0x00000000, high: 0x00000000 }
-      } else {
-        // Negative zero.
-        return { low: 0x00000000, high: 0x80000000 }
-      }
-    }
-
-    // Handle nans.
-    if (isNaN(value)) {
-      return { low: 0xFFFFFFFF, high: 0x7FFFFFFF }
-    }
-
-    // Handle infinities.
-    if (value > FLOAT64_MAX) {
-      return { low: 0, high: ((sign << 31) | (0x7FF00000)) >>> 0 }
-    }
-
-    // Handle denormals.
-    if (value < FLOAT64_MIN) {
-      // Number is a denormal.
-      var mant = value / Math.pow(2, -1074)
-      var mantHigh = (mant / TWO_TO_32)
-      return { low: (mant >>> 0), high: ((sign << 31) | mantHigh) >>> 0 }
-    }
-
-    var exp = Math.floor(Math.log(value) / Math.LN2)
-    if (exp == 1024) exp = 1023
-    var mant = value * Math.pow(2, -exp)
-
-    var mantHigh = (mant * TWO_TO_20) & 0xFFFFF
-    var mantLow = (mant * TWO_TO_52) >>> 0
-
-    return { low: mantLow, high: ((sign << 31) | ((exp + 1023) << 20) | mantHigh) >>> 0 }
-  }
-})(PS["Proto.Encode"] = PS["Proto.Encode"] || {});
 (function($PS) {
   "use strict";
-  $PS["Proto.Encode"] = $PS["Proto.Encode"] || {};
-  var exports = $PS["Proto.Encode"];
-  var $foreign = $PS["Proto.Encode"];
+  $PS["EqSpec.Push"] = $PS["EqSpec.Push"] || {};
+  var exports = $PS["EqSpec.Push"];
+  var Control_Applicative = $PS["Control.Applicative"];
+  var Control_Bind = $PS["Control.Bind"];
+  var Control_Monad_Rec_Class = $PS["Control.Monad.Rec.Class"];
   var Data_Array = $PS["Data.Array"];
-  var Proto_Uint8ArrayExt = $PS["Proto.Uint8ArrayExt"];
-  var Proto_Utf8 = $PS["Proto.Utf8"];                
-  var uint32 = (function () {
-      var loop = function ($copy_acc) {
-          return function ($copy_val) {
-              var $tco_var_acc = $copy_acc;
-              var $tco_done = false;
-              var $tco_result;
-              function $tco_loop(acc, val) {
-                  var $1 = val > 127;
-                  if ($1) {
-                      $tco_var_acc = Data_Array.snoc(acc)(val & 127 | 128);
-                      $copy_val = val >>> 7;
-                      return;
-                  };
-                  $tco_done = true;
-                  return Data_Array.snoc(acc)(val);
-              };
-              while (!$tco_done) {
-                  $tco_result = $tco_loop($tco_var_acc, $copy_val);
-              };
-              return $tco_result;
+  var Data_Either = $PS["Data.Either"];
+  var Data_Functor = $PS["Data.Functor"];
+  var Data_Maybe = $PS["Data.Maybe"];
+  var Data_Unit = $PS["Data.Unit"];
+  var EqSpec_Common = $PS["EqSpec.Common"];
+  var Proto_Decode = $PS["Proto.Decode"];                
+  var Flow = (function () {
+      function Flow(value0) {
+          this.value0 = value0;
+      };
+      Flow.create = function (value0) {
+          return new Flow(value0);
+      };
+      return Flow;
+  })();
+  var Node$prime = function (x) {
+      return x;
+  };
+  var decodeStart = function (_xs_) {
+      return function (pos0) {
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Applicative.pure(Data_Either.applicativeEither)({
+                  pos: v.pos + v.val | 0,
+                  val: Data_Unit.unit
+              });
+          });
+      };
+  };
+  var decodeFieldLoop = function (end) {
+      return function (res) {
+          return function (f) {
+              return Data_Functor.map(Data_Either.functorEither)(function (v) {
+                  return new Control_Monad_Rec_Class.Loop({
+                      a: end,
+                      b: f(v.val),
+                      c: v.pos
+                  });
+              })(res);
           };
       };
-      var $9 = loop([  ]);
-      return function ($10) {
-          return Proto_Uint8ArrayExt.fromArray($9($10));
-      };
-  })();
-  var string = function (x) {
-      var len = Proto_Utf8.numOfBytes(x);
-      var $2 = len === 0;
-      if ($2) {
-          return uint32(0);
-      };
-      return Proto_Uint8ArrayExt.concatAll([ uint32(len), Proto_Utf8.toUint8Array(x)(len) ]);
   };
-  var $$double = function (y) {
-      var fixedUint32 = function (x) {
-          return Proto_Uint8ArrayExt.fromArray([ x >>> 0 & 255, x >>> 8 & 255, x >>> 16 & 255, x >>> 24 & 255 ]);
+  var decodeNode = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (v) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
+                              var v2 = v1.val >>> 3;
+                              if (v2 === 1) {
+                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v1.pos))(function (val) {
+                                      return Node$prime({
+                                          root: new Data_Maybe.Just(val),
+                                          forest: v.forest
+                                      });
+                                  });
+                              };
+                              if (v2 === 2) {
+                                  return decodeFieldLoop(end)(decodeNode(_xs_)(v1.pos))(function (val) {
+                                      return Node$prime({
+                                          root: v.root,
+                                          forest: Data_Array.snoc(v.forest)(val)
+                                      });
+                                  });
+                              };
+                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
+                                  return v;
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: v
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  root: Data_Maybe.Nothing.value,
+                  forest: [  ]
+              })(v.pos))(function (v1) {
+                  if (v1.val.root instanceof Data_Maybe.Just) {
+                      return Control_Applicative.pure(Data_Either.applicativeEither)({
+                          pos: v1.pos,
+                          val: {
+                              root: v1.val.root.value0,
+                              forest: v1.val.forest
+                          }
+                      });
+                  };
+                  return Data_Either.Left.create(new Proto_Decode.MissingFields("Node"));
+              });
+          });
       };
-      var x = $foreign.splitFloat64(y);
-      return Proto_Uint8ArrayExt.concatAll([ fixedUint32(x.low), fixedUint32(x.high) ]);
   };
-  var bytes = function (xs) {
-      var len = Proto_Uint8ArrayExt.length(xs);
-      var $7 = len === 0;
-      if ($7) {
-          return uint32(0);
+  var decodeExt = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (acc) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
+                              var v1 = v.val >>> 3;
+                              if (v1 === 1) {
+                                  return decodeFieldLoop(end)(decodeNode(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          tree: new Data_Maybe.Just(val)
+                                      };
+                                  });
+                              };
+                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: acc
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Bind.bind(Data_Either.bindEither)(Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  tree: Data_Maybe.Nothing.value
+              })(v.pos))(function (v1) {
+                  if (v1.val.tree instanceof Data_Maybe.Just) {
+                      return Control_Applicative.pure(Data_Either.applicativeEither)({
+                          pos: v1.pos,
+                          val: {
+                              tree: v1.val.tree.value0
+                          }
+                      });
+                  };
+                  return Data_Either.Left.create(new Proto_Decode.MissingFields("Ext"));
+              });
+          });
       };
-      return Proto_Uint8ArrayExt.concatAll([ uint32(len), xs ]);
   };
-  var $$boolean = function (v) {
-      if (v) {
-          return Proto_Uint8ArrayExt.fromArray([ 1 ]);
+  var decodeFlowStep = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (v) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
+                              var v2 = v1.val >>> 3;
+                              if (v2 === 1) {
+                                  return decodeFieldLoop(end)(decodeStart(_xs_)(v1.pos))(function (v3) {
+                                      return new Data_Maybe.Just(EqSpec_Common.Start.value);
+                                  });
+                              };
+                              if (v2 === 2) {
+                                  return decodeFieldLoop(end)(decodeExt(_xs_)(v1.pos))(function ($97) {
+                                      return Data_Maybe.Just.create(EqSpec_Common.Ext.create($97));
+                                  });
+                              };
+                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
+                                  return v;
+                              });
+                          });
+                      };
+                      if (v instanceof Data_Maybe.Just) {
+                          return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                              pos: pos1,
+                              val: v.value0
+                          }));
+                      };
+                      if (v instanceof Data_Maybe.Nothing) {
+                          return Data_Either.Left.create(new Proto_Decode.MissingFields("FlowStep"));
+                      };
+                      throw new Error("Failed pattern match at EqSpec.Push (line 52, column 5 - line 52, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)(Data_Maybe.Nothing.value)(v.pos);
+          });
       };
-      if (!v) {
-          return Proto_Uint8ArrayExt.fromArray([ 0 ]);
-      };
-      throw new Error("Failed pattern match at Proto.Encode (line 39, column 1 - line 39, column 33): " + [ v.constructor.name ]);
   };
-  exports["uint32"] = uint32;
-  exports["double"] = $$double;
-  exports["string"] = string;
-  exports["boolean"] = $$boolean;
-  exports["bytes"] = bytes;
+  var decodeFlow = function (_xs_) {
+      return function (pos0) {
+          var decode = function (end) {
+              return function (acc) {
+                  return function (pos1) {
+                      if (pos1 < end) {
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
+                              var v1 = v.val >>> 3;
+                              if (v1 === 1) {
+                                  return decodeFieldLoop(end)(decodeFlowStep(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          steps: Data_Array.snoc(acc.steps)(val)
+                                      };
+                                  });
+                              };
+                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
+                              });
+                          });
+                      };
+                      return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
+                          pos: pos1,
+                          val: acc
+                      }));
+                  };
+              };
+          };
+          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
+              return Control_Monad_Rec_Class.tailRecM3(Control_Monad_Rec_Class.monadRecEither)(decode)(v.pos + v.val | 0)({
+                  steps: [  ]
+              })(v.pos);
+          });
+      };
+  };
+  var decodePush = function (_xs_) {
+      var decode = function (res) {
+          return function (f) {
+              return Data_Functor.map(Data_Either.functorEither)(function (v) {
+                  return {
+                      pos: v.pos,
+                      val: f(v.val)
+                  };
+              })(res);
+          };
+      };
+      return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(0))(function (v) {
+          var v1 = v.val >>> 3;
+          if (v1 === 1) {
+              return decode(decodeFlow(_xs_)(v.pos))(Flow.create);
+          };
+          return Data_Either.Left.create(new Proto_Decode.BadType(v1));
+      });
+  };
+  exports["Flow"] = Flow;
+  exports["decodePush"] = decodePush;
 })(PS);
 (function($PS) {
   "use strict";
@@ -1308,6 +1685,7 @@ var PS = {};
   var Control_Monad_Rec_Class = $PS["Control.Monad.Rec.Class"];
   var Data_Array = $PS["Data.Array"];
   var Data_Either = $PS["Data.Either"];
+  var Data_Eq = $PS["Data.Eq"];
   var Data_Functor = $PS["Data.Functor"];
   var Data_Maybe = $PS["Data.Maybe"];
   var Data_Tuple = $PS["Data.Tuple"];
@@ -1371,6 +1749,11 @@ var PS = {};
       };
       return ComponentTemplateOk;
   })();
+  var eqFieldNode1 = new Data_Eq.Eq(function (x) {
+      return function (y) {
+          return Data_Eq.eq(Data_Eq.eqArray(eqFieldNode1))(x.forest)(y.forest) && Data_Eq.eq(Data_Maybe.eqMaybe(Data_Eq.eqString))(x.root)(y.root);
+      };
+  });
   var decodePing = function (_xs_) {
       return function (pos0) {
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
@@ -1660,8 +2043,8 @@ var PS = {};
                                   });
                               };
                               if (v2 === 2) {
-                                  return decodeFieldLoop(end)(decodePageUrl(_xs_)(v1.pos))(function ($287) {
-                                      return Data_Maybe.Just.create(Common.PageUrl.create($287));
+                                  return decodeFieldLoop(end)(decodePageUrl(_xs_)(v1.pos))(function ($293) {
+                                      return Data_Maybe.Just.create(Common.PageUrl.create($293));
                                   });
                               };
                               return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
@@ -1678,7 +2061,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("PageType"));
                       };
-                      throw new Error("Failed pattern match at Push (line 127, column 5 - line 127, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at Push (line 129, column 5 - line 129, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -2061,6 +2444,7 @@ var PS = {};
   exports["ComponentTemplateOk"] = ComponentTemplateOk;
   exports["FieldNode1"] = FieldNode1;
   exports["decodePush"] = decodePush;
+  exports["eqFieldNode1"] = eqFieldNode1;
 })(PS);
 (function($PS) {
   "use strict";

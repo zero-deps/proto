@@ -14,6 +14,7 @@ import Control.Monad.Rec.Class (Step(Loop, Done), tailRecM3)
 import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left))
+import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple))
@@ -40,6 +41,7 @@ type ComponentTemplateOk = { fieldNode :: FieldNode, fieldNode1 :: FieldNode1 }
 type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode, fieldNode1 :: Maybe FieldNode1 }
 newtype FieldNode' = FieldNode' { root :: Maybe String, forest :: Array FieldNode }
 newtype FieldNode1 = FieldNode1 { root :: Maybe String, forest :: Array FieldNode1 }
+derive instance eqFieldNode1 :: Eq FieldNode1
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
