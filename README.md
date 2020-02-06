@@ -20,7 +20,7 @@ Scala type        | Purescript type
 `Int            ` | `Int`
 `Float`           | Not implemented
 `Double         ` | `Number`
-`Option[_] `      | `Maybe _`
+`Option[_] `      | `Nullable _`
 `Array[Byte]    ` | `Uint8Array`
 `Set[_]    `      | `Array _`
 `Map[_, _]      ` | `Array (Tuple _ _)`
@@ -32,7 +32,7 @@ Scala type        | Purescript type
 sbt test
 cd test
 npm i
-npm run dep
-npm run com
-npm run tes
+npm -s run dep
+npm -s run com
+npm -s run tes
 ```

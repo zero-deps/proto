@@ -24,7 +24,7 @@ object Purescript {
         val code = commonPursTypes.flatMap(_.tmpl).mkString("\n")
         val is = List(
           if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").just else Nothing
-        , if (code contains "Maybe ") ("Data.Maybe" -> "Maybe").just else Nothing
+        , if (code contains "Nullable ") ("Data.Nullable" -> "Nullable").just else Nothing
         , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple").just else Nothing
         ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + " (" + x._2 + ")").to(List).sorted.mkString("\n")
         s"""|module $moduleCommon
@@ -41,8 +41,8 @@ object Purescript {
           if (code contains "concatMap ") ("Data.Array" -> "concatMap").just else Nothing
         , if (code contains "Uint8Array") ("Data.ArrayBuffer.Types" -> "Uint8Array").just else Nothing
         , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").just else Nothing
-        , if (code contains "Maybe ") ("Data.Maybe" -> "Maybe").just else Nothing
-        , if (code contains "fromMaybe ") ("Data.Maybe" -> "fromMaybe").just else Nothing
+        , if (code contains "Nullable ") ("Data.Nullable" -> "Nullable").just else Nothing
+        , if (code contains "nullable ") ("Data.Nullable" -> "nullable").just else Nothing
         , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple(Tuple)").just else Nothing
         , if (code contains "map ") ("Prelude" -> "map").just else Nothing
         , if (code contains " $ ") ("Prelude" -> "($)").just else Nothing
@@ -73,7 +73,8 @@ object Purescript {
         , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").just else Nothing
         , if (code contains "zshr") ("Data.Int.Bits" -> "zshr").just else Nothing
         , if (code contains " .&. ") ("Data.Int.Bits" -> "(.&.)").just else Nothing
-        , if (code.contains("Just ") || code.contains("Nothing")) ("Data.Maybe" -> "Maybe(Just, Nothing)").just else Nothing
+        , if (code.contains("notNull ")) ("Data.Nullable" -> "notNull").just else Nothing
+        , if (code.contains("null")) ("Data.Nullable" -> "null").just else Nothing
         , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple(Tuple)").just else Nothing
         , if (code contains "Unit") ("Data.Unit" -> "Unit").just else Nothing
         , if (code contains "unit") ("Data.Unit" -> "unit").just else Nothing

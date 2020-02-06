@@ -125,16 +125,16 @@ object Encoders {
       val typeArg = tpe.typeArgs.head.typeSymbol
       val tpe1 = typeArg.asType.toType
       if (tpe1 =:= StringClass.selfType) {
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, Encode.string x ]) msg.$name""" :: Nil
+        s"""nullable msg.$name (fromArray []) (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, Encode.string x ])""" :: Nil
       } else if (tpe1 =:= IntClass.selfType) {
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.uint32 x ]) msg.$name""" :: Nil
+        s"""nullable msg.$name (fromArray []) (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.uint32 x ])""" :: Nil
       } else if (tpe1 =:= BooleanClass.selfType) {
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.boolean x ]) msg.$name""" :: Nil
+        s"""nullable msg.$name (fromArray []) (\\x -> concatAll [ Encode.uint32 ${(n<<3)+0}, Encode.boolean x ])""" :: Nil
       } else if (tpe1 =:= DoubleClass.selfType) {
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+1}, Encode.double x ]) msg.$name""" :: Nil
+        s"""nullable msg.$name (fromArray []) (\\x -> concatAll [ Encode.uint32 ${(n<<3)+1}, Encode.double x ])""" :: Nil
       } else {
         val typeArgName = typeArg.name.encodedName.toString
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, encode$typeArgName x ]) msg.$name""" :: Nil
+        s"""nullable msg.$name (fromArray []) (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, encode$typeArgName x ])""" :: Nil
       }
     } else if (tpe =:= typeOf[Array[Byte]]) {
       List(

@@ -8,22 +8,22 @@ import zd.gs.z._
 package object purs {
   def pursTypePars(tpe: Type): (String, String) = {
     if (tpe =:= StringClass.selfType) {
-      "String" -> "(Maybe String)"
+      "String" -> s"(Nullable String)"
     } else if (tpe =:= IntClass.selfType) {
-      "Int" -> "(Maybe Int)"
+      "Int" -> s"(Nullable Int)"
     } else if (tpe =:= BooleanClass.selfType) {
-      "Boolean" -> "(Maybe Boolean)"
+      "Boolean" -> s"(Nullable Boolean)"
     } else if (tpe =:= DoubleClass.selfType) {
-      "Number" -> "(Maybe Number)"
+      "Number" -> s"(Nullable Number)"
     } else if (tpe =:= typeOf[Array[Byte]]) {
-      "Uint8Array" -> "(Maybe Uint8Array)"
+      "Uint8Array" -> s"(Nullable Uint8Array)"
     } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
       val typeArg = tpe.typeArgs.head
       if (typeArg =:= DoubleClass.selfType) {
-        "(Maybe Number)" -> "(Maybe Number)"
+        s"(Nullable Number)" -> s"(Nullable Number)"
       } else {
         val name = typeArg.typeSymbol.name.encodedName.toString
-        s"(Maybe $name)" -> s"Maybe $name)"
+        s"(Nullable $name)" -> s"(Nullable $name)"
       }
     } else if (isIterable(tpe)) {
       iterablePurs(tpe) match {
@@ -37,7 +37,7 @@ package object purs {
       }
     } else {
       val name = tpe.typeSymbol.name.encodedName.toString
-      name -> s"(Maybe $name)"
+      name -> s"(Nullable $name)"
     }
   }
   
@@ -61,14 +61,14 @@ package object purs {
         case _: ArrayPurs => s"$name: []"
         case _: ArrayTuplePurs => s"$name: []"
       }
-    } else s"$name: Nothing"
+    } else s"$name: null"
   }
   
   def justValue(name: String, tpe: Type): String = {
     if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) name
     else if (isIterable(tpe)) name
     else {
-      s"$name: Just $name"
+      s"$name: notNull $name"
     }
   }
 

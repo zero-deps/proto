@@ -27,22 +27,21 @@ object Decoders {
       case TraitType(tpe, children, false) =>
         val name = tpe.typeSymbol.name.encodedName.toString
         val cases = children.flatMap{ case ChildMeta(name, tpe, n, noargs) =>
-          if (noargs) s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) \\_ -> Just $name" :: Nil
-          else s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) (Just <<< $name)" :: Nil
+          if (noargs) s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) \\_ -> notNull $name" :: Nil
+          else s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) (notNull <<< $name)" :: Nil
         }
         val tmpl =
           s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
               |decode$name _xs_ pos0 = do
               |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-              |  tailRecM3 decode (pos + msglen) Nothing pos
+              |  tailRecM3 decode (pos + msglen) null pos
               |    where
-              |    decode :: Int -> Maybe $name -> Int -> Decode.Result' (Step { a :: Int, b :: Maybe $name, c :: Int } { pos :: Int, val :: $name })
+              |    decode :: Int -> Nullable $name -> Int -> Decode.Result' (Step { a :: Int, b :: Nullable $name, c :: Int } { pos :: Int, val :: $name })
               |    decode end acc pos1 | pos1 < end = do
               |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
               |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString}
               |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
-              |    decode end (Just acc) pos1 = pure $$ Done { pos: pos1, val: acc }
-              |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "$name"""".stripMargin
+              |    decode end acc pos1 = nullable acc (Left $$ Decode.MissingFields "$name") \\acc' -> pure $$ Done { pos: pos1, val: acc' }""".stripMargin
         Coder(tmpl, Nothing)
       case TupleType(tpe, tpe_1, tpe_2) =>
         val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
@@ -163,27 +162,27 @@ object Decoders {
       ) :: Nil
     }
     if (tpe =:= StringClass.selfType) {
-      tmpl(n, "Decode.string", s"$name = Just val")
+      tmpl(n, "Decode.string", s"$name = notNull val")
     } else if (tpe =:= IntClass.selfType) {
-      tmpl(n, "Decode.int32", s"$name = Just val")
+      tmpl(n, "Decode.int32", s"$name = notNull val")
     } else if (tpe =:= BooleanClass.selfType) {
-      tmpl(n, "Decode.boolean", s"$name = Just val")
+      tmpl(n, "Decode.boolean", s"$name = notNull val")
     } else if (tpe =:= DoubleClass.selfType) {
-      tmpl(n, "Decode.double", s"$name = Just val")
+      tmpl(n, "Decode.double", s"$name = notNull val")
     } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
       val typeArg = tpe.typeArgs.head.typeSymbol
       val tpe1 = typeArg.asType.toType
       if (tpe1 =:= StringClass.selfType) {
-        tmpl(n, "Decode.string", s"$name = Just val")
+        tmpl(n, "Decode.string", s"$name = notNull val")
       } else if (tpe1 =:= IntClass.selfType) {
-        tmpl(n, "Decode.int32", s"$name = Just val")
+        tmpl(n, "Decode.int32", s"$name = notNull val")
       } else if (tpe1 =:= BooleanClass.selfType) {
-        tmpl(n, "Decode.boolean", s"$name = Just val")
+        tmpl(n, "Decode.boolean", s"$name = notNull val")
       } else if (tpe1 =:= DoubleClass.selfType) {
-        tmpl(n, "Decode.double", s"$name = Just val")
+        tmpl(n, "Decode.double", s"$name = notNull val")
       } else {
         val typeArgName = typeArg.name.encodedName.toString
-        tmpl(n, s"decode$typeArgName", s"$name = Just val")
+        tmpl(n, s"decode$typeArgName", s"$name = notNull val")
       }
     } else if (isIterable(tpe)) {
       iterablePurs(tpe) match {
@@ -199,7 +198,7 @@ object Decoders {
       }
     } else {
       val name1 = tpe.typeSymbol.name.encodedName.toString
-      tmpl(n, s"decode${name1}", s"$name = Just val")
+      tmpl(n, s"decode${name1}", s"$name = notNull val")
     }
   }
 }

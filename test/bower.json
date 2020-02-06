@@ -6,7 +6,7 @@
     "purescript-arrays": "*",
     "purescript-arraybuffer-types": "*",
     "purescript-integers": "*",
-    "purescript-ordered-collections": "*"
+    "purescript-nullable": "*"
   },
   "devDependencies": {
     "purescript-node-process": "*",

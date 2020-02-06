@@ -8,7 +8,7 @@ import Data.Array (snoc)
 import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left))
 import Data.Int.Bits (zshr, (.&.))
-import Data.Maybe (Maybe(Just, Nothing))
+import Data.Nullable (notNull, null)
 import Data.Tuple (Tuple(Tuple))
 import Data.Unit (Unit, unit)
 import Prelude (map, bind, pure, ($), (+), (<))
@@ -47,16 +47,16 @@ decodeFlow1 _xs_ pos0 = do
 decodeStringArrayString :: Uint8Array -> Int -> Decode.Result (Tuple String (Array String))
 decodeStringArrayString _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { first: Nothing, second: [] } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { first: null, second: [] } pos
   case val of
-    { first: Just first, second } -> pure { pos: pos1, val: Tuple first second }
+    { first: notNull first, second } -> pure { pos: pos1, val: Tuple first second }
     _ -> Left $ Decode.MissingFields "decodeStringArrayString"
     where
-    decode :: Int -> { first :: Maybe String, second :: Array String } -> Int -> Decode.Result' (Step { a :: Int, b :: { first :: Maybe String, second :: Array String }, c :: Int } { pos :: Int, val :: { first :: Maybe String, second :: Array String } })
+    decode :: Int -> { first :: Nullable String, second :: Array String } -> Int -> Decode.Result' (Step { a :: Int, b :: { first :: Nullable String, second :: Array String }, c :: Int } { pos :: Int, val :: { first :: Nullable String, second :: Array String } })
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { first = Just val }
+        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { first = notNull val }
         2 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { second = snoc acc.second val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) (\_ -> acc)
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
@@ -77,16 +77,16 @@ decodeFlow2 _xs_ pos0 = do
 decodeStepIdArrayStepId :: Uint8Array -> Int -> Decode.Result (Tuple StepId (Array StepId))
 decodeStepIdArrayStepId _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { first: Nothing, second: [] } pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { first: null, second: [] } pos
   case val of
-    { first: Just first, second } -> pure { pos: pos1, val: Tuple first second }
+    { first: notNull first, second } -> pure { pos: pos1, val: Tuple first second }
     _ -> Left $ Decode.MissingFields "decodeStepIdArrayStepId"
     where
-    decode :: Int -> { first :: Maybe StepId, second :: Array StepId } -> Int -> Decode.Result' (Step { a :: Int, b :: { first :: Maybe StepId, second :: Array StepId }, c :: Int } { pos :: Int, val :: { first :: Maybe StepId, second :: Array StepId } })
+    decode :: Int -> { first :: Nullable StepId, second :: Array StepId } -> Int -> Decode.Result' (Step { a :: Int, b :: { first :: Nullable StepId, second :: Array StepId }, c :: Int } { pos :: Int, val :: { first :: Nullable StepId, second :: Array StepId } })
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeFieldLoop end (decodeStepId _xs_ pos2) \val -> acc { first = Just val }
+        1 -> decodeFieldLoop end (decodeStepId _xs_ pos2) \val -> acc { first = notNull val }
         2 -> decodeFieldLoop end (decodeStepId _xs_ pos2) \val -> acc { second = snoc acc.second val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) (\_ -> acc)
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
@@ -94,17 +94,16 @@ decodeStepIdArrayStepId _xs_ pos0 = do
 decodeStepId :: Uint8Array -> Int -> Decode.Result StepId
 decodeStepId _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  tailRecM3 decode (pos + msglen) Nothing pos
+  tailRecM3 decode (pos + msglen) null pos
     where
-    decode :: Int -> Maybe StepId -> Int -> Decode.Result' (Step { a :: Int, b :: Maybe StepId, c :: Int } { pos :: Int, val :: StepId })
+    decode :: Int -> Nullable StepId -> Int -> Decode.Result' (Step { a :: Int, b :: Nullable StepId, c :: Int } { pos :: Int, val :: StepId })
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeFieldLoop end (decodeProd _xs_ pos2) \_ -> Just Prod
-        2 -> decodeFieldLoop end (decodeDev _xs_ pos2) \_ -> Just Dev
+        1 -> decodeFieldLoop end (decodeProd _xs_ pos2) \_ -> notNull Prod
+        2 -> decodeFieldLoop end (decodeDev _xs_ pos2) \_ -> notNull Dev
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
-    decode end (Just acc) pos1 = pure $ Done { pos: pos1, val: acc }
-    decode end acc@Nothing pos1 = Left $ Decode.MissingFields "StepId"
+    decode end acc pos1 = nullable acc (Left $ Decode.MissingFields "StepId") \acc' -> pure $ Done { pos: pos1, val: acc' }
 
 decodeProd :: Uint8Array -> Int -> Decode.Result Unit
 decodeProd _xs_ pos0 = do

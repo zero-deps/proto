@@ -9,18 +9,18 @@ module Pull
 
 import Data.Array (concatMap)
 import Data.ArrayBuffer.Types (Uint8Array)
-import Data.Maybe (Maybe, fromMaybe)
+import Data.Nullable (Nullable, nullable)
 import Data.Tuple (Tuple(Tuple))
-import Prelude (map, ($))
+import Prelude (($))
 import Proto.Encode as Encode
 import Proto.Uint8ArrayExt (length, concatAll, fromArray)
 import Common
 
 data Pull = GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs
 type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }
-type SavePage = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
+type SavePage = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Nullable PageSeo, name :: Array (Tuple String String) }
 type SaveComponentTemplate = { fieldNode :: FieldNode }
-type ComponentsSavePrefs = { id :: String, pageid :: String, siteid :: String, tree :: FieldNode, extTree :: Maybe FieldNode }
+type ComponentsSavePrefs = { id :: String, pageid :: String, siteid :: String, tree :: FieldNode, extTree :: Nullable FieldNode }
 
 encodePull :: Pull -> Uint8Array
 encodePull GetSites = concatAll [ Encode.uint32 8002, encodeGetSites ]
@@ -52,7 +52,7 @@ encodeSavePage msg = do
         , Encode.boolean msg.guest
         , Encode.uint32 26
         , encodePageSeo msg.seo
-        , fromMaybe (fromArray []) $ map (\x -> concatAll [ Encode.uint32 34, encodePageSeo x ]) msg.mobileSeo
+        , nullable msg.mobileSeo (fromArray []) (\x -> concatAll [ Encode.uint32 34, encodePageSeo x ])
         , concatAll $ concatMap (\x -> [ Encode.uint32 42, encodeStringString x ]) msg.name
         ]
   concatAll [ Encode.uint32 $ length xs, xs ]
@@ -125,6 +125,6 @@ encodeComponentsSavePrefs msg = do
         , Encode.string msg.siteid
         , Encode.uint32 34
         , encodeFieldNode msg.tree
-        , fromMaybe (fromArray []) $ map (\x -> concatAll [ Encode.uint32 42, encodeFieldNode x ]) msg.extTree
+        , nullable msg.extTree (fromArray []) (\x -> concatAll [ Encode.uint32 42, encodeFieldNode x ])
         ]
   concatAll [ Encode.uint32 $ length xs, xs ]
