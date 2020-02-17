@@ -24,8 +24,10 @@ object api {
     bytes
   }
 
-  def decode[A](x: Array[Byte])(implicit c: MessageCodec[A]): A = {
-    val is = CodedInputStream.newInstance(x)
+  def decode[A](xs: Array[Byte], offset: Int=0)(implicit c: MessageCodec[A]): A = {
+    val is =
+      if (offset > 0) CodedInputStream.newInstance(xs, offset, xs.length-offset)
+      else CodedInputStream.newInstance(xs)
     c.read(is)
   }
 
