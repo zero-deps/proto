@@ -9,15 +9,15 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
   "generate" - {
     "src" in {
       val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
-      val (res, _) = Purescript.generate[Push, Pull](moduleEncode="Pull", moduleDecode="Push", moduleCommon="Common", codecs=tc::Nil)
-      res.foreach{ case (filename, content) =>
+      val res = Purescript.generate[Push, Pull](moduleEncode="Pull", moduleDecode="Push", moduleCommon="Common", codecs=tc::Nil)
+      res.purs.foreach{ case (filename, content) =>
         io.writeToFile(s"test/src/$filename.purs", content)
       }
     }
     "test" in {
       implicit val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
-      val (res, _) = Purescript.generate[TestSchema, TestSchema](moduleEncode="SchemaPull", moduleDecode="SchemaPush", moduleCommon="SchemaCommon", codecs=tc::Nil)
-      res.foreach{ case (filename, content) =>
+      val res = Purescript.generate[TestSchema, TestSchema](moduleEncode="SchemaPull", moduleDecode="SchemaPush", moduleCommon="SchemaCommon", codecs=tc::Nil)
+      res.purs.foreach{ case (filename, content) =>
         io.writeToFile(s"test/test/$filename.purs", content)
       }
 

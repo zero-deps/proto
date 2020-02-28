@@ -146,7 +146,7 @@ package object purs {
   }
 
   private[this] def findN(x: Symbol): Option[Int] = {
-    x.annotations.filter(_.tree.tpe =:= typeOf[zd.proto.api.N])  match {
+    x.annotations.filter(_.tree.tpe =:= typeOf[zd.proto.api.N]) match {
       case List(x1) => x1.tree.children.tail match {
         case List(Literal(Constant(n: Int))) => Some(n)
         case _ => throw new Exception("bad args in N")

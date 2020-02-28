@@ -6,10 +6,10 @@ import org.scalatest.matchers.should.Matchers
 import zd.proto.api.N
 
 class EqSpec extends AnyFreeSpec with Matchers {
-  val (res, _) = Purescript.generate[Push, Pull](moduleEncode="EqSpec.Pull", moduleDecode="EqSpec.Push", moduleCommon="EqSpec.Common", codecs=Nil)
+  val res = Purescript.generate[Push, Pull](moduleEncode="EqSpec.Pull", moduleDecode="EqSpec.Push", moduleCommon="EqSpec.Common", codecs=Nil)
   "eq" - {
     "out" in {
-      res.foreach{ case (filename, content) =>
+      res.purs.foreach{ case (filename, content) =>
         io.writeToFile(s"test/src/$filename.purs", content)
       }
     }
