@@ -18,7 +18,7 @@ class SetMapSpec extends AnyFreeSpec with Matchers {
   }, {
     caseCodecIdx[(String,ListSet[String])]
   })
-  val res = Purescript.generate[Push, Pull](moduleEncode="SetMap.Pull", moduleDecode="SetMap.Push", moduleCommon="SetMap.Common", codecs)
+  val (res, _) = Purescript.generate[Push, Pull](moduleEncode="SetMap.Pull", moduleDecode="SetMap.Push", moduleCommon="SetMap.Common", codecs)
   "set/map" - {
     "print" in {
       res.foreach{ case (filename, content) =>

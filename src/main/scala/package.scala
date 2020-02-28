@@ -110,7 +110,7 @@ package object purs {
           (tail, acc)
         } else if (isTrait(head)) {
           val children = findChildren(head)
-          (children.map(_.tpe)++tail, acc:+TraitType(head, children, firstLevel))
+          (children.map(_.tpe)++tail, acc:+TraitType(head, head.typeSymbol.name.encodedName.toString, children, firstLevel))
         } else if (head.typeConstructor =:= OptionClass.selfType.typeConstructor) {
           val typeArg = head.typeArgs.head.typeSymbol
           val typeArgType = typeArg.asType.toType
@@ -125,16 +125,16 @@ package object purs {
               else (tail, acc)
             case x :: y :: Nil =>
               val zs = List(x, y).filter(complexType)
-              (zs++tail, acc:+TupleType(appliedType(typeOf[Tuple2[Unit, Unit]].typeConstructor, x, y), x, y))
+              (zs++tail, acc:+TupleType(appliedType(typeOf[Tuple2[Unit, Unit]].typeConstructor, x, y), tupleFunName(x, y), x, y))
             case _ => throw new Exception(s"too many type args for ${head}")
           }
         } else {
           val xs = fields(head).map(_._2)
           val ys = xs.filter(complexType)
           val z =
-            if (xs.isEmpty) NoargsType(head)
-            else if (isRecursive(head, ys)) RecursiveType(head)
-            else RegularType(head)
+            if (xs.isEmpty) NoargsType(head, head.typeSymbol.name.encodedName.toString)
+            else if (isRecursive(head, ys)) RecursiveType(head, head.typeSymbol.name.encodedName.toString)
+            else RegularType(head, head.typeSymbol.name.encodedName.toString)
           (ys++tail, acc:+z)
         }
       tail1 match {
@@ -165,16 +165,14 @@ package object purs {
 
   def makePursTypes(types: Seq[Tpe], genMaybe: Boolean): Seq[PursType] = {
     types.flatMap{
-      case TraitType(tpe, children, true) =>
-        val name = tpe.typeSymbol.name.encodedName.toString
+      case TraitType(tpe, name, children, true) =>
         List(PursType(List(
           s"data $name = ${children.map{
             case x if x.noargs => x.name
             case x => s"${x.name} ${x.name}"
           }.mkString(" | ")}"
         ), export=s"$name(..)".just))
-      case TraitType(tpe, children, false) =>
-        val name = tpe.typeSymbol.name.encodedName.toString
+      case TraitType(tpe, name, children, false) =>
         List(PursType(List(
           s"data $name = ${children.map{
             case x if x.noargs => x.name
@@ -184,8 +182,7 @@ package object purs {
         ), export=s"$name(..)".just))
       case _: TupleType => Nil
       case _: NoargsType => Nil
-      case RecursiveType(tpe) =>
-        val name = tpe.typeSymbol.name.encodedName.toString
+      case RecursiveType(tpe, name) =>
         val fs = fields(tpe).map{ case (name1, tpe, _) => name1 -> pursType(tpe) }
         val params = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(", ")
         val x = s"newtype $name = $name { $params }"
@@ -201,8 +198,7 @@ package object purs {
         } else {
           List(PursType(List(x, eq), s"$name($name)".just))
         }
-      case RegularType(tpe) =>
-        val name = tpe.typeSymbol.name.encodedName.toString
+      case RegularType(tpe, name) =>
         val fs = fields(tpe).map{ case (name1, tpe, _) => name1 -> pursType(tpe) }
         val params = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(", ")
         val x = if (params.nonEmpty) s"type $name = { $params }" else s"type $name = {}"

@@ -7,7 +7,8 @@ import zd.gs.z._
 object Purescript {
   type ModuleName = String
   type Content = String
-  def generate[D, E](moduleEncode: ModuleName, moduleDecode: ModuleName, moduleCommon: ModuleName, codecs: List[MessageCodec[_]])(implicit dtag: TypeTag[D], etag: TypeTag[E]): List[(ModuleName, Content)] = {
+  type Doc = String
+  def generate[D, E](moduleEncode: ModuleName, moduleDecode: ModuleName, moduleCommon: ModuleName, codecs: List[MessageCodec[_]])(implicit dtag: TypeTag[D], etag: TypeTag[E]): (Set[(ModuleName, Content)], Set[(ModuleName, Doc)]) = {
     val decodeTpes = collectTpes(typeOf[D])
     val decoders = Decoders.from(decodeTpes, codecs)
 
@@ -19,7 +20,12 @@ object Purescript {
     val decodePursTypes = makePursTypes(decodeTpes, genMaybe=true) diff commonPursTypes
     val encodePursTypes = makePursTypes(encodeTpes diff commonTpes, genMaybe=false)
 
-    List(
+    val docs = Set(
+      moduleDecode -> Doc.tex(decodeTpes)
+    , moduleEncode -> Doc.tex(encodeTpes)
+    )
+
+    Set(
       moduleCommon -> {
         val code = commonPursTypes.flatMap(_.tmpl).mkString("\n")
         val is = List(
@@ -95,6 +101,6 @@ object Purescript {
             |
             |$code""".stripMargin
       }
-    )
+    ) -> docs
   }
 }

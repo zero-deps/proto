@@ -18,7 +18,7 @@ Scala type        | Purescript type
 ----------------- | ---------------
 `String         ` | `String`
 `Int            ` | `Int`
-`Float`           | Not implemented
+`Float`           | Not supported
 `Double         ` | `Number`
 `Option[_] `      | `Maybe _`
 `Array[Byte]    ` | `Uint8Array`

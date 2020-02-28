@@ -8,12 +8,11 @@ import zd.gs.z._
 object Decoders {
   def from(types: Seq[Tpe], codecs: List[MessageCodec[_]]): Seq[Coder] = {
     types.map{
-      case TraitType(tpe, children, true) =>
+      case TraitType(tpe, name, children, true) =>
         val cases = children.map{ case ChildMeta(name, tpe, n, noargs) =>
           if (noargs) s"$n -> decode (decode$name _xs_ pos1) \\_ -> $name"
           else        s"$n -> decode (decode$name _xs_ pos1) $name"
         }
-        val name = tpe.typeSymbol.name.encodedName.toString
         val tmpl =
           s"""|decode$name :: Uint8Array -> Decode.Result $name
               |decode$name _xs_ = do
@@ -24,8 +23,7 @@ object Decoders {
               |  decode :: forall a. Decode.Result a -> (a -> $name) -> Decode.Result $name
               |  decode res f = map (\\{ pos, val } -> { pos, val: f val }) res""".stripMargin
         Coder(tmpl, s"decode$name".just)
-      case TraitType(tpe, children, false) =>
-        val name = tpe.typeSymbol.name.encodedName.toString
+      case TraitType(tpe, name, children, false) =>
         val cases = children.flatMap{ case ChildMeta(name, tpe, n, noargs) =>
           if (noargs) s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) \\_ -> Just $name" :: Nil
           else s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) (Just <<< $name)" :: Nil
@@ -44,9 +42,9 @@ object Decoders {
               |    decode end (Just acc) pos1 = pure $$ Done { pos: pos1, val: acc }
               |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "$name"""".stripMargin
         Coder(tmpl, Nothing)
-      case TupleType(tpe, tpe_1, tpe_2) =>
+      case TupleType(tpe, tupleName, tpe_1, tpe_2) =>
         val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
-        val fun = "decode" + tupleFunName(tpe_1, tpe_2)
+        val fun = "decode" + tupleName
         val cases = List(("first", tpe_1, xs("_1")), ("second", tpe_2, xs("_2"))).flatMap((decodeFieldLoop(None) _).tupled)
         val tmpl =
           s"""|$fun :: Uint8Array -> Int -> Decode.Result (Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1})
@@ -64,15 +62,14 @@ object Decoders {
               |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) (\\_ -> acc)
               |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
         Coder(tmpl, Nothing)
-      case NoargsType(tpe) =>
-        val name = tpe.typeSymbol.name.encodedName.toString
+      case NoargsType(tpe, name) =>
         val tmpl =
           s"""|decode$name :: Uint8Array -> Int -> Decode.Result Unit
               |decode$name _xs_ pos0 = do
               |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
               |  pure { pos: pos + msglen, val: unit }""".stripMargin
         Coder(tmpl, Nothing)
-      case RecursiveType(tpe) =>
+      case RecursiveType(tpe, name) =>
         val fs = fields(tpe)
         val defObj: String = fs.map{ case (name, tpe, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
         val justObj: String = fs.map{ case (name, tpe, _) => justValue(name, tpe) }.mkString("{ ", ", ", " }")
@@ -81,7 +78,6 @@ object Decoders {
         }.mkString("{ ", ", ", " }")
         val tmpl =
           if (justObj == unObj) {
-            val name = tpe.typeSymbol.name.encodedName.toString
             val cases = fields(tpe).flatMap((decodeFieldLoop(Some(name)) _).tupled)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
@@ -114,14 +110,13 @@ object Decoders {
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
           }
         Coder(tmpl, Nothing)
-      case RegularType(tpe) =>
+      case RegularType(tpe, name) =>
         val fs = fields(tpe)
         val defObj: String = fs.map{ case (name, tpe, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
         val justObj: String = fs.map{ case (name, tpe, _) => justValue(name, tpe) }.mkString("{ ", ", ", " }")
         val unObj: String = fs.map{
           case (name,_,_) => name
         }.mkString("{ ", ", ", " }")
-        val name = tpe.typeSymbol.name.encodedName.toString
         val cases = fields(tpe).flatMap((decodeFieldLoop(Nothing) _).tupled)
         val tmpl =
           if (justObj == unObj)

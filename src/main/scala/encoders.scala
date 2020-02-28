@@ -8,8 +8,7 @@ import zd.gs.z._
 object Encoders {
   def from(types: Seq[Tpe], codecs: List[MessageCodec[_]]): Seq[Coder] = {
     types.map{
-      case TraitType(tpe, children, true) =>
-        val name = tpe.typeSymbol.name.encodedName.toString
+      case TraitType(tpe, name, children, true) =>
         val cases = children.map{ case ChildMeta(name1, tpe, n, noargs) =>
           if (noargs)
             List(
@@ -24,8 +23,7 @@ object Encoders {
           s"""|encode$name :: $name -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
         Coder(tmpl, s"encode$name".just)
-      case TraitType(tpe, children,false) =>
-        val name = tpe.typeSymbol.name.encodedName.toString
+      case TraitType(tpe, name, children,false) =>
         val cases = children.map{ case ChildMeta(name1, tpe, n, noargs) =>
           if (noargs)
             List(
@@ -48,9 +46,9 @@ object Encoders {
           s"""|encode$name :: $name -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
         Coder(tmpl, Nothing)
-      case TupleType(tpe, tpe_1, tpe_2) =>
+      case TupleType(tpe, tupleName, tpe_1, tpe_2) =>
         val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
-        val fun = "encode" + tupleFunName(tpe_1, tpe_2)
+        val fun = "encode" + tupleName
         val tmpl =
           s"""|$fun :: Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1} -> Uint8Array
               |$fun (Tuple _1 _2) = do
@@ -59,20 +57,17 @@ object Encoders {
               |  ${List(("_1", tpe_1, xs("_1")), ("_2", tpe_2, xs("_2"))).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
               |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
         Coder(tmpl, Nothing)
-      case NoargsType(tpe) =>
-        val name = tpe.typeSymbol.name.encodedName.toString
+      case NoargsType(tpe, name) =>
         val tmpl =
           s"""|encode$name :: Uint8Array
               |encode$name = Encode.uint32 0""".stripMargin
         Coder(tmpl, Nothing)
-      case RecursiveType(tpe) =>
-        val recursive = true
+      case RecursiveType(tpe, name) =>
         val encodeFields = fields(tpe).flatMap((encodeField _).tupled)
-        val name = tpe.typeSymbol.name.encodedName.toString
         val tmpl =
           if (encodeFields.nonEmpty) {
             s"""|encode$name :: $name -> Uint8Array
-                |encode$name ${if (recursive) s"($name msg)" else "msg"} = do
+                |encode$name ($name msg) = do
                 |  let xs = concatAll
                 |  ${encodeFields.mkString("      [ ", "\n        , ", "\n        ]")}
                 |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
@@ -81,14 +76,12 @@ object Encoders {
                 |encode$name _ = Encode.uint32 0""".stripMargin
           }
         Coder(tmpl, Nothing)
-      case RegularType(tpe) =>
-        val recursive = false
+      case RegularType(tpe, name) =>
         val encodeFields = fields(tpe).flatMap((encodeField _).tupled)
-        val name = tpe.typeSymbol.name.encodedName.toString
         val tmpl =
           if (encodeFields.nonEmpty) {
             s"""|encode$name :: $name -> Uint8Array
-                |encode$name ${if (recursive) s"($name msg)" else "msg"} = do
+                |encode$name msg = do
                 |  let xs = concatAll
                 |  ${encodeFields.mkString("      [ ", "\n        , ", "\n        ]")}
                 |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
