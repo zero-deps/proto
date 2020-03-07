@@ -1,7 +1,7 @@
 package zd
 package proto
 
-import proto.api.{MessageCodec, Prepare, N}
+import proto.api.{MessageCodec, Prepare, N, RestrictedN}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted._
 import scala.quoted.matching._
@@ -84,6 +84,7 @@ trait Common {
   val ArraySeqByteType: Type = typeOf[ArraySeq[Byte]]
   val BytesType: Type = typeOf[Bytes]
   val NTpe: Type = typeOf[N]
+  val RestrictedNType: Type = typeOf[RestrictedN]
   val ItetableType: Type = typeOf[scala.collection.Iterable[Any]]
   val PrepareType: Type = typeOf[Prepare]
   val CodedInputStreamType: Type = typeOf[CodedInputStream]
@@ -132,4 +133,19 @@ trait Common {
     case _ => qctx.throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
   def (t: Type) isCommonType: Boolean = commonTypes.exists(_ =:= t)
+
+  def (t: Type) restrictedNums: List[Int] =
+    val aName = RestrictedNType.typeSymbol.name
+    val tName = t.typeSymbol.name
+    t.typeSymbol.annots.collect{ case Apply(Select(New(tpt),_), List(Typed(Repeated(args,_),_))) if tpt.tpe =:= RestrictedNType => args } match
+      case List(Nil) => qctx.throwError(s"empty annotation ${aName} for `${tName}`")
+      case List(xs) =>
+        val nums = xs.collect{
+          case Literal(Constant(n: Int)) => n
+          case x => qctx.throwError(s"wrong annotation ${aName} for `${tName}` $x")
+        }
+        if (nums.size != nums.distinct.size) qctx.throwError(s"nums not unique in annotation ${aName} for `${tName}`")
+        nums
+      case Nil => Nil
+      case _ => qctx.throwError(s"multiple ${aName} annotations applied for `${tName}`")
 }

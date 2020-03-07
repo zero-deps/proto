@@ -9,8 +9,22 @@ import scala.internal.quoted.showName
 import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
 
+//todo; optimisation for case object (don't create prepare)
+//todo; optimisation for MessageCodec (add .size/.write and use these in proto.api.encode instead of .prepare)
+//todo; optimisation for string (write custom .size/.write for string to prevent double time .size computation)
+//todo; remove .read exception and rewrite all the protobuf methods that throws exceptions
+
 object macrosapi {
+
   inline def casecodecAuto[A]: MessageCodec[A] = ${Macro.caseCodecAuto[A]}
+  inline def caseCodecNums[A](nums: (String, Int)*): MessageCodec[A] = ???
+  inline def caseCodecIdx[A]: MessageCodec[A] = ???
+
+  inline def classCodecAuto[A]: MessageCodec[A] = ???
+  inline def classCodecNums[A](nums: (String, Int)*)(constructor: Any): MessageCodec[A] = ???
+
+  inline def sealedTraitCodecAuto[A]: MessageCodec[A] = ???
+  inline def sealedTraitCodecNums[A](nums: (String, Int)*): MessageCodec[A] = ???
 }
 
 object Macro {
@@ -35,14 +49,30 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
         case _ => qctx.throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
       }
     )
-    val fields: List[FieldInfo] = params.map{ s =>
+    messageCodec(aType, nums, params, restrictDefaults=false)
+  }
+
+  def messageCodec[A: quoted.Type](aType: Type, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean)(using ctx: Context): Expr[MessageCodec[A]] = {
+    val aTypeSymbol = aType.typeSymbol  
+    val typeName = aTypeSymbol.fullName
+    
+    if (nums.exists(_._2 < 1)) qctx.throwError(s"nums ${nums} should be > 0")
+    if (nums.size != cParams.size) qctx.throwError(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
+    if (nums.groupBy(_._2).exists(_._2.size != 1)) qctx.throwError(s"nums ${nums} should be unique")
+    val restrictedNums = aType.restrictedNums
+
+    val fields: List[FieldInfo] = cParams.map{ s =>
       val (name, tpt) = s.tree match
         case ValDef(vName,vTpt,vRhs) => (vName, vTpt)
         case _ => qctx.throwError(s"wrong param definition of case class `${typeName}`")
 
       FieldInfo(
         name = name
-      , num = nums.collectFirst{ case (n, num) if n == name => num }.getOrElse(qctx.throwError(s"missing num for `${name}: ${typeName}`"))
+      , num = nums.collectFirst{ 
+          case (n, num) if n == name =>
+            if (restrictedNums.contains(num)) then qctx.throwError(s"num ${num} for `${typeName}` is restricted") 
+            else num
+        }.getOrElse(qctx.throwError(s"missing num for `${name}: ${typeName}`"))
       , tpe = tpt.tpe
       , tpt = tpt
       , getter = aTypeSymbol.field(name)
@@ -52,14 +82,11 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
       , prepareArraySym = Symbol.newVal(ctx.owner, s"${name}Prepare", typeOf[Array[Prepare]], Flags.Mutable, Symbol.noSymbol)
       )
     }
-    if (nums.exists(_._2 < 1)) qctx.throwError(s"nums ${nums} should be > 0")
-    if (nums.size != fields.size) qctx.throwError(s"nums size ${nums} not equal to `${aType}` constructor params size ${fields.size}")
-    if (nums.groupBy(_._2).exists(_._2.size != 1)) qctx.throwError(s"nums ${nums} should be unique")
 
     val codec = '{ 
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ${ prepareImpl('a, fields) }
-        def read(is: CodedInputStream): A = ${ readImpl(t.unseal.tpe, fields, 'is).cast[A] }
+        def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).cast[A] }
       }
     }
     codec

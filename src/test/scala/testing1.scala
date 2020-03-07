@@ -5,12 +5,13 @@ import org.junit.Assert._
 import java.util.Arrays
 
 import zd.proto.macrosapi.casecodecAuto
-import zd.proto.api.{MessageCodec, N, decode, encode, Prepare}
+import zd.proto.api.{MessageCodec, N, RestrictedN, decode, encode, Prepare}
 import zd.proto.Bytes
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.collection.immutable.ArraySeq
 
 object models {
+  @RestrictedN(1)
   final case class Basic(
     @N(21) int: Int
   , @N(22) long: Long
