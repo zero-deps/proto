@@ -24,6 +24,7 @@ trait Common {
   , prepareSym: Symbol
   , prepareOptionSym: Symbol
   , prepareArraySym: Symbol
+  , defaultValue: Option[Term]
   )
 
   def (field: FieldInfo) tag: Int = field.num << 3 | wireType(field.tpe)
@@ -93,6 +94,7 @@ trait Common {
   def (t: Type) isSealedTrait: Boolean = t.typeSymbol.flags.is(Flags.Sealed & Flags.Trait)
   def (t: Type) isIterable: Boolean = t <:< ItetableType && !t.isArraySeqByte
   def unitLiteral: Literal = Literal(Constant(()))
+  def defaultMethodName(i: Int): String = s"$$lessinit$$greater$$default$$${i+1}"
 
   def builderType: Type = typeOf[scala.collection.mutable.Builder[Unit, Unit]]
   def appliedBuilderType(t1: Type, t2: Type): Type = builderType match
@@ -136,7 +138,7 @@ trait Common {
 
   def (t: Type) restrictedNums: List[Int] =
     val aName = RestrictedNType.typeSymbol.name
-    val tName = t.typeSymbol.name
+    val tName = t.typeSymbol.fullName
     t.typeSymbol.annots.collect{ case Apply(Select(New(tpt),_), List(Typed(Repeated(args,_),_))) if tpt.tpe =:= RestrictedNType => args } match
       case List(Nil) => qctx.throwError(s"empty annotation ${aName} for `${tName}`")
       case List(xs) =>

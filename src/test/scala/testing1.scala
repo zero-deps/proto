@@ -50,6 +50,16 @@ object models {
   final case class Message(@N(2) int: Int, @N(4) str: String, @N(6) set: Set[String], @N(8) msg1: Option[Message1])
   final case class Message1(@N(1) name: String, @N(2) value: Double)
 
+  final case class DefaultValuesClass(
+    @N(1) int: Int = 10
+  , @N(2) bool: Boolean = true
+  , @N(3) float: Float
+  , @N(4) str: String = "NonEmptyString"
+  , @N(5) msg: Message = Message(int=321, "string", Set("1","3","5","7","11"), None)
+  )
+
+  final case class DefaultValuesClass1(@N(3) float: Float)
+
   given MessageCodec[Basic] = casecodecAuto
   given MessageCodec[OptionBasic] = casecodecAuto
   given MessageCodec[ClassWithArray] = casecodecAuto
@@ -58,6 +68,8 @@ object models {
   given MessageCodec[Message1] = casecodecAuto
   given MessageCodec[Message] = casecodecAuto
   given MessageCodec[Collections] = casecodecAuto
+  given MessageCodec[DefaultValuesClass] = casecodecAuto
+  given MessageCodec[DefaultValuesClass1] = casecodecAuto
 }
 
 class Testing {
@@ -168,5 +180,35 @@ class Testing {
     assert(decoded.str == data.str)
     assert(decoded.message == data.message)
     val _ = assert(decoded.bytes.zip(data.bytes).forall{ case (decodedBytes, dataBytes) => Arrays.equals(decodedBytes, dataBytes) })
+  }
+
+  //All params passed
+  @Test def testDefaultValues1(): Unit = {
+    val data = DefaultValuesClass(
+      int=23
+    , bool=false
+    , float=33
+    , str="hello"
+    , msg=Message(int=123, "hello", Set("1","3","5","7","11","17"), Some(Message1("msg1", 10.0)))
+    )
+    val decoded = decode[DefaultValuesClass](encode(data))
+    val _ = assert(decoded == data)
+  }
+
+  //None params passed
+  @Test def testDefaultValues2(): Unit = {
+    val data = DefaultValuesClass(
+      float=33
+    )
+    val decoded = decode[DefaultValuesClass](encode(data))
+    val _ = assert(decoded == data)
+  }
+
+  //new fields with default values
+  @Test def testDefaultValues3(): Unit = {
+    val data = DefaultValuesClass1(float=123)
+    val expected = DefaultValuesClass(float=123)
+    val decoded: DefaultValuesClass = decode[DefaultValuesClass](encode[DefaultValuesClass1](data))
+    val _ = assert(decoded == expected)
   }
 }

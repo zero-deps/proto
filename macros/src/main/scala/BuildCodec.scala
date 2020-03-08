@@ -353,12 +353,13 @@ trait BuildCodec extends Common {
     else
       val error = s"missing required field `${field.name}: ${field.tpe.typeSymbol.name}`"
       val exeption = '{ throw new RuntimeException(${Expr(error)}) }.unseal
+      val orElse = field.defaultValue.getOrElse(exeption)
       Apply(
         TypeApply(
           Select(ref, OptionClass.method("getOrElse").head)
         , List(field.tpt)
         )
-      , List(exeption)
+      , List(orElse)
       )
 
   def findCodec(t: Type): Expr[MessageCodec[Any]] = 
