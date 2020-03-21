@@ -235,7 +235,7 @@ trait BuildCodec extends Common {
         (init, ref, res)
       })
 
-      val read = '{
+      val read: Statement = '{
         var done = false;
         while (done == false) {
           val tag: Int = ${is}.readTag
@@ -254,9 +254,9 @@ trait BuildCodec extends Common {
           }
           if (tagMatch == false) ${is}.skipField(tag)
         }
-      }
+      }.unseal
 
-      val statements = xs.map(_._1) :+ (read.unseal)
+      val statements = xs.map(_._1) :+ (read)
       val resTerms = xs.map(_._3)
       Block(
         statements
@@ -365,7 +365,7 @@ trait BuildCodec extends Common {
   def findCodec(t: Type): Expr[MessageCodec[Any]] = 
     val tpe = t.seal.asInstanceOf[quoted.Type[Any]]
     val msgCodecTpe = '[MessageCodec[$tpe]]
-    summonExpr(using msgCodecTpe) match
+    Expr.summon(using msgCodecTpe) match
       case Some(expr) => expr
       case None => qctx.throwError(s"could not find implicit codec for `${tpe.show}`")
 

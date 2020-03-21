@@ -1,4 +1,4 @@
-val dottyVersion = "0.23.0-bin-20200305-84f2e41-NIGHTLY"
+val dottyVersion = "0.23.0-RC1"
 val scala213Version = "2.13.1"
 ThisBuild / organization := "io.github.zero-deps"
 ThisBuild / version := zd.gs.git.GitOps.version
