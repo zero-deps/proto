@@ -77,14 +77,16 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
           else Some(Select(Ref(aTypeCompanionSym), x))
         case _ => None
       }
-
+      val num: Int =
+        nums.collectFirst{ case (name1, num1) if name1 == name =>
+          if restrictedNums.contains(num1) then qctx.throwError(s"num ${num1} for `${typeName}` is restricted") 
+          else num1
+        }.getOrElse{
+          qctx.throwError(s"missing num for `${name}: ${typeName}`")
+        }
       FieldInfo(
         name = name
-      , num = nums.collectFirst{ 
-          case (n, num) if n == name =>
-            if (restrictedNums.contains(num)) then qctx.throwError(s"num ${num} for `${typeName}` is restricted") 
-            else num
-        }.getOrElse(qctx.throwError(s"missing num for `${name}: ${typeName}`"))
+      , num = num
       , tpe = tpe
       , tpt = tpt
       , getter = aTypeSym.field(name)
@@ -95,22 +97,46 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
       , defaultValue = defaultValue
       )
     }
-
-    val codec = '{ 
+    '{ 
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ${ prepareImpl('a, fields) }
         def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).cast[A] }
       }
     }
-    codec
   }
 
   def enumByN[A: quoted.Type]: Expr[MessageCodec[A]] = {
     val ctx = summon[Context]
     val t = summon[quoted.Type[A]]
     val aType = t.unseal.tpe
-    val aTypeSymbol = aType.typeSymbol
-    val xs = aTypeSymbol.children
+    val aTypeSym = aType.typeSymbol
+    val typeName = aTypeSym.fullName
+    val xs = aTypeSym.children
+    val restrictedN: List[Int] = aType.restrictedNums
+    xs.map{ x =>
+      val num: Int =
+        x.annots.collect{
+          case Apply(Select(New(tpt),_), List(Literal(Constant(num1: Int)))) if tpt.tpe.isNType => num1
+        } match {
+          case List(num1) if restrictedN.contains(num1) => qctx.throwError(s"num ${num1} for `${typeName}` is restricted") 
+          case List(num1) => num1
+          case Nil => qctx.throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+          case _ => qctx.throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
+        }
+      // val field = FieldInfo(
+      //   name = s"field${num}"
+      // , num = num
+      // , tpe = ???
+      // , tpt = ???
+      // , getter = aTypeSym //?
+      // , sizeSym = Symbol.newVal(ctx.owner, s"field${num}Size", IntType, Flags.Mutable, Symbol.noSymbol)
+      // , prepareSym = Symbol.newVal(ctx.owner, s"field${num}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
+      // , prepareOptionSym = Symbol.newVal(ctx.owner, s"field${num}Prepare", appliedOptionType(PrepareType), Flags.Mutable, Symbol.noSymbol)
+      // , prepareArraySym = Symbol.newVal(ctx.owner, s"field${num}Prepare", typeOf[Array[Prepare]], Flags.Mutable, Symbol.noSymbol)
+      // , defaultValue = None
+      // )
+      // prepareImpl(x, List(field))
+    }
     '{
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ???

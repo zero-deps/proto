@@ -352,8 +352,8 @@ trait BuildCodec extends Common {
       Select(ref, ref.tpe.termSymbol.method("result").head)
     else
       val error = s"missing required field `${field.name}: ${field.tpe.typeSymbol.name}`"
-      val exeption = '{ throw new RuntimeException(${Expr(error)}) }.unseal
-      val orElse = field.defaultValue.getOrElse(exeption)
+      val exception = '{ throw new RuntimeException(${Expr(error)}) }.unseal
+      val orElse = field.defaultValue.getOrElse(exception)
       Apply(
         TypeApply(
           Select(ref, OptionClass.method("getOrElse").head)
