@@ -1,7 +1,2 @@
-/benchmark/target/
-/macros/target/
-/project/project/target/
-/project/target/
-/runtime/target/
-/target/
+target/
 *.swp

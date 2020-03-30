@@ -25,10 +25,13 @@ object macrosapi {
 
   inline def sealedTraitCodecAuto[A]: MessageCodec[A] = ???
   inline def sealedTraitCodecNums[A](nums: (String, Int)*): MessageCodec[A] = ???
+  
+  inline def enumByN[A]: MessageCodec[A] = ${Macro.enumByN[A]}
 }
 
 object Macro {
   def caseCodecAuto[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
+  def enumByN[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().enumByN[A]
 }
 
 private class Impl(using val qctx: QuoteContext) extends BuildCodec {
@@ -102,4 +105,17 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     codec
   }
 
+  def enumByN[A: quoted.Type]: Expr[MessageCodec[A]] = {
+    val ctx = summon[Context]
+    val t = summon[quoted.Type[A]]
+    val aType = t.unseal.tpe
+    val aTypeSymbol = aType.typeSymbol
+    val xs = aTypeSymbol.children
+    '{
+      new MessageCodec[A] {
+        def prepare(a: A): Prepare = ???
+        def read(is: CodedInputStream): A = ???
+      }
+    }
+  }
 }

@@ -1,8 +1,6 @@
-val dottyVersion = "0.23.0-RC1"
-val scala213Version = "2.13.1"
 ThisBuild / organization := "io.github.zero-deps"
 ThisBuild / version := zd.gs.git.GitOps.version
-ThisBuild / scalaVersion := dottyVersion
+ThisBuild / scalaVersion := "0.23.0-RC1"
 ThisBuild / scalacOptions ++= Seq(
   // "-Ywarn-extra-implicit",
   "-Xfatal-warnings",
@@ -27,7 +25,8 @@ lazy val root = project.in(file(".")).settings(
   // libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-RC3" % Test,
   libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
   skip in publish := true,
-).dependsOn(macros).aggregate(macros, runtime, benchmark)
+// ).dependsOn(macros).aggregate(macros, runtime, benchmark)
+).dependsOn(macros).aggregate(macros, runtime)
 
 lazy val macros = project.in(file("macros")).settings(
   name := "proto-macros",
@@ -50,4 +49,7 @@ lazy val benchmark = project.in(file("benchmark")).settings(
   //   scalapb.gen() -> (sourceManaged in Compile).value
   // ),
   skip in publish := true,
-).enablePlugins(JmhPlugin).dependsOn(macros)
+// ).enablePlugins(JmhPlugin).dependsOn(macros)
+).dependsOn(macros)
+
+lazy val test = project.in(file("test")).dependsOn(macros, runtime)
