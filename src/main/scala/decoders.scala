@@ -45,7 +45,7 @@ object Decoders {
       case TupleType(tpe, tupleName, tpe_1, tpe_2) =>
         val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
         val fun = "decode" + tupleName
-        val cases = List(("first", tpe_1, xs("_1")), ("second", tpe_2, xs("_2"))).flatMap((decodeFieldLoop(None) _).tupled)
+        val cases = List(("first", tpe_1, xs("_1"), Nothing), ("second", tpe_2, xs("_2"), Nothing)).flatMap((decodeFieldLoop(None) _).tupled)
         val tmpl =
           s"""|$fun :: Uint8Array -> Int -> Decode.Result (Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1})
               |$fun _xs_ pos0 = do
@@ -71,10 +71,10 @@ object Decoders {
         Coder(tmpl, Nothing)
       case RecursiveType(tpe, name) =>
         val fs = fields(tpe)
-        val defObj: String = fs.map{ case (name, tpe, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
-        val justObj: String = fs.map{ case (name, tpe, _) => justValue(name, tpe) }.mkString("{ ", ", ", " }")
+        val defObj: String = fs.map{ case (name, tpe, _, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
+        val justObj: String = fs.map{ case (name, tpe, _, _) => justValue(name, tpe) }.mkString("{ ", ", ", " }")
         val unObj: String = fs.map{
-          case (name,_,_) => name
+          case (name,_,_,_) => name
         }.mkString("{ ", ", ", " }")
         val tmpl =
           if (justObj == unObj) {
@@ -112,10 +112,10 @@ object Decoders {
         Coder(tmpl, Nothing)
       case RegularType(tpe, name) =>
         val fs = fields(tpe)
-        val defObj: String = fs.map{ case (name, tpe, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
-        val justObj: String = fs.map{ case (name, tpe, _) => justValue(name, tpe) }.mkString("{ ", ", ", " }")
+        val defObj: String = fs.map{ case (name, tpe, _, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
+        val justObj: String = fs.map{ case (name, tpe, _, _) => justValue(name, tpe) }.mkString("{ ", ", ", " }")
         val unObj: String = fs.map{
-          case (name,_,_) => name
+          case (name,_,_,_) => name
         }.mkString("{ ", ", ", " }")
         val cases = fields(tpe).flatMap((decodeFieldLoop(Nothing) _).tupled)
         val tmpl =
@@ -150,7 +150,7 @@ object Decoders {
     }.distinct
   }
   
-  private[this] def decodeFieldLoop(recursive: Option[String])(name: String, tpe: Type, n: Int): List[String] = {
+  private[this] def decodeFieldLoop(recursive: Option[String])(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
     def tmpl(n: Int, fun: String, mod: String): List[String] = {
       recursive.cata(
         rec => s"${n} -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> $rec $$ acc { $mod }"

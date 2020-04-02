@@ -54,7 +54,7 @@ object Encoders {
               |$fun (Tuple _1 _2) = do
               |  let msg = { _1, _2 }
               |  let xs = concatAll
-              |  ${List(("_1", tpe_1, xs("_1")), ("_2", tpe_2, xs("_2"))).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
+              |  ${List(("_1", tpe_1, xs("_1"), Nothing), ("_2", tpe_2, xs("_2"), Nothing)).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
               |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
         Coder(tmpl, Nothing)
       case NoargsType(tpe, name) =>
@@ -93,7 +93,7 @@ object Encoders {
     }.distinct
   }
 
-  def encodeField(name: String, tpe: Type, n: Int): List[String] = {
+  def encodeField(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
     if (tpe =:= StringClass.selfType) {
       List(
         s"""Encode.uint32 ${(n<<3)+2}"""
