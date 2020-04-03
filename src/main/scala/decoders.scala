@@ -45,7 +45,7 @@ object Decoders {
       case TupleType(tpe, tupleName, tpe_1, tpe_2) =>
         val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
         val fun = "decode" + tupleName
-        val cases = List(("first", tpe_1, xs("_1"), Nothing), ("second", tpe_2, xs("_2"), Nothing)).flatMap((decodeFieldLoop(None) _).tupled)
+        val cases = List(("first", tpe_1, xs("_1"), Nothing), ("second", tpe_2, xs("_2"), Nothing)).flatMap((decodeFieldLoop _).tupled)
         val tmpl =
           s"""|$fun :: Uint8Array -> Int -> Decode.Result (Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1})
               |$fun _xs_ pos0 = do
@@ -78,7 +78,7 @@ object Decoders {
         }.mkString("{ ", ", ", " }")
         val tmpl =
           if (justObj == unObj) {
-            val cases = fields(tpe).flatMap((decodeFieldLoop(Some(name)) _).tupled)
+            val cases = fields(tpe).flatMap((decodeFieldLoop _).tupled)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
@@ -93,20 +93,20 @@ object Decoders {
           } else {
             val name = tpe.typeSymbol.name.encodedName.toString
             val name1 = tpe.typeSymbol.name.encodedName.toString + "'"
-            val cases = fields(tpe).flatMap((decodeFieldLoop(Some(name1)) _).tupled)
+            val cases = fields(tpe).flatMap((decodeFieldLoop _).tupled)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-                |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) ($name1 $defObj) pos
+                |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) $defObj pos
                 |  case val of
-                |    $name1 $justObj -> pure { pos: pos1, val: $name $unObj }
+                |    $justObj -> pure { pos: pos1, val: $name $unObj }
                 |    _ -> Left $$ Decode.MissingFields "$name"
                 |    where
                 |    decode :: Int -> $name1 -> Int -> Decode.Result' (Step { a :: Int, b :: $name1, c :: Int } { pos :: Int, val :: $name1 })
-                |    decode end acc'@($name1 acc) pos1 | pos1 < end = do
+                |    decode end acc pos1 | pos1 < end = do
                 |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
                 |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc'
+                |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
                 |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
           }
         Coder(tmpl, Nothing)
@@ -117,7 +117,7 @@ object Decoders {
         val unObj: String = fs.map{
           case (name,_,_,_) => name
         }.mkString("{ ", ", ", " }")
-        val cases = fields(tpe).flatMap((decodeFieldLoop(Nothing) _).tupled)
+        val cases = fields(tpe).flatMap((decodeFieldLoop _).tupled)
         val tmpl =
           if (justObj == unObj)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
@@ -150,12 +150,9 @@ object Decoders {
     }.distinct
   }
   
-  private[this] def decodeFieldLoop(recursive: Option[String])(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
+  private[this] def decodeFieldLoop(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
     def tmpl(n: Int, fun: String, mod: String): List[String] = {
-      recursive.cata(
-        rec => s"${n} -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> $rec $$ acc { $mod }"
-      , s"${n} -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> acc { $mod }"
-      ) :: Nil
+      s"${n} -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> acc { $mod }" :: Nil
     }
     if (tpe =:= StringClass.selfType) {
       tmpl(n, "Decode.string", s"$name = Just val")

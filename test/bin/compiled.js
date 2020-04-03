@@ -1296,9 +1296,6 @@ var PS = {};
   var Data_Functor = $PS["Data.Functor"];
   var Data_Maybe = $PS["Data.Maybe"];
   var Proto_Decode = $PS["Proto.Decode"];                
-  var RecursiveT$prime = function (x) {
-      return x;
-  };
   var SimpleT1 = (function () {
       function SimpleT1(value0) {
           this.value0 = value0;
@@ -1342,46 +1339,46 @@ var PS = {};
   var decodeRecursiveT = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
-              return function (v) {
+              return function (acc) {
                   return function (pos1) {
                       if (pos1 < end) {
-                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
-                              var v2 = v1.val >>> 3;
-                              if (v2 === 1) {
-                                  return decodeFieldLoop(end)(Proto_Decode["boolean"](_xs_)(v1.pos))(function (val) {
-                                      return RecursiveT$prime({
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
+                              var v1 = v.val >>> 3;
+                              if (v1 === 1) {
+                                  return decodeFieldLoop(end)(Proto_Decode["boolean"](_xs_)(v.pos))(function (val) {
+                                      return {
                                           b1: new Data_Maybe.Just(val),
-                                          b2: v.b2,
-                                          x: v.x
-                                      });
+                                          b2: acc.b2,
+                                          x: acc.x
+                                      };
                                   });
                               };
-                              if (v2 === 2) {
-                                  return decodeFieldLoop(end)(Proto_Decode["boolean"](_xs_)(v1.pos))(function (val) {
-                                      return RecursiveT$prime({
-                                          b1: v.b1,
+                              if (v1 === 2) {
+                                  return decodeFieldLoop(end)(Proto_Decode["boolean"](_xs_)(v.pos))(function (val) {
+                                      return {
                                           b2: new Data_Maybe.Just(val),
-                                          x: v.x
-                                      });
+                                          b1: acc.b1,
+                                          x: acc.x
+                                      };
                                   });
                               };
-                              if (v2 === 3) {
-                                  return decodeFieldLoop(end)(decodeRecursiveT(_xs_)(v1.pos))(function (val) {
-                                      return RecursiveT$prime({
-                                          b1: v.b1,
-                                          b2: v.b2,
-                                          x: new Data_Maybe.Just(val)
-                                      });
+                              if (v1 === 3) {
+                                  return decodeFieldLoop(end)(decodeRecursiveT(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          x: new Data_Maybe.Just(val),
+                                          b1: acc.b1,
+                                          b2: acc.b2
+                                      };
                                   });
                               };
-                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
-                                  return v;
+                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
                       return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
                           pos: pos1,
-                          val: v
+                          val: acc
                       }));
                   };
               };

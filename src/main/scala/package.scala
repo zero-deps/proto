@@ -206,7 +206,7 @@ package object purs {
         , if (genMaybe) {
             val params1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(", ")
             if (params != params1) {
-              val x1 = s"newtype $name' = $name' { $params1 }"
+              val x1 = s"type $name' = { $params1 }"
               PursType(List(x1), Nothing).just
             } else Nothing
           } else Nothing

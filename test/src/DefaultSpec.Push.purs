@@ -18,7 +18,7 @@ decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: po
 data Push = SimpleT1 SimpleT1 | SimpleT2 SimpleT2 | PRecursiveT RecursiveT
 type SimpleT1' = { m1 :: Maybe Boolean, b1 :: Maybe Boolean, b2 :: Maybe Boolean }
 type SimpleT2' = { b0 :: Maybe Boolean, b1 :: Maybe Boolean, b2 :: Maybe Boolean }
-newtype RecursiveT' = RecursiveT' { b1 :: Maybe Boolean, b2 :: Maybe Boolean, x :: Maybe RecursiveT }
+type RecursiveT' = { b1 :: Maybe Boolean, b2 :: Maybe Boolean, x :: Maybe RecursiveT }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
@@ -69,17 +69,17 @@ decodeSimpleT2 _xs_ pos0 = do
 decodeRecursiveT :: Uint8Array -> Int -> Decode.Result RecursiveT
 decodeRecursiveT _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) (RecursiveT' { b1: Nothing, b2: Nothing, x: Nothing }) pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { b1: Nothing, b2: Nothing, x: Nothing } pos
   case val of
-    RecursiveT' { b1, b2, x: Just x } -> pure { pos: pos1, val: RecursiveT { b1: fromMaybe false b1,  b2: fromMaybe true b2, x } }
+    { b1, b2, x: Just x } -> pure { pos: pos1, val: RecursiveT { b1: fromMaybe false b1,  b2: fromMaybe true b2, x } }
     _ -> Left $ Decode.MissingFields "RecursiveT"
     where
     decode :: Int -> RecursiveT' -> Int -> Decode.Result' (Step { a :: Int, b :: RecursiveT', c :: Int } { pos :: Int, val :: RecursiveT' })
-    decode end acc'@(RecursiveT' acc) pos1 | pos1 < end = do
+    decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> RecursiveT' $ acc { b1 = Just val }
-        2 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> RecursiveT' $ acc { b2 = Just val }
-        3 -> decodeFieldLoop end (decodeRecursiveT _xs_ pos2) \val -> RecursiveT' $ acc { x = Just val }
-        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc'
+        1 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { b1 = Just val }
+        2 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { b2 = Just val }
+        3 -> decodeFieldLoop end (decodeRecursiveT _xs_ pos2) \val -> acc { x = Just val }
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }

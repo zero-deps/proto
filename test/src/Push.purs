@@ -39,7 +39,7 @@ type PageTreeItem = { priority :: Int }
 type PageTreeItem' = { priority :: Maybe Int }
 type ComponentTemplateOk = { fieldNode :: FieldNode, fieldNode1 :: FieldNode1 }
 type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode, fieldNode1 :: Maybe FieldNode1 }
-newtype FieldNode' = FieldNode' { root :: Maybe String, forest :: Array FieldNode }
+type FieldNode' = { root :: Maybe String, forest :: Array FieldNode }
 newtype FieldNode1 = FieldNode1 { root :: Maybe String, forest :: Array FieldNode1 }
 derive instance eqFieldNode1 :: Eq FieldNode1
 
@@ -232,18 +232,18 @@ decodeComponentTemplateOk _xs_ pos0 = do
 decodeFieldNode :: Uint8Array -> Int -> Decode.Result FieldNode
 decodeFieldNode _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) (FieldNode' { root: Nothing, forest: [] }) pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { root: Nothing, forest: [] } pos
   case val of
-    FieldNode' { root: Just root, forest } -> pure { pos: pos1, val: FieldNode { root, forest } }
+    { root: Just root, forest } -> pure { pos: pos1, val: FieldNode { root, forest } }
     _ -> Left $ Decode.MissingFields "FieldNode"
     where
     decode :: Int -> FieldNode' -> Int -> Decode.Result' (Step { a :: Int, b :: FieldNode', c :: Int } { pos :: Int, val :: FieldNode' })
-    decode end acc'@(FieldNode' acc) pos1 | pos1 < end = do
+    decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> FieldNode' $ acc { root = Just val }
-        2 -> decodeFieldLoop end (decodeFieldNode _xs_ pos2) \val -> FieldNode' $ acc { forest = snoc acc.forest val }
-        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc'
+        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { root = Just val }
+        2 -> decodeFieldLoop end (decodeFieldNode _xs_ pos2) \val -> acc { forest = snoc acc.forest val }
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 
 decodeFieldNode1 :: Uint8Array -> Int -> Decode.Result FieldNode1
@@ -255,7 +255,7 @@ decodeFieldNode1 _xs_ pos0 = do
     decode end acc'@(FieldNode1 acc) pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> FieldNode1 $ acc { root = Just val }
-        2 -> decodeFieldLoop end (decodeFieldNode1 _xs_ pos2) \val -> FieldNode1 $ acc { forest = snoc acc.forest val }
+        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { root = Just val }
+        2 -> decodeFieldLoop end (decodeFieldNode1 _xs_ pos2) \val -> acc { forest = snoc acc.forest val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc'
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
