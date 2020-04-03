@@ -78,8 +78,11 @@ object Decoders {
         val unObj: String = fs.map{
           case (name,_,_,_) => name
         }.mkString("{ ", ", ", " }")
+        val simplify = fs.forall{ case (name, tpe, _, defval) =>
+          defval.isDefined || name == justValue(name, tpe)
+        }
         val tmpl =
-          if (justObj == unObj) {
+          if (simplify) {
             val cases = fields(tpe).flatMap((decodeFieldLoopNewtype(name) _).tupled)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
@@ -120,34 +123,82 @@ object Decoders {
           case (name,_,_,_) => name
         }.mkString("{ ", ", ", " }")
         val cases = fields(tpe).flatMap((decodeFieldLoop _).tupled)
+        val simplify = fs.forall{ case (name, tpe, _, defval) =>
+          defval.isDefined || name == justValue(name, tpe)
+        }
+        val hasDefval = fs.exists(_._4.isDefined)
         val tmpl =
-          if (justObj == unObj)
-            s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
-                |decode$name _xs_ pos0 = do
-                |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-                |  tailRecM3 decode (pos + msglen) $defObj pos
-                |    where
-                |    decode :: Int -> $name -> Int -> Decode.Result' (Step { a :: Int, b :: $name, c :: Int } { pos :: Int, val :: $name })
-                |    decode end acc pos1 | pos1 < end = do
-                |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
-                |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
-                |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
-          else
-            s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
-                |decode$name _xs_ pos0 = do
-                |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-                |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) $defObj pos
-                |  case val of
-                |    $justObj -> pure { pos: pos1, val: $unObj }
-                |    _ -> Left $$ Decode.MissingFields "$name"
-                |    where
-                |    decode :: Int -> $name' -> Int -> Decode.Result' (Step { a :: Int, b :: $name', c :: Int } { pos :: Int, val :: $name' })
-                |    decode end acc pos1 | pos1 < end = do
-                |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
-                |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
-                |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
-                |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
+          if (simplify) {
+            if (hasDefval) {
+              val defs = fs.map{
+                case (name, _, _, Just(defval)) => s"$name: fromMaybe $defval $name"
+                case (name, _, _, _) => name
+              }.mkString(", ")
+              s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
+                  |decode$name _xs_ pos0 = do
+                  |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+                  |  { pos: pos1, val: $unObj } <- tailRecM3 decode (pos + msglen) $defObj pos
+                  |  pure { pos: pos1, val: { ${defs} }}
+                  |    where
+                  |    decode :: Int -> $name' -> Int -> Decode.Result' (Step { a :: Int, b :: $name', c :: Int } { pos :: Int, val :: $name' })
+                  |    decode end acc pos1 | pos1 < end = do
+                  |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+                  |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
+                  |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
+                  |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
+            } else
+              s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
+                  |decode$name _xs_ pos0 = do
+                  |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+                  |  tailRecM3 decode (pos + msglen) $defObj pos
+                  |    where
+                  |    decode :: Int -> $name -> Int -> Decode.Result' (Step { a :: Int, b :: $name, c :: Int } { pos :: Int, val :: $name })
+                  |    decode end acc pos1 | pos1 < end = do
+                  |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+                  |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
+                  |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
+                  |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
+          } else {
+            if (hasDefval) {
+              val defs = fs.map{
+                case (name, _, _, Just(defval)) => s"$name: fromMaybe $defval $name"
+                case (name, _, _, _) => name
+              }.mkString(", ")
+              val case1 = fs.map{
+                case (name, tpe, _, Just(defval)) => name
+                case (name, tpe, _, Nothing) => justValue(name, tpe)
+              }.mkString(", ")
+              s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
+                  |decode$name _xs_ pos0 = do
+                  |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+                  |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) $defObj pos
+                  |  case val of
+                  |    { $case1 } -> pure { pos: pos1, val: { $defs }}
+                  |    _ -> Left $$ Decode.MissingFields "$name"
+                  |    where
+                  |    decode :: Int -> $name' -> Int -> Decode.Result' (Step { a :: Int, b :: $name', c :: Int } { pos :: Int, val :: $name' })
+                  |    decode end acc pos1 | pos1 < end = do
+                  |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+                  |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
+                  |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
+                  |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
+            } else {
+              s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
+                  |decode$name _xs_ pos0 = do
+                  |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+                  |  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) $defObj pos
+                  |  case val of
+                  |    $justObj -> pure { pos: pos1, val: $unObj }
+                  |    _ -> Left $$ Decode.MissingFields "$name"
+                  |    where
+                  |    decode :: Int -> $name' -> Int -> Decode.Result' (Step { a :: Int, b :: $name', c :: Int } { pos :: Int, val :: $name' })
+                  |    decode end acc pos1 | pos1 < end = do
+                  |      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+                  |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
+                  |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
+                  |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
+            }
+          }
         Coder(tmpl, Nothing)
     }.distinct
   }

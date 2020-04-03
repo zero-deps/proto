@@ -38,7 +38,7 @@ decodeSimpleT1 :: Uint8Array -> Int -> Decode.Result SimpleT1
 decodeSimpleT1 _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   { pos: pos1, val: { m1, b1, b2 } } <- tailRecM3 decode (pos + msglen) { m1: Nothing, b1: Nothing, b2: Nothing } pos
-  pure { pos: pos1, val: { m1, b1: fromMaybe false b1, b2: fromMaybe true b2 } }
+  pure { pos: pos1, val: { m1, b1: fromMaybe false b1, b2: fromMaybe true b2 }}
     where
     decode :: Int -> SimpleT1' -> Int -> Decode.Result' (Step { a :: Int, b :: SimpleT1', c :: Int } { pos :: Int, val :: SimpleT1' })
     decode end acc pos1 | pos1 < end = do
@@ -55,7 +55,7 @@ decodeSimpleT2 _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { b0: Nothing, b1: Nothing, b2: Nothing } pos
   case val of
-    { b0: Just b0, b1, b2 } -> pure { pos: pos1, val: { b0, b1: fromMaybe false b1,  b2: fromMaybe true b2 } }
+    { b0: Just b0, b1, b2 } -> pure { pos: pos1, val: { b0, b1: fromMaybe false b1, b2: fromMaybe true b2 }}
     _ -> Left $ Decode.MissingFields "SimpleT2"
     where
     decode :: Int -> SimpleT2' -> Int -> Decode.Result' (Step { a :: Int, b :: SimpleT2', c :: Int } { pos :: Int, val :: SimpleT2' })
