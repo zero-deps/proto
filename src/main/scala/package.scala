@@ -190,21 +190,27 @@ package object purs {
       case _: TupleType => Nil
       case _: NoargsType => Nil
       case RecursiveType(tpe, name) =>
-        val fs = fields(tpe).map{ case (name1, tpe, _, _) => name1 -> pursType(tpe) }
+        val f = fields(tpe)
+        val fs = f.map{ case (name1, tpe, _, _) => name1 -> pursType(tpe) }
         val params = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(", ")
         val x = s"newtype $name = $name { $params }"
         val eq = s"derive instance eq$name :: Eq $name"
-        if (genMaybe) {
-          val params1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(", ")
-          if (params == params1) {
-            List(PursType(List(x, eq), s"$name($name)".just))
-          } else {
-            val x1 = s"newtype $name' = $name' { $params1 }"
-            List(PursType(List(x, eq), s"$name($name)".just), PursType(List(x1), Nothing))
-          }
-        } else {
-          List(PursType(List(x, eq), s"$name($name)".just))
-        }
+        val defaults = f.collect{ case (name1, tpe1, _, Just(v)) => (name1, pursType(tpe1)._1, v) }
+        Seq(
+          PursType(List(x, eq), s"$name($name)".just).just
+        , if (defaults.nonEmpty) {
+            val tmpl1 = s"default$name :: { ${defaults.map{ case (name1, tpe1, _) => s"$name1 :: $tpe1" }.mkString(", ")} }"
+            val tmpl2 = s"default$name = { ${defaults.map{ case (name1, _, v) => s"$name1: $v" }.mkString(", ")} }"
+            PursType(Seq(tmpl1, tmpl2), s"default$name".just).just
+          } else Nothing
+        , if (genMaybe) {
+            val params1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(", ")
+            if (params != params1) {
+              val x1 = s"newtype $name' = $name' { $params1 }"
+              PursType(List(x1), Nothing).just
+            } else Nothing
+          } else Nothing
+        ).flatten
       case RegularType(tpe, name) =>
         val f = fields(tpe)
         val fs = f.map{ case (name1, tpe1, _, _) => name1 -> pursType(tpe1) }

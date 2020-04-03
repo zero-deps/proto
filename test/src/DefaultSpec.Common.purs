@@ -17,6 +17,6 @@ type SimpleT2 = { b0 :: Boolean, b1 :: Boolean, b2 :: Boolean }
 defaultSimpleT2 :: { b1 :: Boolean, b2 :: Boolean }
 defaultSimpleT2 = { b1: false, b2: true }
 newtype RecursiveT = RecursiveT { b1 :: Boolean, b2 :: Boolean, x :: RecursiveT }
+derive instance eqRecursiveT :: Eq RecursiveT
 defaultRecursiveT :: { b1 :: Boolean, b2 :: Boolean }
 defaultRecursiveT = { b1: false, b2: true }
-derive instance eqRecursiveT :: Eq RecursiveT
