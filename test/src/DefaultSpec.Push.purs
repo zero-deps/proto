@@ -73,7 +73,7 @@ decodeRecursiveT1 _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { b1: Nothing, b2: Nothing, x: Nothing } pos
   case val of
-    { b1, b2, x: Just x } -> pure { pos: pos1, val: RecursiveT1 { b1: fromMaybe false b1,  b2: fromMaybe true b2, x } }
+    { b1, b2, x: Just x } -> pure { pos: pos1, val: RecursiveT1 { b1: fromMaybe false b1, b2: fromMaybe true b2, x }}
     _ -> Left $ Decode.MissingFields "RecursiveT1"
     where
     decode :: Int -> RecursiveT1' -> Int -> Decode.Result' (Step { a :: Int, b :: RecursiveT1', c :: Int } { pos :: Int, val :: RecursiveT1' })
@@ -90,7 +90,7 @@ decodeRecursiveT2 :: Uint8Array -> Int -> Decode.Result RecursiveT2
 decodeRecursiveT2 _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
   { pos: pos1, val: { b1, b2, x } } <- tailRecM3 decode (pos + msglen) { b1: Nothing, b2: Nothing, x: Nothing } pos
-  pure { pos: pos1, val: RecursiveT2 { b1: fromMaybe false b1, b2: fromMaybe true b2, x } }
+  pure { pos: pos1, val: RecursiveT2 { b1: fromMaybe false b1, b2: fromMaybe true b2, x }}
     where
     decode :: Int -> RecursiveT2' -> Int -> Decode.Result' (Step { a :: Int, b :: RecursiveT2', c :: Int } { pos :: Int, val :: RecursiveT2' })
     decode end acc pos1 | pos1 < end = do

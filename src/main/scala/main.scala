@@ -84,6 +84,7 @@ object Purescript {
           , if (code contains "zshr") ("Data.Int.Bits" -> "zshr").just else Nothing
           , if (code contains " .&. ") ("Data.Int.Bits" -> "(.&.)").just else Nothing
           , if (code.contains("Just ") || code.contains("Nothing")) ("Data.Maybe" -> "Maybe(Just, Nothing)").just else Nothing
+          , if (code contains "fromMaybe ") ("Data.Maybe" -> "fromMaybe").just else Nothing
           , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple(Tuple)").just else Nothing
           , if (code contains "Unit") ("Data.Unit" -> "Unit").just else Nothing
           , if (code contains "unit") ("Data.Unit" -> "unit").just else Nothing
