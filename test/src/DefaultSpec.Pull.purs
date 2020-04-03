@@ -10,12 +10,12 @@ import Proto.Encode as Encode
 import Proto.Uint8ArrayExt (length, concatAll, fromArray)
 import DefaultSpec.Common
 
-data Pull = SimpleT1 SimpleT1 | SimpleT2 SimpleT2 | PRecursiveT RecursiveT
+data Pull = SimpleT1 SimpleT1 | SimpleT2 SimpleT2 | RecursiveT'' RecursiveT
 
 encodePull :: Pull -> Uint8Array
 encodePull (SimpleT1 x) = concatAll [ Encode.uint32 10, encodeSimpleT1 x ]
 encodePull (SimpleT2 x) = concatAll [ Encode.uint32 18, encodeSimpleT2 x ]
-encodePull (PRecursiveT x) = concatAll [ Encode.uint32 26, encodeRecursiveT x ]
+encodePull (RecursiveT'' x) = concatAll [ Encode.uint32 26, encodeRecursiveT x ]
 
 encodeSimpleT1 :: SimpleT1 -> Uint8Array
 encodeSimpleT1 msg = do

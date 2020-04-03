@@ -9,9 +9,10 @@ object Decoders {
   def from(types: Seq[Tpe], codecs: List[MessageCodec[_]]): Seq[Coder] = {
     types.map{
       case TraitType(tpe, name, children, true) =>
-        val cases = children.map{ case ChildMeta(name, tpe, n, noargs) =>
-          if (noargs) s"$n -> decode (decode$name _xs_ pos1) \\_ -> $name"
-          else        s"$n -> decode (decode$name _xs_ pos1) $name"
+        val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
+          if (noargs)   s"$n -> decode (decode$name1 _xs_ pos1) \\_ -> $name1"
+          else if (rec) s"$n -> decode (decode$name1 _xs_ pos1) $name1''"
+          else          s"$n -> decode (decode$name1 _xs_ pos1) $name1"
         }
         val tmpl =
           s"""|decode$name :: Uint8Array -> Decode.Result $name
@@ -24,9 +25,10 @@ object Decoders {
               |  decode res f = map (\\{ pos, val } -> { pos, val: f val }) res""".stripMargin
         Coder(tmpl, s"decode$name".just)
       case TraitType(tpe, name, children, false) =>
-        val cases = children.flatMap{ case ChildMeta(name, tpe, n, noargs) =>
-          if (noargs) s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) \\_ -> Just $name" :: Nil
-          else s"$n -> decodeFieldLoop end (decode$name _xs_ pos2) (Just <<< $name)" :: Nil
+        val cases = children.flatMap{ case ChildMeta(name1, _, n, noargs, rec) =>
+          if (noargs)   s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) \\_ -> Just $name1" :: Nil
+          else if (rec) s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) (Just <<< $name1'')" :: Nil
+          else          s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) (Just <<< $name1)" :: Nil
         }
         val tmpl =
           s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
@@ -78,7 +80,7 @@ object Decoders {
         }.mkString("{ ", ", ", " }")
         val tmpl =
           if (justObj == unObj) {
-            val cases = fields(tpe).flatMap((decodeFieldLoop _).tupled)
+            val cases = fields(tpe).flatMap((decodeFieldLoopNewtype(name) _).tupled)
             s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                 |decode$name _xs_ pos0 = do
                 |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
@@ -149,11 +151,20 @@ object Decoders {
         Coder(tmpl, Nothing)
     }.distinct
   }
-  
+
   private[this] def decodeFieldLoop(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
-    def tmpl(n: Int, fun: String, mod: String): List[String] = {
-      s"${n} -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> acc { $mod }" :: Nil
-    }
+    decodeFieldLoopTmpl{ case (n: Int, fun: String, mod: String) =>
+      s"$n -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> acc { $mod }" :: Nil
+    }(name, tpe, n, defval)
+  }
+
+  private[this] def decodeFieldLoopNewtype(newtype: String)(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
+    decodeFieldLoopTmpl{ case (n: Int, fun: String, mod: String) =>
+      s"$n -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> $newtype $$ acc { $mod }" :: Nil
+    }(name, tpe, n, defval)
+  }
+
+  private[this] def decodeFieldLoopTmpl(tmpl: (Int, String, String) => List[String])(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
     if (tpe =:= StringClass.selfType) {
       tmpl(n, "Decode.string", s"$name = Just val")
     } else if (tpe =:= IntClass.selfType) {

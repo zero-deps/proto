@@ -881,14 +881,14 @@ var PS = {};
       };
       return SimpleT2;
   })();
-  var PRecursiveT = (function () {
-      function PRecursiveT(value0) {
+  var RecursiveT$prime$prime = (function () {
+      function RecursiveT$prime$prime(value0) {
           this.value0 = value0;
       };
-      PRecursiveT.create = function (value0) {
-          return new PRecursiveT(value0);
+      RecursiveT$prime$prime.create = function (value0) {
+          return new RecursiveT$prime$prime(value0);
       };
-      return PRecursiveT;
+      return RecursiveT$prime$prime;
   })();
   var encodeSimpleT2 = function (msg) {
       var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](msg.b0), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.b1), Proto_Encode.uint32(24), Proto_Encode["boolean"](msg.b2) ]);
@@ -911,14 +911,14 @@ var PS = {};
       if (v instanceof SimpleT2) {
           return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(18), encodeSimpleT2(v.value0) ]);
       };
-      if (v instanceof PRecursiveT) {
+      if (v instanceof RecursiveT$prime$prime) {
           return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(26), encodeRecursiveT(v.value0) ]);
       };
       throw new Error("Failed pattern match at DefaultSpec.Pull (line 15, column 1 - line 15, column 33): " + [ v.constructor.name ]);
   };
   exports["SimpleT1"] = SimpleT1;
   exports["SimpleT2"] = SimpleT2;
-  exports["PRecursiveT"] = PRecursiveT;
+  exports["RecursiveT''"] = RecursiveT$prime$prime;
   exports["encodePull"] = encodePull;
 })(PS);
 (function(exports) {
@@ -1314,14 +1314,14 @@ var PS = {};
       };
       return SimpleT2;
   })();
-  var PRecursiveT = (function () {
-      function PRecursiveT(value0) {
+  var RecursiveT$prime$prime = (function () {
+      function RecursiveT$prime$prime(value0) {
           this.value0 = value0;
       };
-      PRecursiveT.create = function (value0) {
-          return new PRecursiveT(value0);
+      RecursiveT$prime$prime.create = function (value0) {
+          return new RecursiveT$prime$prime(value0);
       };
-      return PRecursiveT;
+      return RecursiveT$prime$prime;
   })();
   var decodeFieldLoop = function (end) {
       return function (res) {
@@ -1557,14 +1557,14 @@ var PS = {};
               return decode(decodeSimpleT2(_xs_)(v.pos))(SimpleT2.create);
           };
           if (v1 === 3) {
-              return decode(decodeRecursiveT(_xs_)(v.pos))(PRecursiveT.create);
+              return decode(decodeRecursiveT(_xs_)(v.pos))(RecursiveT$prime$prime.create);
           };
           return Data_Either.Left.create(new Proto_Decode.BadType(v1));
       });
   };
   exports["SimpleT1"] = SimpleT1;
   exports["SimpleT2"] = SimpleT2;
-  exports["PRecursiveT"] = PRecursiveT;
+  exports["RecursiveT''"] = RecursiveT$prime$prime;
   exports["decodePush"] = decodePush;
 })(PS);
 (function($PS) {
@@ -1664,9 +1664,6 @@ var PS = {};
       };
       return Flow;
   })();
-  var Node$prime = function (x) {
-      return x;
-  };
   var decodeStart = function (_xs_) {
       return function (pos0) {
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
@@ -1693,35 +1690,35 @@ var PS = {};
   var decodeNode = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
-              return function (v) {
+              return function (acc) {
                   return function (pos1) {
                       if (pos1 < end) {
-                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
-                              var v2 = v1.val >>> 3;
-                              if (v2 === 1) {
-                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v1.pos))(function (val) {
-                                      return Node$prime({
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
+                              var v1 = v.val >>> 3;
+                              if (v1 === 1) {
+                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
                                           root: new Data_Maybe.Just(val),
-                                          forest: v.forest
-                                      });
+                                          forest: acc.forest
+                                      };
                                   });
                               };
-                              if (v2 === 2) {
-                                  return decodeFieldLoop(end)(decodeNode(_xs_)(v1.pos))(function (val) {
-                                      return Node$prime({
-                                          root: v.root,
-                                          forest: Data_Array.snoc(v.forest)(val)
-                                      });
+                              if (v1 === 2) {
+                                  return decodeFieldLoop(end)(decodeNode(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          forest: Data_Array.snoc(acc.forest)(val),
+                                          root: acc.root
+                                      };
                                   });
                               };
-                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
-                                  return v;
+                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
                       return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
                           pos: pos1,
-                          val: v
+                          val: acc
                       }));
                   };
               };
@@ -1803,8 +1800,8 @@ var PS = {};
                                   });
                               };
                               if (v2 === 2) {
-                                  return decodeFieldLoop(end)(decodeExt(_xs_)(v1.pos))(function ($97) {
-                                      return Data_Maybe.Just.create(EqSpec_Common.Ext.create($97));
+                                  return decodeFieldLoop(end)(decodeExt(_xs_)(v1.pos))(function ($96) {
+                                      return Data_Maybe.Just.create(EqSpec_Common.Ext.create($96));
                                   });
                               };
                               return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
@@ -2042,9 +2039,6 @@ var PS = {};
   var FieldNode1 = function (x) {
       return x;
   };
-  var FieldNode$prime = function (x) {
-      return x;
-  };
   var SiteOpts = (function () {
       function SiteOpts(value0) {
           this.value0 = value0;
@@ -2138,35 +2132,35 @@ var PS = {};
   var decodeFieldNode = function (_xs_) {
       return function (pos0) {
           var decode = function (end) {
-              return function (v) {
+              return function (acc) {
                   return function (pos1) {
                       if (pos1 < end) {
-                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v1) {
-                              var v2 = v1.val >>> 3;
-                              if (v2 === 1) {
-                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v1.pos))(function (val) {
-                                      return FieldNode$prime({
+                          return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
+                              var v1 = v.val >>> 3;
+                              if (v1 === 1) {
+                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
+                                      return {
                                           root: new Data_Maybe.Just(val),
-                                          forest: v.forest
-                                      });
+                                          forest: acc.forest
+                                      };
                                   });
                               };
-                              if (v2 === 2) {
-                                  return decodeFieldLoop(end)(decodeFieldNode(_xs_)(v1.pos))(function (val) {
-                                      return FieldNode$prime({
-                                          root: v.root,
-                                          forest: Data_Array.snoc(v.forest)(val)
-                                      });
+                              if (v1 === 2) {
+                                  return decodeFieldLoop(end)(decodeFieldNode(_xs_)(v.pos))(function (val) {
+                                      return {
+                                          forest: Data_Array.snoc(acc.forest)(val),
+                                          root: acc.root
+                                      };
                                   });
                               };
-                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {
-                                  return v;
+                              return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v.pos)(v.val & 7))(function (v2) {
+                                  return acc;
                               });
                           });
                       };
                       return Control_Applicative.pure(Data_Either.applicativeEither)(new Control_Monad_Rec_Class.Done({
                           pos: pos1,
-                          val: v
+                          val: acc
                       }));
                   };
               };
@@ -2391,8 +2385,8 @@ var PS = {};
                                   });
                               };
                               if (v2 === 2) {
-                                  return decodeFieldLoop(end)(decodePageUrl(_xs_)(v1.pos))(function ($293) {
-                                      return Data_Maybe.Just.create(Common.PageUrl.create($293));
+                                  return decodeFieldLoop(end)(decodePageUrl(_xs_)(v1.pos))(function ($292) {
+                                      return Data_Maybe.Just.create(Common.PageUrl.create($292));
                                   });
                               };
                               return decodeFieldLoop(end)(Proto_Decode.skipType(_xs_)(v1.pos)(v1.val & 7))(function (v3) {

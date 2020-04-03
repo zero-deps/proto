@@ -15,7 +15,7 @@ import DefaultSpec.Common
 decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
 decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
-data Push = SimpleT1 SimpleT1 | SimpleT2 SimpleT2 | PRecursiveT RecursiveT
+data Push = SimpleT1 SimpleT1 | SimpleT2 SimpleT2 | RecursiveT'' RecursiveT
 type SimpleT1' = { m1 :: Maybe Boolean, b1 :: Maybe Boolean, b2 :: Maybe Boolean }
 type SimpleT2' = { b0 :: Maybe Boolean, b1 :: Maybe Boolean, b2 :: Maybe Boolean }
 type RecursiveT' = { b1 :: Maybe Boolean, b2 :: Maybe Boolean, x :: Maybe RecursiveT }
@@ -26,7 +26,7 @@ decodePush _xs_ = do
   case tag `zshr` 3 of
     1 -> decode (decodeSimpleT1 _xs_ pos1) SimpleT1
     2 -> decode (decodeSimpleT2 _xs_ pos1) SimpleT2
-    3 -> decode (decodeRecursiveT _xs_ pos1) PRecursiveT
+    3 -> decode (decodeRecursiveT _xs_ pos1) RecursiveT''
     i -> Left $ Decode.BadType i
   where
   decode :: forall a. Decode.Result a -> (a -> Push) -> Decode.Result Push

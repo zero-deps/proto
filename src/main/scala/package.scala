@@ -90,10 +90,13 @@ package object purs {
       case tpe if tpe =:= typeOf[Array[Byte]] => false
       case _ => true
     }
-    @tailrec def isRecursive(base: Type, compareTo: List[Type]): Boolean = compareTo match {
-      case Nil => false
-      case x :: _ if x =:= base => true
-      case x :: xs => isRecursive(base, x.typeArgs.map(_.typeSymbol.asType.toType) ++ xs)
+    def isRecursive(base: Type): Boolean = {
+      @tailrec def loop(compareTo: List[Type]): Boolean = compareTo match {
+        case Nil => false
+        case x :: _ if x =:= base => true
+        case x :: xs => loop(x.typeArgs.map(_.typeSymbol.asType.toType) ++ xs)
+      }
+      loop(fields(base).map(_._2).filter(complexType))
     }
     def isTrait(t: Type): Boolean = {
       t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
@@ -101,8 +104,8 @@ package object purs {
     def findChildren(tpe: Type): Seq[ChildMeta] = {
       tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{
         case (x, n) =>
-          val tpe = x.asType.toType
-          ChildMeta(name=tpe.typeSymbol.name.encodedName.toString, tpe, n, noargs=fields(tpe).isEmpty)
+          val tpe1 = x.asType.toType
+          ChildMeta(name=tpe1.typeSymbol.name.encodedName.toString, tpe1, n, noargs=fields(tpe1).isEmpty, rec=isRecursive(tpe1))
       }
     }
     @tailrec def loop(head: Type, tail: Seq[Type], acc: Seq[Tpe], firstLevel: Boolean): Seq[Tpe] = {
@@ -134,7 +137,7 @@ package object purs {
           val ys = xs.filter(complexType)
           val z =
             if (xs.isEmpty) NoargsType(head, head.typeSymbol.name.encodedName.toString)
-            else if (isRecursive(head, ys)) RecursiveType(head, head.typeSymbol.name.encodedName.toString)
+            else if (isRecursive(head)) RecursiveType(head, head.typeSymbol.name.encodedName.toString)
             else RegularType(head, head.typeSymbol.name.encodedName.toString)
           (ys++tail, acc:+z)
         }
@@ -172,21 +175,16 @@ package object purs {
 
   def makePursTypes(types: Seq[Tpe], genMaybe: Boolean): Seq[PursType] = {
     types.flatMap{
-      case TraitType(tpe, name, children, true) =>
+      case TraitType(tpe, name, children, firstLevel) =>
         List(PursType(List(
           s"data $name = ${children.map{
             case x if x.noargs => x.name
+            case x if x.rec => s"${x.name}'' ${x.name}"
             case x => s"${x.name} ${x.name}"
-          }.mkString(" | ")}"
-        ), export=s"$name(..)".just))
-      case TraitType(tpe, name, children, false) =>
-        List(PursType(List(
-          s"data $name = ${children.map{
-            case x if x.noargs => x.name
-            case x => s"${x.name} ${x.name}"
-          }.mkString(" | ")}"
-        , s"derive instance eq$name :: Eq $name"
-        ), export=s"$name(..)".just))
+          }.mkString(" | ")}".just
+        , if (firstLevel) Nothing
+          else s"derive instance eq$name :: Eq $name".just
+        ).flatten, export=s"$name(..)".just))
       case _: TupleType => Nil
       case _: NoargsType => Nil
       case RecursiveType(tpe, name) =>

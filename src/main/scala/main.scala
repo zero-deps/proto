@@ -51,7 +51,7 @@ object Purescript {
             if (code contains "concatMap ") ("Data.Array" -> "concatMap").just else Nothing
           , if (code contains "Uint8Array") ("Data.ArrayBuffer.Types" -> "Uint8Array").just else Nothing
           , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").just else Nothing
-          , if (code contains "Maybe ") ("Data.Maybe" -> "Maybe").just else Nothing
+          , if (raw"\WMaybe ".r.findFirstIn(code).isDefined) ("Data.Maybe" -> "Maybe").just else Nothing
           , if (code contains "fromMaybe ") ("Data.Maybe" -> "fromMaybe").just else Nothing
           , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple(Tuple)").just else Nothing
           , if (code contains "map ") ("Prelude" -> "map").just else Nothing

@@ -10,7 +10,7 @@ final case class RecursiveType(tpe: Type, name: String) extends Tpe
 final case class NoargsType(tpe: Type, name: String) extends Tpe
 final case class TupleType(tpe: Type, name: String, tpe_1: Type, tpe_2: Type) extends Tpe
 
-final case class ChildMeta(name: String, tpe: Type, n: Int, noargs: Boolean)
+final case class ChildMeta(name: String, tpe: Type, n: Int, noargs: Boolean, rec: Boolean)
 
 final case class PursType(tmpl: Seq[String], export: Maybe[String])
 
