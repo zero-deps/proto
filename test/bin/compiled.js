@@ -900,23 +900,23 @@ var PS = {};
       return RecursiveT2$prime$prime;
   })();
   var encodeSimpleT2 = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](msg.b0), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.b1), Proto_Encode.uint32(24), Proto_Encode["boolean"](msg.b2) ]);
+      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](msg.b0), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.b1), Proto_Encode.uint32(26), Proto_Encode.string(msg.b2) ]);
       return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
   };
   var encodeSimpleT1 = function (msg) {
       var xs = Proto_Uint8ArrayExt.concatAll([ Data_Maybe.fromMaybe(Proto_Uint8ArrayExt.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
           return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](x) ]);
-      })(msg.m1)), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.b1), Proto_Encode.uint32(24), Proto_Encode["boolean"](msg.b2) ]);
+      })(msg.m1)), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.b1), Proto_Encode.uint32(26), Proto_Encode.string(msg.b2) ]);
       return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
   };
   var encodeRecursiveT2 = function (v) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](v.b1), Proto_Encode.uint32(16), Proto_Encode["boolean"](v.b2), Data_Maybe.fromMaybe(Proto_Uint8ArrayExt.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
+      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](v.b1), Proto_Encode.uint32(18), Proto_Encode.string(v.b2), Data_Maybe.fromMaybe(Proto_Uint8ArrayExt.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
           return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(26), encodeRecursiveT2(x) ]);
       })(v.x)) ]);
       return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
   };
   var encodeRecursiveT1 = function (v) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](v.b1), Proto_Encode.uint32(16), Proto_Encode["boolean"](v.b2), Proto_Encode.uint32(26), encodeRecursiveT1(v.x) ]);
+      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](v.b1), Proto_Encode.uint32(18), Proto_Encode.string(v.b2), Proto_Encode.uint32(26), encodeRecursiveT1(v.x) ]);
       return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
   };
   var encodePull = function (v) {
@@ -930,7 +930,7 @@ var PS = {};
           return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(26), encodeRecursiveT1(v.value0) ]);
       };
       if (v instanceof RecursiveT2$prime$prime) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(26), encodeRecursiveT2(v.value0) ]);
+          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(34), encodeRecursiveT2(v.value0) ]);
       };
       throw new Error("Failed pattern match at DefaultSpec.Pull (line 15, column 1 - line 15, column 33): " + [ v.constructor.name ]);
   };
@@ -1382,7 +1382,7 @@ var PS = {};
                                   });
                               };
                               if (v1 === 2) {
-                                  return decodeFieldLoop(end)(Proto_Decode["boolean"](_xs_)(v.pos))(function (val) {
+                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
                                       return {
                                           b2: new Data_Maybe.Just(val),
                                           b1: acc.b1,
@@ -1422,7 +1422,7 @@ var PS = {};
                           pos: v1.pos,
                           val: {
                               b1: Data_Maybe.fromMaybe(false)(v1.val.b1),
-                              b2: Data_Maybe.fromMaybe(true)(v1.val.b2),
+                              b2: Data_Maybe.fromMaybe("")(v1.val.b2),
                               x: v1.val.x.value0
                           }
                       });
@@ -1450,7 +1450,7 @@ var PS = {};
                                   });
                               };
                               if (v1 === 2) {
-                                  return decodeFieldLoop(end)(Proto_Decode["boolean"](_xs_)(v.pos))(function (val) {
+                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
                                       return {
                                           b2: new Data_Maybe.Just(val),
                                           b1: acc.b1,
@@ -1489,7 +1489,7 @@ var PS = {};
                       pos: v1.pos,
                       val: {
                           b1: Data_Maybe.fromMaybe(false)(v1.val.b1),
-                          b2: Data_Maybe.fromMaybe(true)(v1.val.b2),
+                          b2: Data_Maybe.fromMaybe("")(v1.val.b2),
                           x: v1.val.x
                       }
                   });
@@ -1524,7 +1524,7 @@ var PS = {};
                                   });
                               };
                               if (v1 === 3) {
-                                  return decodeFieldLoop(end)(Proto_Decode["boolean"](_xs_)(v.pos))(function (val) {
+                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
                                       return {
                                           b2: new Data_Maybe.Just(val),
                                           b1: acc.b1,
@@ -1555,7 +1555,7 @@ var PS = {};
                       val: {
                           m1: v1.val.m1,
                           b1: Data_Maybe.fromMaybe(false)(v1.val.b1),
-                          b2: Data_Maybe.fromMaybe(true)(v1.val.b2)
+                          b2: Data_Maybe.fromMaybe("")(v1.val.b2)
                       }
                   });
               });
@@ -1589,7 +1589,7 @@ var PS = {};
                                   });
                               };
                               if (v1 === 3) {
-                                  return decodeFieldLoop(end)(Proto_Decode["boolean"](_xs_)(v.pos))(function (val) {
+                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
                                       return {
                                           b2: new Data_Maybe.Just(val),
                                           b0: acc.b0,
@@ -1621,7 +1621,7 @@ var PS = {};
                           val: {
                               b0: v1.val.b0.value0,
                               b1: Data_Maybe.fromMaybe(false)(v1.val.b1),
-                              b2: Data_Maybe.fromMaybe(true)(v1.val.b2)
+                              b2: Data_Maybe.fromMaybe("")(v1.val.b2)
                           }
                       });
                   };
@@ -1652,7 +1652,7 @@ var PS = {};
           if (v1 === 3) {
               return decode(decodeRecursiveT1(_xs_)(v.pos))(RecursiveT1$prime$prime.create);
           };
-          if (v1 === 3) {
+          if (v1 === 4) {
               return decode(decodeRecursiveT2(_xs_)(v.pos))(RecursiveT2$prime$prime.create);
           };
           return Data_Either.Left.create(new Proto_Decode.BadType(v1));

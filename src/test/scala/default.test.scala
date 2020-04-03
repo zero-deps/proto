@@ -19,7 +19,7 @@ class DefaultSpec extends AnyFreeSpec with Matchers {
 
 sealed trait Push
 sealed trait Pull
-@N(1) final case class SimpleT1(@N(1) m1: Maybe[Boolean], @N(2) b1: Boolean=false, @N(3) b2: Boolean=true) extends Push with Pull
-@N(2) final case class SimpleT2(@N(1) b0: Boolean, @N(2) b1: Boolean=false, @N(3) b2: Boolean=true) extends Push with Pull
-@N(3) final case class RecursiveT1(@N(1) b1: Boolean=false, @N(2) b2: Boolean=true, @N(3) x: RecursiveT1) extends Push with Pull
-@N(3) final case class RecursiveT2(@N(1) b1: Boolean=false, @N(2) b2: Boolean=true, @N(3) x: Maybe[RecursiveT2]) extends Push with Pull
+@N(1) final case class SimpleT1(@N(1) m1: Maybe[Boolean], @N(2) b1: Boolean=false, @N(3) b2: String="") extends Push with Pull
+@N(2) final case class SimpleT2(@N(1) b0: Boolean, @N(2) b1: Boolean=false, @N(3) b2: String="") extends Push with Pull
+@N(3) final case class RecursiveT1(@N(1) b1: Boolean=false, @N(2) b2: String="", @N(3) x: RecursiveT1) extends Push with Pull
+@N(4) final case class RecursiveT2(@N(1) b1: Boolean=false, @N(2) b2: String="", @N(3) x: Maybe[RecursiveT2]) extends Push with Pull

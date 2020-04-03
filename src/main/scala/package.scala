@@ -167,7 +167,10 @@ package object purs {
         val m = currentMirror
         val im = m.reflect((m.reflectModule(tpe.typeSymbol.asClass.companion.asModule)).instance)
         val method = tpe.companion.decl(TermName("apply$default$"+(i+1).toString)).asMethod
-        im.reflectMethod(method)().just
+        (im.reflectMethod(method)() match {
+          case x: String => s""""$x""""
+          case x => x.toString
+        }).just
       } else Nothing
       (term.name.encodedName.toString, term.info, findN(x), defval)
     }.collect{ case (a, b, Some(n), dv) => (a, b, n, dv) }.sortBy(_._3)
