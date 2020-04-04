@@ -19,7 +19,7 @@ decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: po
 
 data Push = Flow Flow
 type Ext' = { tree :: Maybe Node }
-newtype Node' = Node' { root :: Maybe String, forest :: Array Node }
+type Node' = { root :: Maybe String, forest :: Array Node }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
@@ -83,16 +83,16 @@ decodeExt _xs_ pos0 = do
 decodeNode :: Uint8Array -> Int -> Decode.Result Node
 decodeNode _xs_ pos0 = do
   { pos, val: msglen } <- Decode.uint32 _xs_ pos0
-  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) (Node' { root: Nothing, forest: [] }) pos
+  { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { root: Nothing, forest: [] } pos
   case val of
-    Node' { root: Just root, forest } -> pure { pos: pos1, val: Node { root, forest } }
+    { root: Just root, forest } -> pure { pos: pos1, val: Node { root, forest } }
     _ -> Left $ Decode.MissingFields "Node"
     where
     decode :: Int -> Node' -> Int -> Decode.Result' (Step { a :: Int, b :: Node', c :: Int } { pos :: Int, val :: Node' })
-    decode end acc'@(Node' acc) pos1 | pos1 < end = do
+    decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> Node' $ acc { root = Just val }
-        2 -> decodeFieldLoop end (decodeNode _xs_ pos2) \val -> Node' $ acc { forest = snoc acc.forest val }
-        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc'
+        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { root = Just val }
+        2 -> decodeFieldLoop end (decodeNode _xs_ pos2) \val -> acc { forest = snoc acc.forest val }
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }

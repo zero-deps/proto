@@ -9,38 +9,34 @@ object Encoders {
   def from(types: Seq[Tpe], codecs: List[MessageCodec[_]]): Seq[Coder] = {
     types.map{
       case TraitType(tpe, name, children, true) =>
-        val cases = children.map{ case ChildMeta(name1, tpe, n, noargs) =>
+        val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
           if (noargs)
-            List(
-              s"encode$name $name1 = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 ]"
-            )
-          else
-            List(
-              s"encode$name ($name1 x) = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 x ]"
-            )
+            s"encode$name $name1 = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 ]" :: Nil
+          else {
+            val pursTypeName = if (rec) s"$name1''" else name1
+            s"encode$name ($pursTypeName x) = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 x ]" :: Nil
+          }
         }
         val tmpl =
           s"""|encode$name :: $name -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
         Coder(tmpl, s"encode$name".just)
-      case TraitType(tpe, name, children,false) =>
-        val cases = children.map{ case ChildMeta(name1, tpe, n, noargs) =>
+      case TraitType(tpe, name, children, false) =>
+        val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
           if (noargs)
             List(
-              List(
-                s"encode$name $name1 = do"
-              , s"  let xs = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 ]"
-              , s"  concatAll [ Encode.uint32 $$ length xs, xs ]"
-              ).mkString("\n")
-            )
-          else
+              s"encode$name $name1 = do"
+            , s"  let xs = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 ]"
+            , s"  concatAll [ Encode.uint32 $$ length xs, xs ]"
+            ).mkString("\n") :: Nil
+          else {
+            val pursTypeName = if (rec) s"$name1''" else name1
             List(
-              List(
-                s"encode$name ($name1 x) = do"
-              , s"  let xs = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 x ]"
-              , s"  concatAll [ Encode.uint32 $$ length xs, xs ]"
-              ).mkString("\n")
-            )
+              s"encode$name ($pursTypeName x) = do"
+            , s"  let xs = concatAll [ Encode.uint32 ${(n << 3) + 2}, encode$name1 x ]"
+            , s"  concatAll [ Encode.uint32 $$ length xs, xs ]"
+            ).mkString("\n") :: Nil
+          }
         }
         val tmpl =
           s"""|encode$name :: $name -> Uint8Array
@@ -54,7 +50,7 @@ object Encoders {
               |$fun (Tuple _1 _2) = do
               |  let msg = { _1, _2 }
               |  let xs = concatAll
-              |  ${List(("_1", tpe_1, xs("_1")), ("_2", tpe_2, xs("_2"))).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
+              |  ${List(("_1", tpe_1, xs("_1"), Nothing), ("_2", tpe_2, xs("_2"), Nothing)).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
               |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
         Coder(tmpl, Nothing)
       case NoargsType(tpe, name) =>
@@ -93,7 +89,7 @@ object Encoders {
     }.distinct
   }
 
-  def encodeField(name: String, tpe: Type, n: Int): List[String] = {
+  def encodeField(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
     if (tpe =:= StringClass.selfType) {
       List(
         s"""Encode.uint32 ${(n<<3)+2}"""
