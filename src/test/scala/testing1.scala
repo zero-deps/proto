@@ -4,7 +4,7 @@ import org.junit.Test
 import org.junit.Assert._
 import java.util.Arrays
 
-import zd.proto.macrosapi.casecodecAuto
+import zd.proto.macrosapi.{caseCodecAuto,caseCodecNums}
 import zd.proto.api.{MessageCodec, N, RestrictedN, decode, encode, Prepare}
 import zd.proto.Bytes
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
@@ -60,22 +60,32 @@ object models {
 
   final case class DefaultValuesClass1(@N(3) float: Float)
 
-  given MessageCodec[Basic] = casecodecAuto
-  given MessageCodec[OptionBasic] = casecodecAuto
-  given MessageCodec[ClassWithArray] = casecodecAuto
-  given MessageCodec[ClassWithArraySeq] = casecodecAuto
-  given MessageCodec[ClassWithBytes] = casecodecAuto
-  given MessageCodec[Message1] = casecodecAuto
-  given MessageCodec[Message] = casecodecAuto
-  given MessageCodec[Collections] = casecodecAuto
-  given MessageCodec[DefaultValuesClass] = casecodecAuto
-  given MessageCodec[DefaultValuesClass1] = casecodecAuto
+  given MessageCodec[Basic] = caseCodecAuto
+  given MessageCodec[OptionBasic] = caseCodecAuto
+  given MessageCodec[ClassWithArray] = caseCodecAuto
+  given MessageCodec[ClassWithArraySeq] = caseCodecAuto
+  given MessageCodec[ClassWithBytes] = caseCodecAuto
+  given MessageCodec[Message1] = caseCodecAuto
+  given MessageCodec[Message] = caseCodecAuto
+  given MessageCodec[Collections] = caseCodecAuto
+  given MessageCodec[DefaultValuesClass] = caseCodecAuto
+  given MessageCodec[DefaultValuesClass1] = caseCodecAuto
 }
 
 class Testing {
   import models._
   
-  @Test def encodeDecode(): Unit = {
+  @Test def encodeDecodeCaseCodecAuto(): Unit = {
+    val c: MessageCodec[Basic] = caseCodecAuto
+    encodeDecode(c)
+  }
+
+  @Test def encodeDecodeCaseCodecNums(): Unit = {
+    val c: MessageCodec[Basic] = caseCodecNums("int"->21,"long"->22,"bool"->23,"double"->24,"float"->25,"str"->26,"bytes"->50)
+    encodeDecode(c)
+  }
+
+  def encodeDecode(codec: MessageCodec[Basic]): Unit = {
     (for {
       int <- List(Int.MinValue, -2, -1, 0, 1, 2, Int.MaxValue)
       long <- List(Long.MinValue, -2L, -1L, 0L, 1L, 2L, Long.MaxValue)
@@ -85,7 +95,7 @@ class Testing {
       str <- List("", "str")
       bytes <- List(Array.empty[Byte], Array(0.toByte), Array(1.toByte), Array(2.toByte), Array(255.toByte))
     } yield Basic(int = int, long = long, bool = bool, double = double, float = float, str = str, bytes = bytes)).foreach{ data =>
-      val decoded: Basic = decode(encode(data))
+      val decoded: Basic = decode(encode(data))(codec)
       assert(decoded.int == data.int)
       assert(decoded.long == data.long)
       assert(decoded.bool == data.bool)

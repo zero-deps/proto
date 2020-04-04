@@ -16,14 +16,14 @@ import zd.proto.Bytes
 
 object macrosapi {
 
-  inline def casecodecAuto[A]: MessageCodec[A] = ${Macro.caseCodecAuto[A]}
-  inline def caseCodecNums[A](nums: (String, Int)*): MessageCodec[A] = ???
+  inline def caseCodecAuto[A]: MessageCodec[A] = ${Macro.caseCodecAuto[A]}
+  inline def caseCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.caseCodecNums[A]('nums)}
   inline def caseCodecIdx[A]: MessageCodec[A] = ???
 
   inline def classCodecAuto[A]: MessageCodec[A] = ???
   inline def classCodecNums[A](nums: (String, Int)*)(constructor: Any): MessageCodec[A] = ???
 
-  inline def sealedTraitCodecAuto[A]: MessageCodec[A] = ???
+  inline def sealedTraitCodecAuto[A]: MessageCodec[A] = ${Macro.sealedTraitCodecAuto[A]}
   inline def sealedTraitCodecNums[A](nums: (String, Int)*): MessageCodec[A] = ???
   
   inline def enumByN[A]: MessageCodec[A] = ${Macro.enumByN[A]}
@@ -31,7 +31,12 @@ object macrosapi {
 
 object Macro {
   def caseCodecAuto[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
+  def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().caseCodecNums[A](numsExpr)
+
   def enumByN[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().enumByN[A]
+
+  def sealedTraitCodecAuto[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().sealedTraitCodecAuto[A]
+
 }
 
 private class Impl(using val qctx: QuoteContext) extends BuildCodec {
@@ -52,6 +57,26 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
         case _ => qctx.throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
       }
     )
+    messageCodec(aType, nums, params, restrictDefaults=true)
+  }
+
+  def caseCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] = {
+    val nums: Seq[(String, Int)] = numsExpr match {
+      case Varargs(argExprs) =>
+        argExprs.collect{
+          case '{ ($x:String, $y:Int) } => x.unseal -> y.unseal
+          case '{ ($x:String) -> ($y:Int) } => x.unseal -> y.unseal
+        }.collect{
+          case (Literal(Constant(name: String)), Literal(Constant(num: Int))) => name -> num
+        }
+      case _ => Seq()
+    }
+    val ctx = summon[Context]
+    val t = summon[quoted.Type[A]]
+    val aType = t.unseal.tpe
+    val aTypeSymbol = aType.typeSymbol
+    val typeName = t.unseal.tpe.typeSymbol.name
+    val params: List[Symbol] = aTypeSymbol.caseFields
     messageCodec(aType, nums, params, restrictDefaults=true)
   }
 
@@ -144,4 +169,18 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
       }
     }
   }
+
+  def sealedTraitCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
+    val t = summon[quoted.Type[A]]
+    val aType = t.unseal.tpe
+    val aTypeSymbol = aType.typeSymbol
+    val xs = aTypeSymbol.children
+    '{
+      new MessageCodec[A] {
+        def prepare(a: A): Prepare = ???
+        def read(is: CodedInputStream): A = ???
+      }
+    }
+  }
+
 }
