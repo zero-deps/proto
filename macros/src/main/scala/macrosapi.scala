@@ -18,7 +18,7 @@ object macrosapi {
 
   inline def caseCodecAuto[A]: MessageCodec[A] = ${Macro.caseCodecAuto[A]}
   inline def caseCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.caseCodecNums[A]('nums)}
-  inline def caseCodecIdx[A]: MessageCodec[A] = ???
+  inline def caseCodecIdx[A]: MessageCodec[A] = ${Macro.caseCodecIdx[A]}
 
   inline def classCodecAuto[A]: MessageCodec[A] = ???
   inline def classCodecNums[A](nums: (String, Int)*)(constructor: Any): MessageCodec[A] = ???
@@ -32,6 +32,7 @@ object macrosapi {
 object Macro {
   def caseCodecAuto[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
   def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().caseCodecNums[A](numsExpr)
+  def caseCodecIdx[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().caseCodecIdx[A]
 
   def enumByN[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().enumByN[A]
 
@@ -78,6 +79,17 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val typeName = t.unseal.tpe.typeSymbol.name
     val params: List[Symbol] = aTypeSymbol.caseFields
     messageCodec(aType, nums, params, restrictDefaults=true)
+  }
+
+  def caseCodecIdx[A: quoted.Type]: Expr[MessageCodec[A]] = {
+    val ctx = summon[Context]
+    val t = summon[quoted.Type[A]]
+    val aType = t.unseal.tpe
+    val aTypeSymbol = aType.typeSymbol
+    val typeName = t.unseal.tpe.typeSymbol.name
+    val params: List[Symbol] = aTypeSymbol.caseFields
+    val nums: List[(String, Int)] = params.zipWithIndex.map{case (p, idx) => (p.name, idx + 1) }
+    messageCodec(aType, nums, params, restrictDefaults=false)
   }
 
   def messageCodec[A: quoted.Type](aType: Type, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean)(using ctx: Context): Expr[MessageCodec[A]] = {

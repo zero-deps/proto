@@ -4,14 +4,13 @@ import org.junit.Test
 import org.junit.Assert._
 import java.util.Arrays
 
-import zd.proto.macrosapi.{caseCodecAuto,caseCodecNums}
+import zd.proto.macrosapi.{caseCodecAuto, caseCodecNums, caseCodecIdx}
 import zd.proto.api.{MessageCodec, N, RestrictedN, decode, encode, Prepare}
 import zd.proto.Bytes
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.collection.immutable.ArraySeq
 
 object models {
-  @RestrictedN(1)
   final case class Basic(
     @N(21) int: Int
   , @N(22) long: Long
@@ -85,6 +84,11 @@ class Testing {
     encodeDecode(c)
   }
 
+  @Test def encodeDecodeCaseCodecIdx(): Unit = {
+    val c: MessageCodec[Basic] = caseCodecIdx
+    encodeDecode(c)
+  }
+
   def encodeDecode(codec: MessageCodec[Basic]): Unit = {
     (for {
       int <- List(Int.MinValue, -2, -1, 0, 1, 2, Int.MaxValue)
@@ -95,7 +99,7 @@ class Testing {
       str <- List("", "str")
       bytes <- List(Array.empty[Byte], Array(0.toByte), Array(1.toByte), Array(2.toByte), Array(255.toByte))
     } yield Basic(int = int, long = long, bool = bool, double = double, float = float, str = str, bytes = bytes)).foreach{ data =>
-      val decoded: Basic = decode(encode(data))(codec)
+      val decoded: Basic = decode(encode(data)(codec))(codec)
       assert(decoded.int == data.int)
       assert(decoded.long == data.long)
       assert(decoded.bool == data.bool)
@@ -221,4 +225,5 @@ class Testing {
     val decoded: DefaultValuesClass = decode[DefaultValuesClass](encode[DefaultValuesClass1](data))
     val _ = assert(decoded == expected)
   }
+
 }
