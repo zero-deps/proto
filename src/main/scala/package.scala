@@ -1,10 +1,11 @@
 package zd.proto
 
+import scala.annotation.tailrec
 import scala.reflect.runtime.currentMirror
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
-import scala.annotation.tailrec
 import zd.gs.z._
+import zd.proto.Bytes
 
 package object purs {
   def pursTypePars(tpe: Type): (String, String) = {
@@ -16,7 +17,7 @@ package object purs {
       "Boolean" -> "(Maybe Boolean)"
     } else if (tpe =:= DoubleClass.selfType) {
       "Number" -> "(Maybe Number)"
-    } else if (tpe =:= typeOf[Array[Byte]]) {
+    } else if (tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]) {
       "Uint8Array" -> "(Maybe Uint8Array)"
     } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
       val typeArg = tpe.typeArgs.head
@@ -87,7 +88,7 @@ package object purs {
       case tpe if tpe =:= IntClass.selfType => false
       case tpe if tpe =:= BooleanClass.selfType => false
       case tpe if tpe =:= DoubleClass.selfType => false
-      case tpe if tpe =:= typeOf[Array[Byte]] => false
+      case tpe if tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]  => false
       case _ => true
     }
     def isRecursive(base: Type): Boolean = {

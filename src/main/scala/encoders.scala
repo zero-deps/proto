@@ -2,8 +2,9 @@ package zd.proto.purs
 
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
-import zd.proto.api.MessageCodec
 import zd.gs.z._
+import zd.proto.api.MessageCodec
+import zd.proto.Bytes
 
 object Encoders {
   def from(types: Seq[Tpe], codecs: List[MessageCodec[_]]): Seq[Coder] = {
@@ -125,7 +126,7 @@ object Encoders {
         val typeArgName = typeArg.name.encodedName.toString
         s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.uint32 ${(n<<3)+2}, encode$typeArgName x ]) msg.$name""" :: Nil
       }
-    } else if (tpe =:= typeOf[Array[Byte]]) {
+    } else if (tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]) {
       List(
         s"""Encode.uint32 ${(n<<3)+2}"""
       , s"""Encode.bytes msg.$name"""
