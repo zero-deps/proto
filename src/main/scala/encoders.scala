@@ -2,7 +2,7 @@ package zd.proto.purs
 
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
-import zd.gs.z._
+import zero.ext._, option._
 import zd.proto.api.MessageCodec
 import zd.proto.Bytes
 
@@ -21,7 +21,7 @@ object Encoders {
         val tmpl =
           s"""|encode$name :: $name -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
-        Coder(tmpl, s"encode$name".just)
+        Coder(tmpl, s"encode$name".some)
       case TraitType(tpe, name, children, false) =>
         val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
           if (noargs)
@@ -42,7 +42,7 @@ object Encoders {
         val tmpl =
           s"""|encode$name :: $name -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
       case TupleType(tpe, tupleName, tpe_1, tpe_2) =>
         val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
         val fun = "encode" + tupleName
@@ -51,14 +51,14 @@ object Encoders {
               |$fun (Tuple _1 _2) = do
               |  let msg = { _1, _2 }
               |  let xs = concatAll
-              |  ${List(("_1", tpe_1, xs("_1"), Nothing), ("_2", tpe_2, xs("_2"), Nothing)).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
+              |  ${List(("_1", tpe_1, xs("_1"), None), ("_2", tpe_2, xs("_2"), None)).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
               |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
       case NoargsType(tpe, name) =>
         val tmpl =
           s"""|encode$name :: Uint8Array
               |encode$name = Encode.uint32 0""".stripMargin
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
       case RecursiveType(tpe, name) =>
         val encodeFields = fields(tpe).flatMap((encodeField _).tupled)
         val tmpl =
@@ -72,7 +72,7 @@ object Encoders {
             s"""|encode$name :: $name -> Uint8Array
                 |encode$name _ = Encode.uint32 0""".stripMargin
           }
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
       case RegularType(tpe, name) =>
         val encodeFields = fields(tpe).flatMap((encodeField _).tupled)
         val tmpl =
@@ -86,11 +86,11 @@ object Encoders {
             s"""|encode$name :: $name -> Uint8Array
                 |encode$name _ = Encode.uint32 0""".stripMargin
           }
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
     }.distinct
   }
 
-  def encodeField(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
+  def encodeField(name: String, tpe: Type, n: Int, defval: Option[Any]): List[String] = {
     if (tpe =:= StringClass.selfType) {
       List(
         s"""Encode.uint32 ${(n<<3)+2}"""

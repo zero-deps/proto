@@ -8,12 +8,11 @@ module Pull
   ) where
 
 import Data.Array (concatMap)
-import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Maybe (Maybe, fromMaybe)
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($))
 import Proto.Encode as Encode
-import Proto.Uint8ArrayExt (length, concatAll, fromArray)
+import Proto.Uint8Array (Uint8Array, length, concatAll, fromArray)
 import Common
 
 data Pull = GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs

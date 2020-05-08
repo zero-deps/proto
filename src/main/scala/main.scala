@@ -2,7 +2,7 @@ package zd.proto.purs
 
 import scala.reflect.runtime.universe._
 import zd.proto.api.MessageCodec
-import zd.gs.z._
+import zero.ext._, option._
 
 object Purescript {
   final case class GenRes(
@@ -33,9 +33,9 @@ object Purescript {
         moduleCommon -> {
           val code = commonPursTypes.flatMap(_.tmpl).mkString("\n")
           val is = List(
-            if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").just else Nothing
-          , if (code contains "Maybe ") ("Data.Maybe" -> "Maybe").just else Nothing
-          , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple").just else Nothing
+            if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
+          , if (code contains "Maybe ") ("Data.Maybe" -> "Maybe").some else None
+          , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple").some else None
           ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + " (" + x._2 + ")").to(List).sorted.mkString("\n")
           s"""|module $moduleCommon
               |  ( ${commonPursTypes.flatMap(_.export).mkString("\n  , ")} 
@@ -48,19 +48,19 @@ object Purescript {
       , moduleEncode -> {
           val code = encodePursTypes.flatMap(_.tmpl).mkString("\n") + "\n\n" + encoders.map(_.tmpl).mkString("\n\n")
           val is = List(
-            if (code contains "concatMap ") ("Data.Array" -> "concatMap").just else Nothing
-          , if (code contains "Uint8Array") ("Data.ArrayBuffer.Types" -> "Uint8Array").just else Nothing
-          , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").just else Nothing
-          , if (raw"\WMaybe ".r.findFirstIn(code).isDefined) ("Data.Maybe" -> "Maybe").just else Nothing
-          , if (code contains "fromMaybe ") ("Data.Maybe" -> "fromMaybe").just else Nothing
-          , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple(Tuple)").just else Nothing
-          , if (code contains "map ") ("Prelude" -> "map").just else Nothing
-          , if (code contains " $ ") ("Prelude" -> "($)").just else Nothing
-          , if (code contains "Encode.") ("Proto.Encode as Encode" -> "").just else Nothing
-          , if (code contains "length ") ("Proto.Uint8ArrayExt" -> "length").just else Nothing
-          , if (code contains "concatAll ") ("Proto.Uint8ArrayExt" -> "concatAll").just else Nothing
-          , if (code contains "fromArray ") ("Proto.Uint8ArrayExt" -> "fromArray").just else Nothing
-          ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + x._2.just.filter(_.nonEmpty).map(" ("+_+")").getOrElse("")).to(List).sorted.mkString("\n")
+            if (code contains "concatMap ") ("Data.Array" -> "concatMap").some else None
+          , if (code contains "Uint8Array") ("Proto.Uint8Array" -> "Uint8Array").some else None
+          , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
+          , if (raw"\WMaybe ".r.findFirstIn(code).isDefined) ("Data.Maybe" -> "Maybe").some else None
+          , if (code contains "fromMaybe ") ("Data.Maybe" -> "fromMaybe").some else None
+          , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple(Tuple)").some else None
+          , if (code contains "map ") ("Prelude" -> "map").some else None
+          , if (code contains " $ ") ("Prelude" -> "($)").some else None
+          , if (code contains "Encode.") ("Proto.Encode as Encode" -> "").some else None
+          , if (code contains "length ") ("Proto.Uint8Array" -> "length").some else None
+          , if (code contains "concatAll ") ("Proto.Uint8Array" -> "concatAll").some else None
+          , if (code contains "fromArray ") ("Proto.Uint8Array" -> "fromArray").some else None
+          ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + x._2.some.filter(_.nonEmpty).map(" ("+_+")").getOrElse("")).to(List).sorted.mkString("\n")
           s"""|module $moduleEncode
               |  ( ${(encodePursTypes.flatMap(_.export)++encoders.flatMap(_.export)).mkString("\n  , ")}
               |  ) where
@@ -75,28 +75,28 @@ object Purescript {
             s"""|decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
                 |decodeFieldLoop end res f = map (\\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res""".stripMargin + "\n\n" + decodePursTypes.flatMap(_.tmpl).mkString("\n") + "\n\n" + decoders.map(_.tmpl).mkString("\n\n")
           val is = List(
-            if (code.contains("Loop ") || code.contains("Done ")) ("Control.Monad.Rec.Class" -> "Step(Loop, Done)").just else Nothing
-          , if (code contains "tailRecM3 ") ("Control.Monad.Rec.Class" -> "tailRecM3").just else Nothing
-          , if (code contains "snoc ") ("Data.Array" -> "snoc").just else Nothing
-          , if (code contains "Uint8Array ") ("Data.ArrayBuffer.Types" -> "Uint8Array").just else Nothing
-          , if (code contains "Left ") ("Data.Either" -> "Either(Left)").just else Nothing
-          , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").just else Nothing
-          , if (code contains "zshr") ("Data.Int.Bits" -> "zshr").just else Nothing
-          , if (code contains " .&. ") ("Data.Int.Bits" -> "(.&.)").just else Nothing
-          , if (code.contains("Just ") || code.contains("Nothing")) ("Data.Maybe" -> "Maybe(Just, Nothing)").just else Nothing
-          , if (code contains "fromMaybe ") ("Data.Maybe" -> "fromMaybe").just else Nothing
-          , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple(Tuple)").just else Nothing
-          , if (code contains "Unit") ("Data.Unit" -> "Unit").just else Nothing
-          , if (code contains "unit") ("Data.Unit" -> "unit").just else Nothing
-          , if (code contains "map ") ("Prelude" -> "map").just else Nothing
-          , if (code contains " do") ("Prelude" -> "bind").just else Nothing
-          , if (code contains "pure ") ("Prelude" -> "pure").just else Nothing
-          , if (code contains " $ ") ("Prelude" -> "($)").just else Nothing
-          , if (code contains " + ") ("Prelude" -> "(+)").just else Nothing
-          , if (code contains " < ") ("Prelude" -> "(<)").just else Nothing
-          , if (code contains " <<< ") ("Prelude" -> "(<<<)").just else Nothing
-          , if (code contains "Decode.") ("Proto.Decode as Decode" -> "").just else Nothing
-          ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + x._2.just.filter(_.nonEmpty).map(" ("+_+")").getOrElse("")).to(List).sorted.mkString("\n")
+            if (code.contains("Loop ") || code.contains("Done ")) ("Control.Monad.Rec.Class" -> "Step(Loop, Done)").some else None
+          , if (code contains "tailRecM3 ") ("Control.Monad.Rec.Class" -> "tailRecM3").some else None
+          , if (code contains "snoc ") ("Data.Array" -> "snoc").some else None
+          , if (code contains "Uint8Array ") ("Proto.Uint8Array" -> "Uint8Array").some else None
+          , if (code contains "Left ") ("Data.Either" -> "Either(Left)").some else None
+          , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
+          , if (code contains "zshr") ("Data.Int.Bits" -> "zshr").some else None
+          , if (code contains " .&. ") ("Data.Int.Bits" -> "(.&.)").some else None
+          , if (code.contains("Just ") || code.contains("Nothing")) ("Data.Maybe" -> "Maybe(Just, Nothing)").some else None
+          , if (code contains "fromMaybe ") ("Data.Maybe" -> "fromMaybe").some else None
+          , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple(Tuple)").some else None
+          , if (code contains "Unit") ("Data.Unit" -> "Unit").some else None
+          , if (code contains "unit") ("Data.Unit" -> "unit").some else None
+          , if (code contains "map ") ("Prelude" -> "map").some else None
+          , if (code contains " do") ("Prelude" -> "bind").some else None
+          , if (code contains "pure ") ("Prelude" -> "pure").some else None
+          , if (code contains " $ ") ("Prelude" -> "($)").some else None
+          , if (code contains " + ") ("Prelude" -> "(+)").some else None
+          , if (code contains " < ") ("Prelude" -> "(<)").some else None
+          , if (code contains " <<< ") ("Prelude" -> "(<<<)").some else None
+          , if (code contains "Decode.") ("Proto.Decode as Decode" -> "").some else None
+          ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + x._2.some.filter(_.nonEmpty).map(" ("+_+")").getOrElse("")).to(List).sorted.mkString("\n")
           s"""|module $moduleDecode
               |  ( ${(decodePursTypes.flatMap(_.export)++decoders.flatMap(_.export)).mkString("\n  , ")}
               |  ) where

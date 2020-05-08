@@ -629,45 +629,32 @@ var PS = {};
 (function(exports) {
   "use strict"
 
-  exports.length = function(xs) {
-    return xs.length
-  }
+  exports.length = xs => xs.length
 
-  exports.indexUnsafe = function(xs) {
-    return function(i) {
-      return xs[i]
-    }
-  }
+  exports.indexUnsafe = xs => i => xs[i]
 
-  exports.slice = function(xs) {
-    return function(start) {
-      return function(end) {
-        return xs.slice(start, end)
-      }
-    }
-  }
+  exports.slice = xs => start => end => xs.slice(start, end)
 
-  exports.fromArray = function(xs) {
-    return new Uint8Array(xs)
-  }
+  exports.fromArray = xs => new Uint8Array(xs)
 
-  exports.concatAll = function(xs) {
-    var zs = new Uint8Array(xs.reduce(function(acc, x) {
-      return acc + x.length
-    }, 0))
-    xs.reduce(function(acc, x) {
+  exports.concatAll = xs => {
+    const zs = new Uint8Array(xs.reduce((acc, x) => acc + x.length, 0))
+    xs.reduce((acc, x) => {
       zs.set(x, acc)
       return acc + x.length
     }, 0)
     return zs
   }
-})(PS["Proto.Uint8ArrayExt"] = PS["Proto.Uint8ArrayExt"] || {});
+
+  exports.eqImpl = xs => ys => (xs === ys) || (xs.length === ys.length && xs.every((x,i) => x === ys[i]))
+})(PS["Proto.Uint8Array"] = PS["Proto.Uint8Array"] || {});
 (function($PS) {
   "use strict";
-  $PS["Proto.Uint8ArrayExt"] = $PS["Proto.Uint8ArrayExt"] || {};
-  var exports = $PS["Proto.Uint8ArrayExt"];
-  var $foreign = $PS["Proto.Uint8ArrayExt"];
-  var Data_Either = $PS["Data.Either"];                
+  $PS["Proto.Uint8Array"] = $PS["Proto.Uint8Array"] || {};
+  var exports = $PS["Proto.Uint8Array"];
+  var $foreign = $PS["Proto.Uint8Array"];
+  var Data_Either = $PS["Data.Either"];
+  var Data_Eq = $PS["Data.Eq"];                
   var index = function (xs) {
       return function (pos) {
           var len = $foreign.length(xs);
@@ -681,7 +668,9 @@ var PS = {};
           });
       };
   };
+  var eqUint8Array = new Data_Eq.Eq($foreign.eqImpl);
   exports["index"] = index;
+  exports["eqUint8Array"] = eqUint8Array;
   exports["length"] = $foreign.length;
   exports["slice"] = $foreign.slice;
   exports["concatAll"] = $foreign.concatAll;
@@ -788,7 +777,7 @@ var PS = {};
   var exports = $PS["Proto.Encode"];
   var $foreign = $PS["Proto.Encode"];
   var Data_Array = $PS["Data.Array"];
-  var Proto_Uint8ArrayExt = $PS["Proto.Uint8ArrayExt"];
+  var Proto_Uint8Array = $PS["Proto.Uint8Array"];
   var Proto_Utf8 = $PS["Proto.Utf8"];                
   var uint32 = (function () {
       var loop = function ($copy_acc) {
@@ -814,7 +803,7 @@ var PS = {};
       };
       var $9 = loop([  ]);
       return function ($10) {
-          return Proto_Uint8ArrayExt.fromArray($9($10));
+          return Proto_Uint8Array.fromArray($9($10));
       };
   })();
   var string = function (x) {
@@ -823,31 +812,31 @@ var PS = {};
       if ($2) {
           return uint32(0);
       };
-      return Proto_Uint8ArrayExt.concatAll([ uint32(len), Proto_Utf8.toUint8Array(x)(len) ]);
+      return Proto_Uint8Array.concatAll([ uint32(len), Proto_Utf8.toUint8Array(x)(len) ]);
   };
   var $$double = function (y) {
       var fixedUint32 = function (x) {
-          return Proto_Uint8ArrayExt.fromArray([ x >>> 0 & 255, x >>> 8 & 255, x >>> 16 & 255, x >>> 24 & 255 ]);
+          return Proto_Uint8Array.fromArray([ x >>> 0 & 255, x >>> 8 & 255, x >>> 16 & 255, x >>> 24 & 255 ]);
       };
       var x = $foreign.splitFloat64(y);
-      return Proto_Uint8ArrayExt.concatAll([ fixedUint32(x.low), fixedUint32(x.high) ]);
+      return Proto_Uint8Array.concatAll([ fixedUint32(x.low), fixedUint32(x.high) ]);
   };
   var bytes = function (xs) {
-      var len = Proto_Uint8ArrayExt.length(xs);
+      var len = Proto_Uint8Array.length(xs);
       var $7 = len === 0;
       if ($7) {
           return uint32(0);
       };
-      return Proto_Uint8ArrayExt.concatAll([ uint32(len), xs ]);
+      return Proto_Uint8Array.concatAll([ uint32(len), xs ]);
   };
   var $$boolean = function (v) {
       if (v) {
-          return Proto_Uint8ArrayExt.fromArray([ 1 ]);
+          return Proto_Uint8Array.fromArray([ 1 ]);
       };
       if (!v) {
-          return Proto_Uint8ArrayExt.fromArray([ 0 ]);
+          return Proto_Uint8Array.fromArray([ 0 ]);
       };
-      throw new Error("Failed pattern match at Proto.Encode (line 39, column 1 - line 39, column 33): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Proto.Encode (line 38, column 1 - line 38, column 33): " + [ v.constructor.name ]);
   };
   exports["uint32"] = uint32;
   exports["double"] = $$double;
@@ -862,7 +851,7 @@ var PS = {};
   var Data_Functor = $PS["Data.Functor"];
   var Data_Maybe = $PS["Data.Maybe"];
   var Proto_Encode = $PS["Proto.Encode"];
-  var Proto_Uint8ArrayExt = $PS["Proto.Uint8ArrayExt"];                
+  var Proto_Uint8Array = $PS["Proto.Uint8Array"];                
   var SimpleT1 = (function () {
       function SimpleT1(value0) {
           this.value0 = value0;
@@ -900,39 +889,39 @@ var PS = {};
       return RecursiveT2$prime$prime;
   })();
   var encodeSimpleT2 = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](msg.b0), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.b1), Proto_Encode.uint32(26), Proto_Encode.string(msg.b2) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](msg.b0), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.b1), Proto_Encode.uint32(26), Proto_Encode.string(msg.b2) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeSimpleT1 = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Data_Maybe.fromMaybe(Proto_Uint8ArrayExt.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](x) ]);
+      var xs = Proto_Uint8Array.concatAll([ Data_Maybe.fromMaybe(Proto_Uint8Array.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](x) ]);
       })(msg.m1)), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.b1), Proto_Encode.uint32(26), Proto_Encode.string(msg.b2) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeRecursiveT2 = function (v) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](v.b1), Proto_Encode.uint32(18), Proto_Encode.string(v.b2), Data_Maybe.fromMaybe(Proto_Uint8ArrayExt.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(26), encodeRecursiveT2(x) ]);
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](v.b1), Proto_Encode.uint32(18), Proto_Encode.string(v.b2), Data_Maybe.fromMaybe(Proto_Uint8Array.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(26), encodeRecursiveT2(x) ]);
       })(v.x)) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeRecursiveT1 = function (v) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](v.b1), Proto_Encode.uint32(18), Proto_Encode.string(v.b2), Proto_Encode.uint32(26), encodeRecursiveT1(v.x) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](v.b1), Proto_Encode.uint32(18), Proto_Encode.string(v.b2), Proto_Encode.uint32(26), encodeRecursiveT1(v.x) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodePull = function (v) {
       if (v instanceof SimpleT1) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeSimpleT1(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeSimpleT1(v.value0) ]);
       };
       if (v instanceof SimpleT2) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(18), encodeSimpleT2(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(18), encodeSimpleT2(v.value0) ]);
       };
       if (v instanceof RecursiveT1$prime$prime) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(26), encodeRecursiveT1(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(26), encodeRecursiveT1(v.value0) ]);
       };
       if (v instanceof RecursiveT2$prime$prime) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(34), encodeRecursiveT2(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(34), encodeRecursiveT2(v.value0) ]);
       };
-      throw new Error("Failed pattern match at DefaultSpec.Pull (line 15, column 1 - line 15, column 33): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at DefaultSpec.Pull (line 14, column 1 - line 14, column 33): " + [ v.constructor.name ]);
   };
   exports["SimpleT1"] = SimpleT1;
   exports["SimpleT2"] = SimpleT2;
@@ -980,7 +969,7 @@ var PS = {};
   var Data_Bifunctor = $PS["Data.Bifunctor"];
   var Data_Either = $PS["Data.Either"];
   var Data_Unit = $PS["Data.Unit"];
-  var Proto_Uint8ArrayExt = $PS["Proto.Uint8ArrayExt"];
+  var Proto_Uint8Array = $PS["Proto.Uint8Array"];
   var Proto_Utf8 = $PS["Proto.Utf8"];                
   var OutOfBound = (function () {
       function OutOfBound(value0, value1) {
@@ -1031,7 +1020,7 @@ var PS = {};
   var skip = function (n) {
       return function (xs) {
           return function (pos0) {
-              var len = Proto_Uint8ArrayExt.length(xs);
+              var len = Proto_Uint8Array.length(xs);
               var $12 = (pos0 + n | 0) > len;
               if ($12) {
                   return new Data_Either.Left(new OutOfBound(pos0 + n | 0, len));
@@ -1047,7 +1036,7 @@ var PS = {};
       return function (pos) {
           return Data_Bifunctor.lmap(Data_Either.bifunctorEither)(function (x) {
               return new OutOfBound(x.pos, x.len);
-          })(Proto_Uint8ArrayExt.index(xs)(pos));
+          })(Proto_Uint8Array.index(xs)(pos));
       };
   };
   var skip$prime = function ($copy_xs) {
@@ -1073,7 +1062,7 @@ var PS = {};
                   $copy_pos = pos + 1 | 0;
                   return;
               };
-              throw new Error("Failed pattern match at Proto.Decode (line 113, column 3 - line 116, column 32): " + [ v.constructor.name ]);
+              throw new Error("Failed pattern match at Proto.Decode (line 112, column 3 - line 115, column 32): " + [ v.constructor.name ]);
           };
           while (!$tco_done) {
               $tco_result = $tco_loop($tco_var_xs, $copy_pos);
@@ -1256,14 +1245,14 @@ var PS = {};
       return function (pos0) {
           return Control_Bind.bind(Data_Either.bindEither)(uint32(xs)(pos0))(function (v) {
               var end = v.pos + v.val | 0;
-              var len = Proto_Uint8ArrayExt.length(xs);
+              var len = Proto_Uint8Array.length(xs);
               var $54 = end > len;
               if ($54) {
                   return new Data_Either.Left(new OutOfBound(end, len));
               };
               return Control_Applicative.pure(Data_Either.applicativeEither)({
                   pos: v.pos + v.val | 0,
-                  val: Proto_Uint8ArrayExt.slice(xs)(v.pos)(end)
+                  val: Proto_Uint8Array.slice(xs)(v.pos)(end)
               });
           });
       };
@@ -1692,9 +1681,19 @@ var PS = {};
   $PS["EqSpec.Pull"] = $PS["EqSpec.Pull"] || {};
   var exports = $PS["EqSpec.Pull"];
   var Data_Array = $PS["Data.Array"];
+  var Data_Eq = $PS["Data.Eq"];
   var EqSpec_Common = $PS["EqSpec.Common"];
   var Proto_Encode = $PS["Proto.Encode"];
-  var Proto_Uint8ArrayExt = $PS["Proto.Uint8ArrayExt"];                
+  var Proto_Uint8Array = $PS["Proto.Uint8Array"];                
+  var C = (function () {
+      function C(value0) {
+          this.value0 = value0;
+      };
+      C.create = function (value0) {
+          return new C(value0);
+      };
+      return C;
+  })();
   var Flow = (function () {
       function Flow(value0) {
           this.value0 = value0;
@@ -1704,39 +1703,74 @@ var PS = {};
       };
       return Flow;
   })();
+  var B = (function () {
+      function B(value0) {
+          this.value0 = value0;
+      };
+      B.create = function (value0) {
+          return new B(value0);
+      };
+      return B;
+  })();
+  var eqA = new Data_Eq.Eq(function (x) {
+      return function (y) {
+          return Data_Eq.eq(Proto_Uint8Array.eqUint8Array)(x.value0.bytes)(y.value0.bytes);
+      };
+  });
   var encodeStart = Proto_Encode.uint32(0);
   var encodeNode = function (v) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(v.root), Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(v.root), Proto_Uint8Array.concatAll(Data_Array.concatMap(function (x) {
           return [ Proto_Encode.uint32(18), encodeNode(x) ];
       })(v.forest)) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeExt = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeNode(msg.tree) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeNode(msg.tree) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeFlowStep = function (v) {
       if (v instanceof EqSpec_Common.Start) {
-          var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeStart ]);
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+          var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeStart ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
       };
       if (v instanceof EqSpec_Common.Ext) {
-          var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(18), encodeExt(v.value0) ]);
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+          var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(18), encodeExt(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
       };
-      throw new Error("Failed pattern match at EqSpec.Pull (line 25, column 1 - line 25, column 41): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at EqSpec.Pull (line 33, column 1 - line 33, column 41): " + [ v.constructor.name ]);
   };
   var encodeFlow = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Uint8Array.concatAll(Data_Array.concatMap(function (x) {
           return [ Proto_Encode.uint32(10), encodeFlowStep(x) ];
       })(msg.steps)) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
+  };
+  var encodeC = function (msg) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.bytes(msg.bytes) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
+  };
+  var encodeA = function (v) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeC(v.value0) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
+  };
+  var encodeB = function (msg) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeA(msg.a) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodePull = function (v) {
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeFlow(v.value0) ]);
+      if (v instanceof Flow) {
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeFlow(v.value0) ]);
+      };
+      if (v instanceof B) {
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(18), encodeB(v.value0) ]);
+      };
+      throw new Error("Failed pattern match at EqSpec.Pull (line 22, column 1 - line 22, column 33): " + [ v.constructor.name ]);
   };
   exports["Flow"] = Flow;
+  exports["B"] = B;
+  exports["C"] = C;
   exports["encodePull"] = encodePull;
+  exports["eqA"] = eqA;
 })(PS);
 (function($PS) {
   "use strict";
@@ -1989,7 +2023,7 @@ var PS = {};
   var Data_Functor = $PS["Data.Functor"];
   var Data_Maybe = $PS["Data.Maybe"];
   var Proto_Encode = $PS["Proto.Encode"];
-  var Proto_Uint8ArrayExt = $PS["Proto.Uint8ArrayExt"];                
+  var Proto_Uint8Array = $PS["Proto.Uint8Array"];                
   var GetSites = (function () {
       function GetSites() {
 
@@ -2034,81 +2068,81 @@ var PS = {};
       return ComponentsSavePrefs;
   })();
   var encodeUploadChunk = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Uint8Array.concatAll(Data_Array.concatMap(function (x) {
           return [ Proto_Encode.uint32(10), Proto_Encode.string(x) ];
       })(msg.path)), Proto_Encode.uint32(18), Proto_Encode.string(msg.id), Proto_Encode.uint32(26), Proto_Encode.bytes(msg.chunk) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeStringString = function (v) {
       var msg = {
           "_1": v.value0,
           "_2": v.value1
       };
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg["_1"]), Proto_Encode.uint32(18), Proto_Encode.string(msg["_2"]) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg["_1"]), Proto_Encode.uint32(18), Proto_Encode.string(msg["_2"]) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodePageWidgets = Proto_Encode.uint32(0);
   var encodePageUrl = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg.addr) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg.addr) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodePageType = function (v) {
       if (v instanceof Common.PageWidgets) {
-          var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodePageWidgets ]);
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+          var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodePageWidgets ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
       };
       if (v instanceof Common.PageUrl) {
-          var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(18), encodePageUrl(v.value0) ]);
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+          var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(18), encodePageUrl(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
       };
-      throw new Error("Failed pattern match at Pull (line 60, column 1 - line 60, column 41): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Pull (line 59, column 1 - line 59, column 41): " + [ v.constructor.name ]);
   };
   var encodePageSeo = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg.descr), Proto_Encode.uint32(17), Proto_Encode["double"](msg.order) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg.descr), Proto_Encode.uint32(17), Proto_Encode["double"](msg.order) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeSavePage = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodePageType(msg.tpe), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.guest), Proto_Encode.uint32(26), encodePageSeo(msg.seo), Data_Maybe.fromMaybe(Proto_Uint8ArrayExt.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(34), encodePageSeo(x) ]);
-      })(msg.mobileSeo)), Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodePageType(msg.tpe), Proto_Encode.uint32(16), Proto_Encode["boolean"](msg.guest), Proto_Encode.uint32(26), encodePageSeo(msg.seo), Data_Maybe.fromMaybe(Proto_Uint8Array.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(34), encodePageSeo(x) ]);
+      })(msg.mobileSeo)), Proto_Uint8Array.concatAll(Data_Array.concatMap(function (x) {
           return [ Proto_Encode.uint32(42), encodeStringString(x) ];
       })(msg.name)) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeGetSites = Proto_Encode.uint32(0);
   var encodeFieldNode = function (v) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(v.root), Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(v.root), Proto_Uint8Array.concatAll(Data_Array.concatMap(function (x) {
           return [ Proto_Encode.uint32(18), encodeFieldNode(x) ];
       })(v.forest)) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeSaveComponentTemplate = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeFieldNode(msg.fieldNode) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeFieldNode(msg.fieldNode) ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeComponentsSavePrefs = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg.id), Proto_Encode.uint32(18), Proto_Encode.string(msg.pageid), Proto_Encode.uint32(26), Proto_Encode.string(msg.siteid), Proto_Encode.uint32(34), encodeFieldNode(msg.tree), Data_Maybe.fromMaybe(Proto_Uint8ArrayExt.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(42), encodeFieldNode(x) ]);
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg.id), Proto_Encode.uint32(18), Proto_Encode.string(msg.pageid), Proto_Encode.uint32(26), Proto_Encode.string(msg.siteid), Proto_Encode.uint32(34), encodeFieldNode(msg.tree), Data_Maybe.fromMaybe(Proto_Uint8Array.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(42), encodeFieldNode(x) ]);
       })(msg.extTree)) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodePull = function (v) {
       if (v instanceof GetSites) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8002), encodeGetSites ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(8002), encodeGetSites ]);
       };
       if (v instanceof UploadChunk) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8010), encodeUploadChunk(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(8010), encodeUploadChunk(v.value0) ]);
       };
       if (v instanceof SavePage) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(8018), encodeSavePage(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(8018), encodeSavePage(v.value0) ]);
       };
       if (v instanceof SaveComponentTemplate) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(11202), encodeSaveComponentTemplate(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(11202), encodeSaveComponentTemplate(v.value0) ]);
       };
       if (v instanceof ComponentsSavePrefs) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(15362), encodeComponentsSavePrefs(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(15362), encodeComponentsSavePrefs(v.value0) ]);
       };
-      throw new Error("Failed pattern match at Pull (line 25, column 1 - line 25, column 33): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Pull (line 24, column 1 - line 24, column 33): " + [ v.constructor.name ]);
   };
   exports["GetSites"] = GetSites;
   exports["UploadChunk"] = UploadChunk;
@@ -2912,7 +2946,7 @@ var PS = {};
   var exports = $PS["SetMap.Pull"];
   var Data_Array = $PS["Data.Array"];
   var Proto_Encode = $PS["Proto.Encode"];
-  var Proto_Uint8ArrayExt = $PS["Proto.Uint8ArrayExt"];
+  var Proto_Uint8Array = $PS["Proto.Uint8Array"];
   var SetMap_Common = $PS["SetMap.Common"];                
   var Flow1 = (function () {
       function Flow1(value0) {
@@ -2937,54 +2971,54 @@ var PS = {};
           "_1": v.value0,
           "_2": v.value1
       };
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg["_1"]), Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg["_1"]), Proto_Uint8Array.concatAll(Data_Array.concatMap(function (x) {
           return [ Proto_Encode.uint32(18), Proto_Encode.string(x) ];
       })(msg["_2"])) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeProd = Proto_Encode.uint32(0);
   var encodeFlow1 = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Uint8Array.concatAll(Data_Array.concatMap(function (x) {
           return [ Proto_Encode.uint32(10), encodeStringArrayString(x) ];
       })(msg.graph)) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeDev = Proto_Encode.uint32(0);
   var encodeStepId = function (v) {
       if (v instanceof SetMap_Common.Prod) {
-          var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeProd ]);
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+          var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeProd ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
       };
       if (v instanceof SetMap_Common.Dev) {
-          var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(18), encodeDev ]);
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+          var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(18), encodeDev ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
       };
-      throw new Error("Failed pattern match at SetMap.Pull (line 54, column 1 - line 54, column 37): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at SetMap.Pull (line 53, column 1 - line 53, column 37): " + [ v.constructor.name ]);
   };
   var encodeStepIdArrayStepId = function (v) {
       var msg = {
           "_1": v.value0,
           "_2": v.value1
       };
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeStepId(msg["_1"]), Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeStepId(msg["_1"]), Proto_Uint8Array.concatAll(Data_Array.concatMap(function (x) {
           return [ Proto_Encode.uint32(18), encodeStepId(x) ];
       })(msg["_2"])) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodeFlow2 = function (msg) {
-      var xs = Proto_Uint8ArrayExt.concatAll([ Proto_Uint8ArrayExt.concatAll(Data_Array.concatMap(function (x) {
+      var xs = Proto_Uint8Array.concatAll([ Proto_Uint8Array.concatAll(Data_Array.concatMap(function (x) {
           return [ Proto_Encode.uint32(10), encodeStepIdArrayStepId(x) ];
       })(msg.graph)) ]);
-      return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(Proto_Uint8ArrayExt.length(xs)), xs ]);
+      return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
   var encodePull = function (v) {
       if (v instanceof Flow1) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(10), encodeFlow1(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), encodeFlow1(v.value0) ]);
       };
       if (v instanceof Flow2) {
-          return Proto_Uint8ArrayExt.concatAll([ Proto_Encode.uint32(18), encodeFlow2(v.value0) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(18), encodeFlow2(v.value0) ]);
       };
-      throw new Error("Failed pattern match at SetMap.Pull (line 16, column 1 - line 16, column 33): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at SetMap.Pull (line 15, column 1 - line 15, column 33): " + [ v.constructor.name ]);
   };
   exports["Flow1"] = Flow1;
   exports["Flow2"] = Flow2;

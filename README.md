@@ -31,7 +31,7 @@ Scala type        | Purescript type
 ```bash
 sbt test
 cd test
-./dep
-./com
-./tes
+bin/dep
+bin/com
+bin/tes
 ```

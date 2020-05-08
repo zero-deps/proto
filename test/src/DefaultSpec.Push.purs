@@ -4,12 +4,12 @@ module DefaultSpec.Push
   ) where
 
 import Control.Monad.Rec.Class (Step(Loop, Done), tailRecM3)
-import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Either (Either(Left))
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing), fromMaybe)
 import Prelude (map, bind, pure, ($), (+), (<))
 import Proto.Decode as Decode
+import Proto.Uint8Array (Uint8Array)
 import DefaultSpec.Common
 
 decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })

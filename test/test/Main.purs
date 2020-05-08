@@ -4,7 +4,7 @@ import Effect (Effect)
 import Effect.Console (log)
 import Prelude (class Eq, class Show, Unit, discard, pure, show, unit, ($), (<>), (==))
 import SchemaPull (encodeTestSchema)
-import Data.ArrayBuffer.Types (Uint8Array)
+import Proto.Uint8Array (Uint8Array)
 -- import Data.Either (Either(Left, Right))
 -- import Data.Tuple (Tuple(Tuple))
 import Cases as Cases

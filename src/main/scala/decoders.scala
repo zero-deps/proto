@@ -3,7 +3,7 @@ package zd.proto.purs
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 import zd.proto.api.MessageCodec
-import zd.gs.z._
+import zero.ext._, option._
 
 object Decoders {
   def from(types: Seq[Tpe], codecs: List[MessageCodec[_]]): Seq[Coder] = {
@@ -23,7 +23,7 @@ object Decoders {
               |  where
               |  decode :: forall a. Decode.Result a -> (a -> $name) -> Decode.Result $name
               |  decode res f = map (\\{ pos, val } -> { pos, val: f val }) res""".stripMargin
-        Coder(tmpl, s"decode$name".just)
+        Coder(tmpl, s"decode$name".some)
       case TraitType(tpe, name, children, false) =>
         val cases = children.flatMap{ case ChildMeta(name1, _, n, noargs, rec) =>
           if (noargs)   s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) \\_ -> Just $name1" :: Nil
@@ -43,11 +43,11 @@ object Decoders {
               |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
               |    decode end (Just acc) pos1 = pure $$ Done { pos: pos1, val: acc }
               |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "$name"""".stripMargin
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
       case TupleType(tpe, tupleName, tpe_1, tpe_2) =>
         val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
         val fun = "decode" + tupleName
-        val cases = List(("first", tpe_1, xs("_1"), Nothing), ("second", tpe_2, xs("_2"), Nothing)).flatMap((decodeFieldLoop _).tupled)
+        val cases = List(("first", tpe_1, xs("_1"), None), ("second", tpe_2, xs("_2"), None)).flatMap((decodeFieldLoop _).tupled)
         val tmpl =
           s"""|$fun :: Uint8Array -> Int -> Decode.Result (Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1})
               |$fun _xs_ pos0 = do
@@ -63,14 +63,14 @@ object Decoders {
               |      case tag `zshr` 3 of${cases.map("\n        "+_).mkString("")}
               |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) (\\_ -> acc)
               |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
       case NoargsType(tpe, name) =>
         val tmpl =
           s"""|decode$name :: Uint8Array -> Int -> Decode.Result Unit
               |decode$name _xs_ pos0 = do
               |  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
               |  pure { pos: pos + msglen, val: unit }""".stripMargin
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
       case RecursiveType(tpe, name) =>
         val fs = fields(tpe)
         val defObj: String = fs.map{ case (name, tpe, _, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
@@ -86,7 +86,7 @@ object Decoders {
           if (simplify) {
             if (hasDefval) {
               val defs = fs.map{
-                case (name, _, _, Just(defval)) => s"$name: fromMaybe $defval $name"
+                case (name, _, _, Some(defval)) => s"$name: fromMaybe $defval $name"
                 case (name, _, _, _) => name
               }.mkString(", ")
               val cases = fields(tpe).flatMap((decodeFieldLoop _).tupled)
@@ -122,12 +122,12 @@ object Decoders {
               val name1 = tpe.typeSymbol.name.encodedName.toString + "'"
               val cases = fields(tpe).flatMap((decodeFieldLoop _).tupled)
               val defs = fs.map{
-                case (name, _, _, Just(defval)) => s"$name: fromMaybe $defval $name"
+                case (name, _, _, Some(defval)) => s"$name: fromMaybe $defval $name"
                 case (name, _, _, _) => name
               }.mkString(", ")
               val case1 = fs.map{
-                case (name, tpe, _, Just(defval)) => name
-                case (name, tpe, _, Nothing) => justValue(name, tpe)
+                case (name, tpe, _, Some(defval)) => name
+                case (name, tpe, _, None) => justValue(name, tpe)
               }.mkString(", ")
               s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                   |decode$name _xs_ pos0 = do
@@ -163,7 +163,7 @@ object Decoders {
                   |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
             }
           }
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
       case RegularType(tpe, name) =>
         val fs = fields(tpe)
         val defObj: String = fs.map{ case (name, tpe, _, _) => nothingValue(name, tpe) }.mkString("{ ", ", ", " }")
@@ -180,7 +180,7 @@ object Decoders {
           if (simplify) {
             if (hasDefval) {
               val defs = fs.map{
-                case (name, _, _, Just(defval)) => s"$name: fromMaybe $defval $name"
+                case (name, _, _, Some(defval)) => s"$name: fromMaybe $defval $name"
                 case (name, _, _, _) => name
               }.mkString(", ")
               s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
@@ -210,12 +210,12 @@ object Decoders {
           } else {
             if (hasDefval) {
               val defs = fs.map{
-                case (name, _, _, Just(defval)) => s"$name: fromMaybe $defval $name"
+                case (name, _, _, Some(defval)) => s"$name: fromMaybe $defval $name"
                 case (name, _, _, _) => name
               }.mkString(", ")
               val case1 = fs.map{
-                case (name, tpe, _, Just(defval)) => name
-                case (name, tpe, _, Nothing) => justValue(name, tpe)
+                case (name, tpe, _, Some(defval)) => name
+                case (name, tpe, _, None) => justValue(name, tpe)
               }.mkString(", ")
               s"""|decode$name :: Uint8Array -> Int -> Decode.Result $name
                   |decode$name _xs_ pos0 = do
@@ -248,23 +248,23 @@ object Decoders {
                   |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
             }
           }
-        Coder(tmpl, Nothing)
+        Coder(tmpl, None)
     }.distinct
   }
 
-  private[this] def decodeFieldLoop(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
+  private[this] def decodeFieldLoop(name: String, tpe: Type, n: Int, defval: Option[Any]): List[String] = {
     decodeFieldLoopTmpl{ case (n: Int, fun: String, mod: String) =>
       s"$n -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> acc { $mod }" :: Nil
     }(name, tpe, n, defval)
   }
 
-  private[this] def decodeFieldLoopNewtype(newtype: String)(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
+  private[this] def decodeFieldLoopNewtype(newtype: String)(name: String, tpe: Type, n: Int, defval: Option[Any]): List[String] = {
     decodeFieldLoopTmpl{ case (n: Int, fun: String, mod: String) =>
       s"$n -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> $newtype $$ acc { $mod }" :: Nil
     }(name, tpe, n, defval)
   }
 
-  private[this] def decodeFieldLoopTmpl(tmpl: (Int, String, String) => List[String])(name: String, tpe: Type, n: Int, defval: Maybe[Any]): List[String] = {
+  private[this] def decodeFieldLoopTmpl(tmpl: (Int, String, String) => List[String])(name: String, tpe: Type, n: Int, defval: Option[Any]): List[String] = {
     if (tpe =:= StringClass.selfType) {
       tmpl(n, "Decode.string", s"$name = Just val")
     } else if (tpe =:= IntClass.selfType) {

@@ -1,7 +1,7 @@
 package zd.proto.purs
 
 import scala.reflect.runtime.universe._
-import zd.gs.z._
+// import zd.gs.z._
 
 sealed trait Tpe { val tpe: Type; val name: String }
 final case class TraitType(tpe: Type, name: String, children: Seq[ChildMeta], firstLevel: Boolean) extends Tpe
@@ -12,9 +12,9 @@ final case class TupleType(tpe: Type, name: String, tpe_1: Type, tpe_2: Type) ex
 
 final case class ChildMeta(name: String, tpe: Type, n: Int, noargs: Boolean, rec: Boolean)
 
-final case class PursType(tmpl: Seq[String], export: Maybe[String])
+final case class PursType(tmpl: Seq[String], export: Option[String])
 
-final case class Coder(tmpl: String, export: Maybe[String])
+final case class Coder(tmpl: String, export: Option[String])
 
 sealed trait IterablePurs
 final case class ArrayPurs(tpe: Type) extends IterablePurs

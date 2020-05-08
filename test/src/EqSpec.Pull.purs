@@ -1,19 +1,27 @@
 module EqSpec.Pull
   ( Pull(..)
+  , B
+  , A(..)
+  , C
   , encodePull
   ) where
 
 import Data.Array (concatMap)
-import Data.ArrayBuffer.Types (Uint8Array)
+import Data.Eq (class Eq)
 import Prelude (($))
 import Proto.Encode as Encode
-import Proto.Uint8ArrayExt (length, concatAll)
+import Proto.Uint8Array (Uint8Array, length, concatAll)
 import EqSpec.Common
 
-data Pull = Flow Flow
+data Pull = Flow Flow | B B
+type B = { a :: A }
+data A = C C
+derive instance eqA :: Eq A
+type C = { bytes :: Uint8Array }
 
 encodePull :: Pull -> Uint8Array
 encodePull (Flow x) = concatAll [ Encode.uint32 10, encodeFlow x ]
+encodePull (B x) = concatAll [ Encode.uint32 18, encodeB x ]
 
 encodeFlow :: Flow -> Uint8Array
 encodeFlow msg = do
@@ -47,5 +55,26 @@ encodeNode (Node msg) = do
         [ Encode.uint32 10
         , Encode.string msg.root
         , concatAll $ concatMap (\x -> [ Encode.uint32 18, encodeNode x ]) msg.forest
+        ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
+
+encodeB :: B -> Uint8Array
+encodeB msg = do
+  let xs = concatAll
+        [ Encode.uint32 10
+        , encodeA msg.a
+        ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
+
+encodeA :: A -> Uint8Array
+encodeA (C x) = do
+  let xs = concatAll [ Encode.uint32 10, encodeC x ]
+  concatAll [ Encode.uint32 $ length xs, xs ]
+
+encodeC :: C -> Uint8Array
+encodeC msg = do
+  let xs = concatAll
+        [ Encode.uint32 10
+        , Encode.bytes msg.bytes
         ]
   concatAll [ Encode.uint32 $ length xs, xs ]

@@ -4,11 +4,10 @@ module SetMap.Pull
   ) where
 
 import Data.Array (concatMap)
-import Data.ArrayBuffer.Types (Uint8Array)
 import Data.Tuple (Tuple(Tuple))
 import Prelude (($))
 import Proto.Encode as Encode
-import Proto.Uint8ArrayExt (length, concatAll)
+import Proto.Uint8Array (Uint8Array, length, concatAll)
 import SetMap.Common
 
 data Pull = Flow1 Flow1 | Flow2 Flow2
