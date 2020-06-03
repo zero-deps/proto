@@ -1,6 +1,7 @@
 # protobuf-scala-purs
 
-* [latest](https://bintray.com/zero-deps/maven/proto-purs/_latestVersion) version
+![CI](https://github.com/zero-deps/protobuf-scala-purs/workflows/CI/badge.svg)
+[![Bintray](https://img.shields.io/bintray/v/zero-deps/maven/proto-purs.svg?label=proto-purs)](https://bintray.com/zero-deps/maven/proto-purs/_latestVersion)
 
 Library generates Purescript code to decode/encode protobuf bytes. Code is generated based on same Scala models. Essentially Scala code replaces .proto files. But because Scala code is part of sources Purescript should be generated at moment of runtime using reflection. Macros is not suitable because their purpose is to manipulate with AST and not to generate anything but code tree.
 
