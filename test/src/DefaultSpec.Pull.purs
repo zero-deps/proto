@@ -69,7 +69,7 @@ encodeRecursiveT2 (RecursiveT2 msg) = do
 encodeOneMaybe :: OneMaybe -> Uint8Array
 encodeOneMaybe msg = do
   let xs = concatAll
-        [ fromMaybe (fromArray []) $ map (\x -> concatAll [ Encode.uint32 8, Encode.boolean x ]) msg.m1
+        [ fromMaybe (fromArray []) $ map (\x -> concatAll [ Encode.uint32 10, Encode.string x ]) msg.m1
         ]
   concatAll [ Encode.uint32 $ length xs, xs ]
 

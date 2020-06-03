@@ -1,4 +1,4 @@
-package zd.proto.purs
+package zero.protopurs
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers

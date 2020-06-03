@@ -1,4 +1,4 @@
-package zd.proto.purs
+package zero.protopurs
 
 object io {
   def writeToFile(path: String, res: String): Unit = {

@@ -1,12 +1,17 @@
 module Push
   ( Push(..)
   , SiteOpts
+  , defaultSiteOpts
   , SiteOpt
+  , defaultSiteOpt
   , Permissions
+  , defaultPermissions
   , Page
+  , defaultPage
   , PageTreeItem
   , ComponentTemplateOk
   , FieldNode1(FieldNode1)
+  , defaultFieldNode1
   , decodePush
   ) where
 
@@ -28,10 +33,18 @@ decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: po
 
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | Ping | ComponentTemplateOk ComponentTemplateOk
 type SiteOpts = { xs :: Array SiteOpt }
+defaultSiteOpts :: { xs :: Array SiteOpt }
+defaultSiteOpts = { xs: [] }
 type SiteOpt = { id :: String, label :: Maybe String }
+defaultSiteOpt :: { label :: Maybe String }
+defaultSiteOpt = { label: Nothing }
 type SiteOpt' = { id :: Maybe String, label :: Maybe String }
 type Permissions = { xs :: Array String }
+defaultPermissions :: { xs :: Array String }
+defaultPermissions = { xs: [] }
 type Page = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
+defaultPage :: { mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
+defaultPage = { mobileSeo: Nothing, name: [] }
 type Page' = { tpe :: Maybe PageType, guest :: Maybe Boolean, seo :: Maybe PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
 type PageUrl' = { addr :: Maybe String }
 type PageSeo' = { descr :: Maybe String, order :: Maybe Number }
@@ -42,6 +55,8 @@ type ComponentTemplateOk' = { fieldNode :: Maybe FieldNode, fieldNode1 :: Maybe 
 type FieldNode' = { root :: Maybe String, forest :: Array FieldNode }
 newtype FieldNode1 = FieldNode1 { root :: Maybe String, forest :: Array FieldNode1 }
 derive instance eqFieldNode1 :: Eq FieldNode1
+defaultFieldNode1 :: { root :: Maybe String, forest :: Array FieldNode1 }
+defaultFieldNode1 = { root: Nothing, forest: [] }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do

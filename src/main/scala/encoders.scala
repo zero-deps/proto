@@ -1,5 +1,6 @@
-package zd.proto.purs
+package zero.protopurs
 
+import scala.annotation.unused
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 import zero.ext._, option._
@@ -51,7 +52,7 @@ object Encoders {
               |$fun (Tuple _1 _2) = do
               |  let msg = { _1, _2 }
               |  let xs = concatAll
-              |  ${List(("_1", tpe_1, xs("_1"), None), ("_2", tpe_2, xs("_2"), None)).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
+              |  ${List(("_1", tpe_1, xs("_1"), NoDef), ("_2", tpe_2, xs("_2"), NoDef)).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
               |  concatAll [ Encode.uint32 $$ length xs, xs ]""".stripMargin
         Coder(tmpl, None)
       case NoargsType(tpe, name) =>
@@ -90,7 +91,7 @@ object Encoders {
     }.distinct
   }
 
-  def encodeField(name: String, tpe: Type, n: Int, defval: Option[Any]): List[String] = {
+  def encodeField(name: String, tpe: Type, n: Int, @unused defval: DefVal): List[String] = {
     if (tpe =:= StringClass.selfType) {
       List(
         s"""Encode.uint32 ${(n<<3)+2}"""

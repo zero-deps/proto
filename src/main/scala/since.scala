@@ -1,4 +1,4 @@
-package zd.proto.purs
+package zero.protopurs
 
 import scala.annotation.StaticAnnotation
 

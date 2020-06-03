@@ -1,4 +1,4 @@
-package zd.proto.purs
+package zero.protopurs
 package eq
 
 import org.scalatest.freespec.AnyFreeSpec

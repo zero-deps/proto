@@ -1,4 +1,4 @@
-package zd.proto.purs
+package zero.protopurs
 
 import scala.reflect.runtime.universe._
 import zd.proto.api.MessageCodec
@@ -34,7 +34,7 @@ object Purescript {
           val code = commonPursTypes.flatMap(_.tmpl).mkString("\n")
           val is = List(
             if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
-          , if (code contains "Maybe ") ("Data.Maybe" -> "Maybe").some else None
+          , if (code contains "Nothing") ("Data.Maybe" -> "Maybe(Nothing)").some else None
           , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple").some else None
           ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + " (" + x._2 + ")").to(List).sorted.mkString("\n")
           s"""|module $moduleCommon
@@ -51,7 +51,8 @@ object Purescript {
             if (code contains "concatMap ") ("Data.Array" -> "concatMap").some else None
           , if (code contains "Uint8Array") ("Proto.Uint8Array" -> "Uint8Array").some else None
           , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
-          , if (raw"\WMaybe ".r.findFirstIn(code).isDefined) ("Data.Maybe" -> "Maybe").some else None
+          , if (raw"\WMaybe ".r.findFirstIn(code).isDefined) ("Data.Maybe" -> "Maybe(..)").some else None
+          // , if (code contains "Nothing") ("Data.Maybe" -> "Maybe(Nothing)").some else None
           , if (code contains "fromMaybe ") ("Data.Maybe" -> "fromMaybe").some else None
           , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple(Tuple)").some else None
           , if (code contains "map ") ("Prelude" -> "map").some else None

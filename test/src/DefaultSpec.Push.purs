@@ -114,7 +114,7 @@ decodeOneMaybe _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { m1 = Just val }
+        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { m1 = Just val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 

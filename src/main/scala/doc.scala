@@ -1,4 +1,4 @@
-package zd.proto.purs
+package zero.protopurs
 
 import scala.reflect.runtime.universe._
 import zero.ext._, option._

@@ -1,4 +1,4 @@
-package zd.proto
+package zero
 
 import scala.annotation.tailrec
 import scala.reflect.runtime.currentMirror
@@ -7,7 +7,7 @@ import scala.reflect.runtime.universe.definitions._
 import zero.ext._, option._
 import zd.proto.Bytes
 
-package object purs {
+package object protopurs {
   def pursTypePars(tpe: Type): (String, String) = {
     if (tpe =:= StringClass.selfType) {
       "String" -> "(Maybe String)"
@@ -161,19 +161,24 @@ package object purs {
     }
   }
   
-  def fields(tpe: Type): List[(String, Type, Int, Option[Any])] = {
+  def fields(tpe: Type): List[(String, Type, Int, DefVal)] = {
     tpe.typeSymbol.asClass.primaryConstructor.asMethod.paramLists.flatten.zipWithIndex.map{ case (x, i) =>
       val term = x.asTerm
+      val tpe1 = term.info
       val defval = if (term.isParamWithDefault) {
         val m = currentMirror
         val im = m.reflect((m.reflectModule(tpe.typeSymbol.asClass.companion.asModule)).instance)
         val method = tpe.companion.decl(TermName("apply$default$"+(i+1).toString)).asMethod
         (im.reflectMethod(method)() match {
-          case x: String => s""""$x""""
-          case x => x.toString
-        }).some
-      } else None
-      (term.name.encodedName.toString, term.info, findN(x), defval)
+          case x: String => StrDef(x)
+          case x => OthDef(x)
+        })
+      } else if (tpe1.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+        NoneDef
+      } else if (isIterable(tpe1)) {
+        SeqDef
+      } else NoDef
+      (term.name.encodedName.toString, tpe1, findN(x), defval)
     }.collect{ case (a, b, Some(n), dv) => (a, b, n, dv) }.sortBy(_._3)
   }
 
@@ -197,12 +202,12 @@ package object purs {
         val params = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._1}" }.mkString(", ")
         val x = s"newtype $name = $name { $params }"
         val eq = s"derive instance eq$name :: Eq $name"
-        val defaults = f.collect{ case (name1, tpe1, _, Some(v)) => (name1, pursType(tpe1)._1, v) }
+        val defaults = f.collect{ case (name1, tpe1, _, v: HasDefFun) => (name1, pursType(tpe1)._1, v) }
         Seq(
           PursType(List(x, eq), s"$name($name)".some).some
         , if (defaults.nonEmpty) {
             val tmpl1 = s"default$name :: { ${defaults.map{ case (name1, tpe1, _) => s"$name1 :: $tpe1" }.mkString(", ")} }"
-            val tmpl2 = s"default$name = { ${defaults.map{ case (name1, _, v) => s"$name1: $v" }.mkString(", ")} }"
+            val tmpl2 = s"default$name = { ${defaults.map{ case (name1, _, v) => s"$name1: ${v.value}" }.mkString(", ")} }"
             PursType(Seq(tmpl1, tmpl2), s"default$name".some).some
           } else None
         , if (genMaybe) {
@@ -218,12 +223,12 @@ package object purs {
         val fs = f.map{ case (name1, tpe1, _, _) => name1 -> pursType(tpe1) }
         val params = fs.map{ case (name1, tpe1) => s"$name1 :: ${tpe1._1}" }.mkString(", ")
         val x = if (params.nonEmpty) s"type $name = { $params }" else s"type $name = {}"
-        val defaults = f.collect{ case (name1, tpe1, _, Some(v)) => (name1, pursType(tpe1)._1, v) }
+        val defaults = f.collect{ case (name1, tpe1, _, v: HasDefFun) => (name1, pursType(tpe1)._1, v) }
         Seq(
           PursType(Seq(x), s"$name".some).some
         , if (defaults.nonEmpty) {
             val tmpl1 = s"default$name :: { ${defaults.map{ case (name1, tpe1, _) => s"$name1 :: $tpe1" }.mkString(", ")} }"
-            val tmpl2 = s"default$name = { ${defaults.map{ case (name1, _, v) => s"$name1: $v" }.mkString(", ")} }"
+            val tmpl2 = s"default$name = { ${defaults.map{ case (name1, _, v) => s"$name1: ${v.value}" }.mkString(", ")} }"
             PursType(Seq(tmpl1, tmpl2), s"default$name".some).some
           } else None
         , if (genMaybe) {

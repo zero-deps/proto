@@ -1,7 +1,6 @@
-package zd.proto.purs
+package zero.protopurs
 
 import scala.reflect.runtime.universe._
-// import zd.gs.z._
 
 sealed trait Tpe { val tpe: Type; val name: String }
 final case class TraitType(tpe: Type, name: String, children: Seq[ChildMeta], firstLevel: Boolean) extends Tpe

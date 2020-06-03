@@ -1,14 +1,17 @@
 module Pull
   ( Pull(..)
   , UploadChunk
+  , defaultUploadChunk
   , SavePage
+  , defaultSavePage
   , SaveComponentTemplate
   , ComponentsSavePrefs
+  , defaultComponentsSavePrefs
   , encodePull
   ) where
 
 import Data.Array (concatMap)
-import Data.Maybe (Maybe, fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($))
 import Proto.Encode as Encode
@@ -17,9 +20,15 @@ import Common
 
 data Pull = GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs
 type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }
+defaultUploadChunk :: { path :: Array String }
+defaultUploadChunk = { path: [] }
 type SavePage = { tpe :: PageType, guest :: Boolean, seo :: PageSeo, mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
+defaultSavePage :: { mobileSeo :: Maybe PageSeo, name :: Array (Tuple String String) }
+defaultSavePage = { mobileSeo: Nothing, name: [] }
 type SaveComponentTemplate = { fieldNode :: FieldNode }
 type ComponentsSavePrefs = { id :: String, pageid :: String, siteid :: String, tree :: FieldNode, extTree :: Maybe FieldNode }
+defaultComponentsSavePrefs :: { extTree :: Maybe FieldNode }
+defaultComponentsSavePrefs = { extTree: Nothing }
 
 encodePull :: Pull -> Uint8Array
 encodePull GetSites = concatAll [ Encode.uint32 8002, encodeGetSites ]

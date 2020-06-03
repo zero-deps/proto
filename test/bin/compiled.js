@@ -935,7 +935,7 @@ var PS = {};
   };
   var encodeOneMaybe = function (msg) {
       var xs = Proto_Uint8Array.concatAll([ Data_Maybe.fromMaybe(Proto_Uint8Array.fromArray([  ]))(Data_Functor.map(Data_Maybe.functorMaybe)(function (x) {
-          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(8), Proto_Encode["boolean"](x) ]);
+          return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(x) ]);
       })(msg.m1)) ]);
       return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
   };
@@ -1420,7 +1420,7 @@ var PS = {};
                           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos1))(function (v) {
                               var v1 = v.val >>> 3;
                               if (v1 === 1) {
-                                  return decodeFieldLoop(end)(Proto_Decode["boolean"](_xs_)(v.pos))(function (val) {
+                                  return decodeFieldLoop(end)(Proto_Decode.string(_xs_)(v.pos))(function (val) {
                                       return {
                                           m1: new Data_Maybe.Just(val)
                                       };
@@ -2229,7 +2229,7 @@ var PS = {};
           var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(18), encodePageUrl(v.value0) ]);
           return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(Proto_Uint8Array.length(xs)), xs ]);
       };
-      throw new Error("Failed pattern match at Pull (line 59, column 1 - line 59, column 41): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Pull (line 68, column 1 - line 68, column 41): " + [ v.constructor.name ]);
   };
   var encodePageSeo = function (msg) {
       var xs = Proto_Uint8Array.concatAll([ Proto_Encode.uint32(10), Proto_Encode.string(msg.descr), Proto_Encode.uint32(17), Proto_Encode["double"](msg.order) ]);
@@ -2276,13 +2276,26 @@ var PS = {};
       if (v instanceof ComponentsSavePrefs) {
           return Proto_Uint8Array.concatAll([ Proto_Encode.uint32(15362), encodeComponentsSavePrefs(v.value0) ]);
       };
-      throw new Error("Failed pattern match at Pull (line 24, column 1 - line 24, column 33): " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Pull (line 33, column 1 - line 33, column 33): " + [ v.constructor.name ]);
+  };
+  var defaultUploadChunk = {
+      path: [  ]
+  };
+  var defaultSavePage = {
+      mobileSeo: Data_Maybe.Nothing.value,
+      name: [  ]
+  };
+  var defaultComponentsSavePrefs = {
+      extTree: Data_Maybe.Nothing.value
   };
   exports["GetSites"] = GetSites;
   exports["UploadChunk"] = UploadChunk;
   exports["SavePage"] = SavePage;
   exports["SaveComponentTemplate"] = SaveComponentTemplate;
   exports["ComponentsSavePrefs"] = ComponentsSavePrefs;
+  exports["defaultUploadChunk"] = defaultUploadChunk;
+  exports["defaultSavePage"] = defaultSavePage;
+  exports["defaultComponentsSavePrefs"] = defaultComponentsSavePrefs;
   exports["encodePull"] = encodePull;
 })(PS);
 (function($PS) {
@@ -2361,6 +2374,23 @@ var PS = {};
           return Data_Eq.eq(Data_Eq.eqArray(eqFieldNode1))(x.forest)(y.forest) && Data_Eq.eq(Data_Maybe.eqMaybe(Data_Eq.eqString))(x.root)(y.root);
       };
   });
+  var defaultSiteOpts = {
+      xs: [  ]
+  };
+  var defaultSiteOpt = {
+      label: Data_Maybe.Nothing.value
+  };
+  var defaultPermissions = {
+      xs: [  ]
+  };
+  var defaultPage = {
+      mobileSeo: Data_Maybe.Nothing.value,
+      name: [  ]
+  };
+  var defaultFieldNode1 = {
+      root: Data_Maybe.Nothing.value,
+      forest: [  ]
+  };
   var decodePing = function (_xs_) {
       return function (pos0) {
           return Control_Bind.bind(Data_Either.bindEither)(Proto_Decode.uint32(_xs_)(pos0))(function (v) {
@@ -2668,7 +2698,7 @@ var PS = {};
                       if (v instanceof Data_Maybe.Nothing) {
                           return Data_Either.Left.create(new Proto_Decode.MissingFields("PageType"));
                       };
-                      throw new Error("Failed pattern match at Push (line 129, column 5 - line 129, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
+                      throw new Error("Failed pattern match at Push (line 144, column 5 - line 144, column 144): " + [ end.constructor.name, v.constructor.name, pos1.constructor.name ]);
                   };
               };
           };
@@ -3049,7 +3079,12 @@ var PS = {};
   exports["PageTreeItem"] = PageTreeItem;
   exports["Ping"] = Ping;
   exports["ComponentTemplateOk"] = ComponentTemplateOk;
+  exports["defaultSiteOpts"] = defaultSiteOpts;
+  exports["defaultSiteOpt"] = defaultSiteOpt;
+  exports["defaultPermissions"] = defaultPermissions;
+  exports["defaultPage"] = defaultPage;
   exports["FieldNode1"] = FieldNode1;
+  exports["defaultFieldNode1"] = defaultFieldNode1;
   exports["decodePush"] = decodePush;
   exports["eqFieldNode1"] = eqFieldNode1;
 })(PS);
