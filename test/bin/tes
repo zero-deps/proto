@@ -1,1 +1,1 @@
-pulp test -o out_test
+npx spago test

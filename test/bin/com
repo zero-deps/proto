@@ -1,2 +1,2 @@
-purs compile 'bower_components/purescript-*/src/**/*.purs' 'src/*.purs' --no-prefix -o 'out' &&
-purs bundle 'out/**/*.js' -o 'bin/compiled.js' -m Pull -m Push -m SetMap.Pull -m SetMap.Push -m EqSpec.Pull -m EqSpec.Push -m DefaultSpec.Push -m DefaultSpec.Pull
+npx spago build &&
+npx purs bundle 'output/**/*.js' -o 'bin/compiled.js' -m Pull -m Push -m SetMap.Pull -m SetMap.Push -m EqSpec.Pull -m EqSpec.Push -m DefaultSpec.Push -m DefaultSpec.Pull

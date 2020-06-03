@@ -6,6 +6,7 @@ module DefaultSpec.Push
 import Control.Monad.Rec.Class (Step(Loop, Done), tailRecM3)
 import Data.Array (snoc)
 import Data.Either (Either(Left))
+import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing), fromMaybe)
 import Prelude (map, bind, pure, ($), (+), (<))
@@ -17,6 +18,7 @@ decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Re
 decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
 data Push = SimpleT1 SimpleT1 | SimpleT2 SimpleT2 | RecursiveT1'' RecursiveT1 | RecursiveT2'' RecursiveT2 | OneMaybe OneMaybe | OneSeq OneSeq
+derive instance eqPush :: Eq Push
 type SimpleT1' = { m1 :: Maybe Boolean, b1 :: Maybe Boolean, b2 :: Maybe String }
 type SimpleT2' = { b0 :: Maybe Boolean, b1 :: Maybe Boolean, b2 :: Maybe String }
 type RecursiveT1' = { b1 :: Maybe Boolean, b2 :: Maybe String, x :: Maybe RecursiveT1 }

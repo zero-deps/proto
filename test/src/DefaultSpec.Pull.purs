@@ -4,6 +4,7 @@ module DefaultSpec.Pull
   ) where
 
 import Data.Array (concatMap)
+import Data.Eq (class Eq)
 import Data.Maybe (fromMaybe)
 import Prelude (map, ($))
 import Proto.Encode as Encode
@@ -11,6 +12,7 @@ import Proto.Uint8Array (Uint8Array, length, concatAll, fromArray)
 import DefaultSpec.Common
 
 data Pull = SimpleT1 SimpleT1 | SimpleT2 SimpleT2 | RecursiveT1'' RecursiveT1 | RecursiveT2'' RecursiveT2 | OneMaybe OneMaybe | OneSeq OneSeq
+derive instance eqPull :: Eq Pull
 
 encodePull :: Pull -> Uint8Array
 encodePull (SimpleT1 x) = concatAll [ Encode.uint32 10, encodeSimpleT1 x ]

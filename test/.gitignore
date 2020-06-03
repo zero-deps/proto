@@ -1,4 +1,3 @@
-/bower_components/
-/out/
-/out_test/
-
+/.spago/
+/node_modules/
+/output/

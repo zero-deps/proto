@@ -11,6 +11,7 @@ module Pull
   ) where
 
 import Data.Array (concatMap)
+import Data.Eq (class Eq)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, ($))
@@ -19,6 +20,7 @@ import Proto.Uint8Array (Uint8Array, length, concatAll, fromArray)
 import Common
 
 data Pull = GetSites | UploadChunk UploadChunk | SavePage SavePage | SaveComponentTemplate SaveComponentTemplate | ComponentsSavePrefs ComponentsSavePrefs
+derive instance eqPull :: Eq Pull
 type UploadChunk = { path :: Array String, id :: String, chunk :: Uint8Array }
 defaultUploadChunk :: { path :: Array String }
 defaultUploadChunk = { path: [] }

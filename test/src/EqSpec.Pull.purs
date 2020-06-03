@@ -14,6 +14,7 @@ import Proto.Uint8Array (Uint8Array, length, concatAll)
 import EqSpec.Common
 
 data Pull = Flow Flow | B B
+derive instance eqPull :: Eq Pull
 type B = { a :: A }
 data A = C C
 derive instance eqA :: Eq A

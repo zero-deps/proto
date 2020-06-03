@@ -4,6 +4,7 @@ module SetMap.Pull
   ) where
 
 import Data.Array (concatMap)
+import Data.Eq (class Eq)
 import Data.Tuple (Tuple(Tuple))
 import Prelude (($))
 import Proto.Encode as Encode
@@ -11,6 +12,7 @@ import Proto.Uint8Array (Uint8Array, length, concatAll)
 import SetMap.Common
 
 data Pull = Flow1 Flow1 | Flow2 Flow2
+derive instance eqPull :: Eq Pull
 
 encodePull :: Pull -> Uint8Array
 encodePull (Flow1 x) = concatAll [ Encode.uint32 10, encodeFlow1 x ]

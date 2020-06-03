@@ -184,16 +184,15 @@ package object protopurs {
 
   def makePursTypes(types: Seq[Tpe], genMaybe: Boolean): Seq[PursType] = {
     types.flatMap{
-      case TraitType(tpe, name, children, firstLevel) =>
+      case TraitType(tpe, name, children, _) =>
         List(PursType(List(
           s"data $name = ${children.map{
             case x if x.noargs => x.name
             case x if x.rec => s"${x.name}'' ${x.name}"
             case x => s"${x.name} ${x.name}"
-          }.mkString(" | ")}".some
-        , if (firstLevel) None
-          else s"derive instance eq$name :: Eq $name".some
-        ).flatten, export=s"$name(..)".some))
+          }.mkString(" | ")}"
+        , s"derive instance eq$name :: Eq $name"
+        ), export=s"$name(..)".some))
       case _: TupleType => Nil
       case _: NoargsType => Nil
       case RecursiveType(tpe, name) =>

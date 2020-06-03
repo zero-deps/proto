@@ -6,6 +6,7 @@ module SetMap.Push
 import Control.Monad.Rec.Class (Step(Loop, Done), tailRecM3)
 import Data.Array (snoc)
 import Data.Either (Either(Left))
+import Data.Eq (class Eq)
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple))
@@ -19,6 +20,7 @@ decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Re
 decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
 data Push = Flow1 Flow1 | Flow2 Flow2
+derive instance eqPush :: Eq Push
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do

@@ -1,9 +1,0 @@
-{
-  "name": "test",
-  "private": true,
-  "devDependencies": {
-    "purescript-protobuf": "https://github.com/zero-deps/purescript-protobuf.git",
-    "purescript-node-process": "*",
-    "purescript-psci-support": "*"
-  }
-}

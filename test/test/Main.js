@@ -1,6 +1,5 @@
 "use strict"
 
-exports["printBytes"] = function(xs) {
-  return xs.join(" ")
-}
+exports.printBytes = xs => xs.join(" ")
 
+exports.show = JSON.stringify

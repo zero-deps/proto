@@ -32,6 +32,7 @@ decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Re
 decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
 data Push = SiteOpts SiteOpts | Permissions Permissions | Page Page | PageTreeItem PageTreeItem | Ping | ComponentTemplateOk ComponentTemplateOk
+derive instance eqPush :: Eq Push
 type SiteOpts = { xs :: Array SiteOpt }
 defaultSiteOpts :: { xs :: Array SiteOpt }
 defaultSiteOpts = { xs: [] }
