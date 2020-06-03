@@ -4,6 +4,7 @@ module DefaultSpec.Push
   ) where
 
 import Control.Monad.Rec.Class (Step(Loop, Done), tailRecM3)
+import Data.Array (snoc)
 import Data.Either (Either(Left))
 import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing), fromMaybe)
@@ -15,7 +16,7 @@ import DefaultSpec.Common
 decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
 decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
-data Push = SimpleT1 SimpleT1 | SimpleT2 SimpleT2 | RecursiveT1'' RecursiveT1 | RecursiveT2'' RecursiveT2
+data Push = SimpleT1 SimpleT1 | SimpleT2 SimpleT2 | RecursiveT1'' RecursiveT1 | RecursiveT2'' RecursiveT2 | OneMaybe OneMaybe | OneSeq OneSeq
 type SimpleT1' = { m1 :: Maybe Boolean, b1 :: Maybe Boolean, b2 :: Maybe String }
 type SimpleT2' = { b0 :: Maybe Boolean, b1 :: Maybe Boolean, b2 :: Maybe String }
 type RecursiveT1' = { b1 :: Maybe Boolean, b2 :: Maybe String, x :: Maybe RecursiveT1 }
@@ -29,6 +30,8 @@ decodePush _xs_ = do
     2 -> decode (decodeSimpleT2 _xs_ pos1) SimpleT2
     3 -> decode (decodeRecursiveT1 _xs_ pos1) RecursiveT1''
     4 -> decode (decodeRecursiveT2 _xs_ pos1) RecursiveT2''
+    5 -> decode (decodeOneMaybe _xs_ pos1) OneMaybe
+    6 -> decode (decodeOneSeq _xs_ pos1) OneSeq
     i -> Left $ Decode.BadType i
   where
   decode :: forall a. Decode.Result a -> (a -> Push) -> Decode.Result Push
@@ -99,5 +102,31 @@ decodeRecursiveT2 _xs_ pos0 = do
         1 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { b1 = Just val }
         2 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { b2 = Just val }
         3 -> decodeFieldLoop end (decodeRecursiveT2 _xs_ pos2) \val -> acc { x = Just val }
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
+
+decodeOneMaybe :: Uint8Array -> Int -> Decode.Result OneMaybe
+decodeOneMaybe _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  tailRecM3 decode (pos + msglen) { m1: Nothing } pos
+    where
+    decode :: Int -> OneMaybe -> Int -> Decode.Result' (Step { a :: Int, b :: OneMaybe, c :: Int } { pos :: Int, val :: OneMaybe })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { m1 = Just val }
+        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
+    decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
+
+decodeOneSeq :: Uint8Array -> Int -> Decode.Result OneSeq
+decodeOneSeq _xs_ pos0 = do
+  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  tailRecM3 decode (pos + msglen) { xs: [] } pos
+    where
+    decode :: Int -> OneSeq -> Int -> Decode.Result' (Step { a :: Int, b :: OneSeq, c :: Int } { pos :: Int, val :: OneSeq })
+    decode end acc pos1 | pos1 < end = do
+      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      case tag `zshr` 3 of
+        1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { xs = snoc acc.xs val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }

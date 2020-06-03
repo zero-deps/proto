@@ -6,7 +6,9 @@ module DefaultSpec.Common
   , RecursiveT1(RecursiveT1)
   , defaultRecursiveT1
   , RecursiveT2(RecursiveT2)
-  , defaultRecursiveT2 
+  , defaultRecursiveT2
+  , OneMaybe
+  , OneSeq 
   ) where
 
 import Data.Eq (class Eq)
@@ -26,3 +28,5 @@ newtype RecursiveT2 = RecursiveT2 { b1 :: Boolean, b2 :: String, x :: Maybe Recu
 derive instance eqRecursiveT2 :: Eq RecursiveT2
 defaultRecursiveT2 :: { b1 :: Boolean, b2 :: String }
 defaultRecursiveT2 = { b1: false, b2: "" }
+type OneMaybe = { m1 :: Maybe Boolean }
+type OneSeq = { xs :: Array String }
