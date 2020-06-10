@@ -2,6 +2,7 @@ package zd
 package proto
 
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
+import zd.proto.Bytes
 
 object api {
   trait Prepare {
@@ -16,12 +17,24 @@ object api {
     val aType: String
   }
 
+  def encodeToBytes[A](a: A)(implicit c: MessageCodec[A]) = {
+    Bytes.unsafeWrap(encode[A](a))
+  }
+
   def encode[A](a: A)(implicit c: MessageCodec[A]) = {
     val p = c.prepare(a)
     val bytes = new Array[Byte](p.size)
     val os = CodedOutputStream.newInstance(bytes)
     p.write(os)
     bytes
+  }
+
+  def decode[A](xs: Bytes)(implicit c: MessageCodec[A]): A = {
+    decode[A](xs.unsafeArray, offset=0)
+  }
+
+  def decode[A](xs: Bytes, offset: Int)(implicit c: MessageCodec[A]): A = {
+    decode[A](xs.unsafeArray, offset)
   }
 
   def decode[A](xs: Array[Byte], offset: Int=0)(implicit c: MessageCodec[A]): A = {
