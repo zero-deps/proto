@@ -40,26 +40,15 @@ class DocTest extends AnyFreeSpec with Matchers {
   "log" - {
     "pull" in {
       res.doc.collectFirst{ case ("DocTest.Pull", x) => x._2 }.get shouldBe
-        """\subsubsection{1.0.1}
-          |\begin{itemize}
-          |  \item{Ping} added
-          |\end{itemize}""".stripMargin
+        Map("1.0.1" -> Set("Ping" -> "added"))
     }
     "push" in {
       res.doc.collectFirst{ case ("DocTest.Push", x) => x._2 }.get shouldBe
-        """\subsubsection{1.2.0}
-          |\begin{itemize}
-          |  \item{Translated} change type of 'xs'
-          |\end{itemize}
-          |\subsubsection{1.1.0}
-          |\begin{itemize}
-          |  \item{Translated} rename 'values' to 'xs'
-          |\end{itemize}
-          |\subsubsection{1.0.1}
-          |\begin{itemize}
-          |  \item{Ping} added
-          |  \item{Translated} added
-          |\end{itemize}""".stripMargin
+        Map(
+          "1.2.0" -> Set("Translated" -> "change type of 'xs'")
+        , "1.1.0" -> Set("Translated" -> "rename 'values' to 'xs'")
+        , "1.0.1" -> Set("Ping" -> "added", "Translated" -> "added")
+        )
     }
   }
 }

@@ -6,14 +6,13 @@ import zero.ext._, option._
 object Doc {
   type Version = String
   type Change = String
-  type ChangeLog = String
+  type Message = String
+  type ChangeLog = List[(Version, List[(Message, Change)])]
   def tex(xs: Seq[Tpe]): (String, ChangeLog) = {
-    val changeLog = xs.flatMap{ x =>
-      since(x.tpe.typeSymbol).map{ case (x1, y) => x1 -> s"  \\item{${x.name}} $y" }
-    }.groupBy(_._1).to(List).sortBy(_._1).reverse.map{ case (x, y) => s"\\subsubsection{$x}" -> y.map(_._2).sorted.mkString("\n")}.map{
-      case (x, "") => x
-      case (x, y) => x + "\n\\begin{itemize}\n" + y + "\n\\end{itemize}"
-    }.mkString("\n")
+    val changeLog = xs.to(List).flatMap{ x =>
+      val message = x.name
+      since(x.tpe.typeSymbol).map{ case (version, change) => version -> (message -> change) }
+    }.groupBy(_._1).view.mapValues(_.map(_._2)).to(List)
     xs.flatMap{
       case x: TraitType if x.firstLevel => None
       case x: TraitType =>
@@ -28,13 +27,13 @@ object Doc {
     }.mkString("\n") -> changeLog
   }
   
-  private[this] def since(x: Symbol): Seq[(Version,Change)] = {
+  private[this] def since(x: Symbol): List[(Version, Change)] = {
     x.annotations.filter(_.tree.tpe =:= typeOf[Since]).map{ x1 =>
       x1.tree.children.tail match {
         case List(Literal(Constant(version: String)), Literal(Constant(change: String))) =>
           version -> change
         case _ => throw new Exception("bad args in N")
       }
-    }
+    }.to(List)
   }
 }
