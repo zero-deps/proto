@@ -40,15 +40,15 @@ class DocTest extends AnyFreeSpec with Matchers {
   "log" - {
     "pull" in {
       res.doc.collectFirst{ case ("DocTest.Pull", x) => x._2 }.get shouldBe
-        Map("1.0.1" -> Set("Ping" -> "added"))
+        List("1.0.1" -> List("Ping" -> "added"))
     }
     "push" in {
-      res.doc.collectFirst{ case ("DocTest.Push", x) => x._2 }.get shouldBe
-        Map(
-          "1.2.0" -> Set("Translated" -> "change type of 'xs'")
-        , "1.1.0" -> Set("Translated" -> "rename 'values' to 'xs'")
-        , "1.0.1" -> Set("Ping" -> "added", "Translated" -> "added")
-        )
+      res.doc.collectFirst{ case ("DocTest.Push", x) => x._2 }.get.sortBy(_._1) shouldBe
+        List(
+          "1.2.0" -> List("Translated" -> "change type of 'xs'")
+        , "1.1.0" -> List("Translated" -> "rename 'values' to 'xs'")
+        , "1.0.1" -> List("Ping" -> "added", "Translated" -> "added")
+        ).sortBy(_._1)
     }
   }
 }
