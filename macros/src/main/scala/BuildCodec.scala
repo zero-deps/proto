@@ -4,7 +4,6 @@ package proto
 import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted._
-import scala.quoted.matching._
 import scala.internal.quoted.showName
 import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
@@ -367,7 +366,7 @@ trait BuildCodec extends Common {
     val msgCodecTpe = '[MessageCodec[$tpe]]
     Expr.summon(using msgCodecTpe) match
       case Some(expr) => expr
-      case None => qctx.throwError(s"could not find implicit codec for `${tpe.show}`")
+      case None => Reporting.throwError(s"could not find implicit codec for `${tpe.show}`")
 
   def classApply(t: Type, params: List[Term]): Term =
     t match

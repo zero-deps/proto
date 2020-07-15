@@ -4,7 +4,6 @@ package proto
 import proto.api.{MessageCodec, Prepare, N, RestrictedN}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted._
-import scala.quoted.matching._
 import scala.internal.quoted.showName
 import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
@@ -54,7 +53,7 @@ trait Common {
     else if t.isArrayByte then '{ ${os}.writeByteArrayNoTag(${getValue.cast[Array[Byte]]}) }
     else if t.isArraySeqByte then '{ ${os}.writeByteArrayNoTag(${getValue.cast[ArraySeq[Byte]]}.toArray[Byte]) }
     else if t.isBytesType then '{ ${os}.writeByteArrayNoTag(${getValue.cast[Bytes]}.unsafeArray) }
-    else qctx.throwError(s"Unsupported common type: ${t.typeSymbol.name}")
+    else Reporting.throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def sizeFun(t: Type, getterTerm: Term): Expr[Int] =
     val getValue = getterTerm.seal
@@ -67,7 +66,7 @@ trait Common {
     else if t.isArrayByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getValue.cast[Array[Byte]]}) }
     else if t.isArraySeqByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getValue.cast[ArraySeq[Byte]]}.toArray[Byte]) }
     else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getValue.cast[Bytes]}.unsafeArray) }
-    else qctx.throwError(s"Unsupported common type: ${t.typeSymbol.name}")
+    else Reporting.throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def readFun(t: Type, is: Expr[CodedInputStream]): Expr[Any] =
     if      t.isInt then '{ ${is}.readInt32 }
@@ -79,7 +78,7 @@ trait Common {
     else if t.isArrayByte then '{ ${is}.readByteArray }
     else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray) }
     else if t.isBytesType then '{ Bytes.unsafeWrap(${is}.readByteArray) }
-    else qctx.throwError(s"Unsupported common type: ${t.typeSymbol.name}")
+    else Reporting.throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   val ArrayByteType: Type = typeOf[Array[Byte]]
   val ArraySeqByteType: Type = typeOf[ArraySeq[Byte]]
@@ -124,15 +123,15 @@ trait Common {
 
   def (t: Type) optionArgument: Type = t match
     case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head.asInstanceOf[Type]
-    case _ => qctx.throwError(s"It isn't Option type: ${t.typeSymbol.name}")
+    case _ => Reporting.throwError(s"It isn't Option type: ${t.typeSymbol.name}")
 
   def (t: Type) iterableArgument: Type = t match
     case AppliedType(_, args) if t.isIterable => args.head.asInstanceOf[Type]
-    case _ => qctx.throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
+    case _ => Reporting.throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
   def (t: Type) iterableBaseType: Type = t match
     case AppliedType(t1, _) if t.isIterable => t1
-    case _ => qctx.throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
+    case _ => Reporting.throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
   def (t: Type) isCommonType: Boolean = commonTypes.exists(_ =:= t)
 
@@ -140,14 +139,14 @@ trait Common {
     val aName = RestrictedNType.typeSymbol.name
     val tName = t.typeSymbol.fullName
     t.typeSymbol.annots.collect{ case Apply(Select(New(tpt),_), List(Typed(Repeated(args,_),_))) if tpt.tpe =:= RestrictedNType => args } match
-      case List(Nil) => qctx.throwError(s"empty annotation ${aName} for `${tName}`")
+      case List(Nil) => Reporting.throwError(s"empty annotation ${aName} for `${tName}`")
       case List(xs) =>
         val nums = xs.collect{
           case Literal(Constant(n: Int)) => n
-          case x => qctx.throwError(s"wrong annotation ${aName} for `${tName}` $x")
+          case x => Reporting.throwError(s"wrong annotation ${aName} for `${tName}` $x")
         }
-        if (nums.size != nums.distinct.size) qctx.throwError(s"nums not unique in annotation ${aName} for `${tName}`")
+        if (nums.size != nums.distinct.size) Reporting.throwError(s"nums not unique in annotation ${aName} for `${tName}`")
         nums
       case Nil => Nil
-      case _ => qctx.throwError(s"multiple ${aName} annotations applied for `${tName}`")
+      case _ => Reporting.throwError(s"multiple ${aName} annotations applied for `${tName}`")
 }

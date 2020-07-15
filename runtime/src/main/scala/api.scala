@@ -31,6 +31,6 @@ object api {
     c.read(is)
   }
 
-  final case class N(n: Int) extends scala.annotation.StaticAnnotation
-  final case class RestrictedN(nums: Int*) extends scala.annotation.StaticAnnotation
+  final case class N(n: Int) extends annotation.StaticAnnotation
+  final case class RestrictedN(nums: Int*) extends annotation.StaticAnnotation
 }
