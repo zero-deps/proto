@@ -32,6 +32,10 @@ trait Common {
   def constructorParams(t: c.Type): List[TermSymbol] = t.typeSymbol.asClass.primaryConstructor.asMethod.paramLists.flatten.map(_.asTerm)
   def typeArgsToReplace(t: c.Type): List[(c.Type, c.Type)] = t.typeSymbol.asClass.primaryConstructor.owner.asClass.typeParams.map(_.asType.toType).zip(t.typeArgs)
   def knownDirectSubclasses(t: c.Type): List[c.Type] = t.typeSymbol.asClass.knownDirectSubclasses.toList.map(_.asType.toType)//.filter(isCaseClass)
+  def knownFinalSubclasses(t: c.Type): List[c.Type] = knownDirectSubclasses(t).flatMap{
+    case t if isTrait(t) => knownDirectSubclasses(t)
+    case t => List(t)
+  }
 
   def messageCodecFor(t: c.Type): c.Type = appliedType(typeOf[MessageCodec[Unit]].typeConstructor, t)
   def builder(t1: c.Type, t2: c.Type): c.Type = appliedType(typeOf[scala.collection.mutable.Builder[Unit, Unit]].typeConstructor, t1, t2)

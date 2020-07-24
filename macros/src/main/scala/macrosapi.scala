@@ -171,7 +171,7 @@ class Impl(val c: Context) extends BuildCodec {
 
   def sealedTraitCodecAuto[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getSealedTrait[A]
-    val nums: List[(c.Type, Int)] = knownDirectSubclasses(aType).map { tpe =>
+    val nums: List[(c.Type, Int)] = knownFinalSubclasses(aType).map { tpe =>
       tpe.typeSymbol.annotations.filter(_.tree.tpe =:= NType) match {
         case List(a) =>
           a.tree.children.tail match {
@@ -189,7 +189,7 @@ class Impl(val c: Context) extends BuildCodec {
 
   def findTypes[A:c.WeakTypeTag](nums: Seq[(String, Int)]): Seq[(c.Type, Int)] = {
     val aType: c.Type = getSealedTrait[A]
-    knownDirectSubclasses(aType).map{tpe =>
+    knownFinalSubclasses(aType).map{tpe =>
       val decodedName: String = tpe.typeSymbol.name.decodedName.toString
       tpe -> nums.collectFirst{case (name, num) if name == decodedName => num}.getOrElse(error(s"missing num for `${decodedName}: ${tpe}`"))
     }
@@ -198,7 +198,7 @@ class Impl(val c: Context) extends BuildCodec {
   def sealedTraitCodec[A:c.WeakTypeTag](nums: Seq[(c.Type, Int)]): c.Tree = {
     val aType: c.Type = getSealedTrait[A]
     val restrictedNums = getRestrictedNums(aType)
-    val subclasses = knownDirectSubclasses(aType)
+    val subclasses = knownFinalSubclasses(aType)
     if (subclasses.size <= 0) error(s"required at least 1 subclass for `${aType}`")
     if (nums.size != subclasses.size) error(s"`${aType}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
     if (nums.exists(_._2 < 1)) error(s"nums ${nums} should be > 0")
