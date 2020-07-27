@@ -224,6 +224,12 @@ class Impl(val c: Context) extends BuildCodec {
     val prepareAll = params.map(field => prepare(List(field), field.tpe, aName, sizeAcc, osName)).flatten
     val matchParams = params.map(field => cq"${aName}: ${field.tpe} => prepare(${aName})")
     val res = q"""new ${messageCodecFor(aType)} {
+      ${
+        aType.typeSymbol.companion match {
+          case NoSymbol => q""
+          case companion => q"import ${companion}._"
+        }
+      }
       ..${prepareAll}
       def prepare(${aName}: ${aType}): ${PrepareType} = {
         ${aName} match {
