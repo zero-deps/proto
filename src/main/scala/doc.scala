@@ -17,7 +17,7 @@ object Doc {
       case x: TraitType if x.firstLevel => None
       case x: TraitType =>
         val a = x.children.map(y => s"  \\item ${y.name}").mkString("\n")
-        val b = s"\\paragraph{${x.name}}\n" + (if (a.nonEmpty) s"\\begin{itemize}\n$a\n\\end{itemize}" else throw new Exception("no children: check @N on children"))
+        val b = s"\\paragraph{${x.name}}\n" + (if (a.nonEmpty) s"\\begin{itemize}\n$a\n\\end{itemize}" else throw new Exception(s"no children: check @N on children for ${x.name}"))
         b.some
       case x @ (_: RegularType | _: RecursiveType | _: NoargsType) =>
         val a = fields(x.tpe).map(y => s"  \\item[${y._1}] ${pursTypePars(y._2)._1}").mkString("\n")

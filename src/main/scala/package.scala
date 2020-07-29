@@ -102,8 +102,12 @@ package object protopurs {
     def isTrait(t: Type): Boolean = {
       t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
     }
+    def knownFinalSubclasses(tpe: Type): Vector[Symbol] = tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.flatMap{
+      case t if isTrait(t.asType.toType) => t.asClass.knownDirectSubclasses.toVector
+      case t => List(t)
+    }
     def findChildren(tpe: Type): Seq[ChildMeta] = {
-      tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{
+      knownFinalSubclasses(tpe).map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{
         case (x, n) =>
           val tpe1 = x.asType.toType
           ChildMeta(name=tpe1.typeSymbol.name.encodedName.toString, tpe1, n, noargs=fields(tpe1).isEmpty, rec=isRecursive(tpe1))
