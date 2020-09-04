@@ -1,6 +1,6 @@
 ThisBuild / organization := "io.github.zero-deps"
 ThisBuild / version := zd.gs.git.GitOps.version
-ThisBuild / scalaVersion := "0.25.0-RC2"
+ThisBuild / scalaVersion := "0.26.0"
 ThisBuild / scalacOptions ++= Seq(
   // "-Ywarn-extra-implicit",
   "-Xfatal-warnings",

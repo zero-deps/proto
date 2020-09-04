@@ -3,7 +3,7 @@ package proto
 
 import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
-import scala.quoted._
+import scala.quoted._, report._
 import scala.internal.quoted.showName
 import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
@@ -53,8 +53,8 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val nums: List[(String, Int)] = params.map(p =>
       p.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant(num: Int)))) if tpt.tpe.isNType => p.name -> num } match {
         case List(x) => x
-        case Nil => Reporting.throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
-        case _ => Reporting.throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
+        case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+        case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
       }
     )
     messageCodec(aType, nums, params, restrictDefaults=true)
@@ -96,29 +96,29 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val aTypeCompanionSym = aTypeSym.companionModule
     val typeName = aTypeSym.fullName
     
-    if (nums.exists(_._2 < 1)) Reporting.throwError(s"nums ${nums} should be > 0")
-    if (nums.size != cParams.size) Reporting.throwError(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
-    if (nums.groupBy(_._2).exists(_._2.size != 1)) Reporting.throwError(s"nums ${nums} should be unique")
+    if (nums.exists(_._2 < 1)) throwError(s"nums ${nums} should be > 0")
+    if (nums.size != cParams.size) throwError(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
+    if (nums.groupBy(_._2).exists(_._2.size != 1)) throwError(s"nums ${nums} should be unique")
     val restrictedNums = aType.restrictedNums
 
     val fields: List[FieldInfo] = cParams.zipWithIndex.map{ case (s, i) =>
       val (name, tpt) = s.tree match
         case ValDef(vName,vTpt,vRhs) => (vName, vTpt)
-        case _ => Reporting.throwError(s"wrong param definition of case class `${typeName}`")
+        case _ => throwError(s"wrong param definition of case class `${typeName}`")
       val tpe = tpt.tpe
       val defaultValue: Option[Term] = aTypeCompanionSym.method(defaultMethodName(i)) match {
         case List(x) =>
-          if tpe.isOption && restrictDefaults then Reporting.throwError(s"`${name}: ${tpe.seal.show}`: default value for Option isn't allowed")
-          else if tpe.isIterable && restrictDefaults then Reporting.throwError(s"`${name}: ${tpe.seal.show}`: default value for collections isn't allowed")
+          if tpe.isOption && restrictDefaults then throwError(s"`${name}: ${tpe.seal.show}`: default value for Option isn't allowed")
+          else if tpe.isIterable && restrictDefaults then throwError(s"`${name}: ${tpe.seal.show}`: default value for collections isn't allowed")
           else Some(Select(Ref(aTypeCompanionSym), x))
         case _ => None
       }
       val num: Int =
         nums.collectFirst{ case (name1, num1) if name1 == name =>
-          if restrictedNums.contains(num1) then Reporting.throwError(s"num ${num1} for `${typeName}` is restricted") 
+          if restrictedNums.contains(num1) then throwError(s"num ${num1} for `${typeName}` is restricted") 
           else num1
         }.getOrElse{
-          Reporting.throwError(s"missing num for `${name}: ${typeName}`")
+          throwError(s"missing num for `${name}: ${typeName}`")
         }
       FieldInfo(
         name = name
@@ -154,10 +154,10 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
         x.annots.collect{
           case Apply(Select(New(tpt),_), List(Literal(Constant(num1: Int)))) if tpt.tpe.isNType => num1
         } match {
-          case List(num1) if restrictedN.contains(num1) => Reporting.throwError(s"num ${num1} for `${typeName}` is restricted") 
+          case List(num1) if restrictedN.contains(num1) => throwError(s"num ${num1} for `${typeName}` is restricted") 
           case List(num1) => num1
-          case Nil => Reporting.throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
-          case _ => Reporting.throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
+          case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+          case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
         }
       // val field = FieldInfo(
       //   name = s"field${num}"
