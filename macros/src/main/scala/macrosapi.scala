@@ -49,7 +49,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val aType = t.unseal.tpe
     val aTypeSymbol = aType.typeSymbol
     val typeName = t.unseal.tpe.typeSymbol.name
-    val params: List[Symbol] = aTypeSymbol.caseFields
+    val params: List[Symbol] = aTypeSymbol.caseClassValueParams
     val nums: List[(String, Int)] = params.map(p =>
       p.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant(num: Int)))) if tpt.tpe.isNType => p.name -> num } match {
         case List(x) => x
