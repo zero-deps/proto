@@ -14,7 +14,7 @@ trait BuildCodec extends Common {
   import qctx.tasty.defn._
 
   def prepareImpl[A: quoted.Type](a: Expr[A], params: List[FieldInfo])(using ctx: Context): Expr[Prepare] =
-    val sizeAccSym = Symbol.newVal(ctx.owner, "sizeAcc", IntType, Flags.Mutable, Symbol.noSymbol)
+    val sizeAccSym = Symbol.newVal(Symbol.currentOwner, "sizeAcc", IntType, Flags.Mutable, Symbol.noSymbol)
     val sizeAccRef = Ref(sizeAccSym)
     val sizeAccValDef = ValDef(sizeAccSym, Some(Literal(Constant(0))))
     val xs = params.flatMap(p => size(a, p, sizeAccRef))
@@ -37,7 +37,7 @@ trait BuildCodec extends Common {
         else if p.tpe.isIterable then writeCollection(a, os, p)
         else writeMessage(a, os, p)
       )
-    , Expr.unitExpr)
+    , unitExpr)
 
   def writeCommon[A: quoted.Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     List(
@@ -249,7 +249,7 @@ trait BuildCodec extends Common {
                     ${readContent}
                   }
               }
-            }}, Expr.unitExpr)
+            }}, unitExpr)
           }
           if (tagMatch == false) ${is}.skipField(tag)
         }
@@ -322,7 +322,7 @@ trait BuildCodec extends Common {
       // val pType = field.tpe.seal.asInstanceOf[quoted.Type[Any]]
       // val _none = '{ None:${pType} }.unseal
       val _none = Typed(Ref(NoneModule), field.tpt)
-      val sym = Symbol.newVal(ctx.owner, s"${field.name}Read", field.tpe, Flags.Mutable, Symbol.noSymbol)
+      val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", field.tpe, Flags.Mutable, Symbol.noSymbol)
       val init = ValDef(sym, Some(_none))
       val ref = Ref(sym).asInstanceOf[Ident]
       init -> ref
@@ -332,7 +332,7 @@ trait BuildCodec extends Common {
       val collectionCompanion = collectionType.typeSymbol.companionModule
       val newBuilderMethod = collectionCompanion.method("newBuilder").head
       val builderType = appliedBuilderType(tpe1, field.tpe)
-      val sym = Symbol.newVal(ctx.owner, s"${field.name}Read", builderType, Flags.EmptyFlags, Symbol.noSymbol)
+      val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", builderType, Flags.EmptyFlags, Symbol.noSymbol)
       val rhs = Select(Ref(collectionCompanion), newBuilderMethod)
       val init = ValDef(sym, Some(rhs))
       val ref = Ref(sym).asInstanceOf[Ident]
@@ -340,7 +340,7 @@ trait BuildCodec extends Common {
     else
       val pType = field.tpe.seal.asInstanceOf[quoted.Type[Any]]
       val _none = '{ None:Option[${pType}] }.unseal
-      val sym = Symbol.newVal(ctx.owner, s"${field.name}Read", _none.tpe, Flags.Mutable, Symbol.noSymbol)
+      val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", _none.tpe, Flags.Mutable, Symbol.noSymbol)
       val init = ValDef(sym, Some(_none))
       val ref = Ref(sym).asInstanceOf[Ident]
       init -> ref

@@ -126,10 +126,10 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
       , tpe = tpe
       , tpt = tpt
       , getter = aTypeSym.field(name)
-      , sizeSym = Symbol.newVal(ctx.owner, s"${name}Size", IntType, Flags.Mutable, Symbol.noSymbol)
-      , prepareSym = Symbol.newVal(ctx.owner, s"${name}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
-      , prepareOptionSym = Symbol.newVal(ctx.owner, s"${name}Prepare", appliedOptionType(PrepareType), Flags.Mutable, Symbol.noSymbol)
-      , prepareArraySym = Symbol.newVal(ctx.owner, s"${name}Prepare", typeOf[Array[Prepare]], Flags.Mutable, Symbol.noSymbol)
+      , sizeSym = Symbol.newVal(Symbol.currentOwner, s"${name}Size", IntType, Flags.Mutable, Symbol.noSymbol)
+      , prepareSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
+      , prepareOptionSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", appliedOptionType(PrepareType), Flags.Mutable, Symbol.noSymbol)
+      , prepareArraySym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", typeOf[Array[Prepare]], Flags.Mutable, Symbol.noSymbol)
       , defaultValue = defaultValue
       )
     }

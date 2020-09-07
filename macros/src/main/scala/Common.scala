@@ -96,6 +96,8 @@ trait Common {
   def defaultMethodName(i: Int): String = s"$$lessinit$$greater$$default$$${i+1}"
   def (s: Symbol) caseClassValueParams: List[Symbol] = s.primaryConstructor.paramSymss.find(_.headOption.fold(false)( _.isTerm)).getOrElse(Nil)
 
+  def unitExpr: Expr[Unit] = '{ () }
+
   def builderType: Type = typeOf[scala.collection.mutable.Builder[Unit, Unit]]
   def appliedBuilderType(t1: Type, t2: Type): Type = builderType match
     case AppliedType(tycon,_) => AppliedType(tycon, List(t1, t2))
