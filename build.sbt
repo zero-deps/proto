@@ -28,6 +28,6 @@ name := "proto-purs"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % Test
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "1.7.1-2-gf29fcc7" % Test
-libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % "1.7.1-2-gf29fcc7"
-libraryDependencies += "io.github.zero-deps" %% "ext" % "2.2.0-5-g1b0be7f"
+libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "1.8" % Test
+libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % "1.8"
+libraryDependencies += "io.github.zero-deps" %% "ext" % "2.2.0.7.g8f0877e"
