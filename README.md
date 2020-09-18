@@ -19,6 +19,7 @@ Scala type        | Purescript type
 ----------------- | ---------------
 `String         ` | `String`
 `Int            ` | `Int`
+`Long`            | `Number`
 `Float`           | Not supported
 `Double         ` | `Number`
 `Option[_] `      | `Maybe _`
@@ -32,7 +33,6 @@ Scala type        | Purescript type
 ```bash
 sbt test
 cd test
-bin/dep
 bin/com
 bin/tes
 ```

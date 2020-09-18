@@ -26,7 +26,7 @@ type RecursiveT2' = { b1 :: Maybe Boolean, b2 :: Maybe String, x :: Maybe Recurs
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
-  { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
+  { pos: pos1, val: tag } <- Decode.unsignedVarint32 _xs_ 0
   case tag `zshr` 3 of
     1 -> decode (decodeSimpleT1 _xs_ pos1) SimpleT1
     2 -> decode (decodeSimpleT2 _xs_ pos1) SimpleT2
@@ -41,13 +41,13 @@ decodePush _xs_ = do
 
 decodeSimpleT1 :: Uint8Array -> Int -> Decode.Result SimpleT1
 decodeSimpleT1 _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   { pos: pos1, val: { m1, b1, b2 } } <- tailRecM3 decode (pos + msglen) { m1: Nothing, b1: Nothing, b2: Nothing } pos
   pure { pos: pos1, val: { m1, b1: fromMaybe false b1, b2: fromMaybe "" b2 }}
     where
     decode :: Int -> SimpleT1' -> Int -> Decode.Result' (Step { a :: Int, b :: SimpleT1', c :: Int } { pos :: Int, val :: SimpleT1' })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { m1 = Just val }
         2 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { b1 = Just val }
@@ -57,7 +57,7 @@ decodeSimpleT1 _xs_ pos0 = do
 
 decodeSimpleT2 :: Uint8Array -> Int -> Decode.Result SimpleT2
 decodeSimpleT2 _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { b0: Nothing, b1: Nothing, b2: Nothing } pos
   case val of
     { b0: Just b0, b1, b2 } -> pure { pos: pos1, val: { b0, b1: fromMaybe false b1, b2: fromMaybe "" b2 }}
@@ -65,7 +65,7 @@ decodeSimpleT2 _xs_ pos0 = do
     where
     decode :: Int -> SimpleT2' -> Int -> Decode.Result' (Step { a :: Int, b :: SimpleT2', c :: Int } { pos :: Int, val :: SimpleT2' })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { b0 = Just val }
         2 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { b1 = Just val }
@@ -75,7 +75,7 @@ decodeSimpleT2 _xs_ pos0 = do
 
 decodeRecursiveT1 :: Uint8Array -> Int -> Decode.Result RecursiveT1
 decodeRecursiveT1 _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { b1: Nothing, b2: Nothing, x: Nothing } pos
   case val of
     { b1, b2, x: Just x } -> pure { pos: pos1, val: RecursiveT1 { b1: fromMaybe false b1, b2: fromMaybe "" b2, x }}
@@ -83,7 +83,7 @@ decodeRecursiveT1 _xs_ pos0 = do
     where
     decode :: Int -> RecursiveT1' -> Int -> Decode.Result' (Step { a :: Int, b :: RecursiveT1', c :: Int } { pos :: Int, val :: RecursiveT1' })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { b1 = Just val }
         2 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { b2 = Just val }
@@ -93,13 +93,13 @@ decodeRecursiveT1 _xs_ pos0 = do
 
 decodeRecursiveT2 :: Uint8Array -> Int -> Decode.Result RecursiveT2
 decodeRecursiveT2 _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   { pos: pos1, val: { b1, b2, x } } <- tailRecM3 decode (pos + msglen) { b1: Nothing, b2: Nothing, x: Nothing } pos
   pure { pos: pos1, val: RecursiveT2 { b1: fromMaybe false b1, b2: fromMaybe "" b2, x }}
     where
     decode :: Int -> RecursiveT2' -> Int -> Decode.Result' (Step { a :: Int, b :: RecursiveT2', c :: Int } { pos :: Int, val :: RecursiveT2' })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (Decode.boolean _xs_ pos2) \val -> acc { b1 = Just val }
         2 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { b2 = Just val }
@@ -109,12 +109,12 @@ decodeRecursiveT2 _xs_ pos0 = do
 
 decodeOneMaybe :: Uint8Array -> Int -> Decode.Result OneMaybe
 decodeOneMaybe _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   tailRecM3 decode (pos + msglen) { m1: Nothing } pos
     where
     decode :: Int -> OneMaybe -> Int -> Decode.Result' (Step { a :: Int, b :: OneMaybe, c :: Int } { pos :: Int, val :: OneMaybe })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { m1 = Just val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
@@ -122,12 +122,12 @@ decodeOneMaybe _xs_ pos0 = do
 
 decodeOneSeq :: Uint8Array -> Int -> Decode.Result OneSeq
 decodeOneSeq _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   tailRecM3 decode (pos + msglen) { xs: [] } pos
     where
     decode :: Int -> OneSeq -> Int -> Decode.Result' (Step { a :: Int, b :: OneSeq, c :: Int } { pos :: Int, val :: OneSeq })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { xs = snoc acc.xs val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc

@@ -21,20 +21,55 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
         io.writeToFile(s"test/test/$filename.purs", content)
       }
 
-      implicit val ac: MessageCodec[ClassWithMap] = caseCodecAuto[ClassWithMap]
-      implicit val cwmc: MessageCodec[TestSchema] = sealedTraitCodecAuto[TestSchema]
-      val r1 = encode[TestSchema](new ClassWithMap(Map("en_GB"->"Name", "ro_RO"->"Nome")))
+      implicit val ac = caseCodecAuto[ClassWithMap]
+      implicit val ac2 = caseCodecAuto[ClassWithLong]
+      implicit val ac3 = caseCodecAuto[ClassWithInt]
+      implicit val cwmc = sealedTraitCodecAuto[TestSchema]
+      val hellomap = encode[TestSchema](new ClassWithMap(Map("en_GB"->"Hello", "it_IT"->"Ciao")))
+      val Number_MAX_SAFE_INTEGER = 9007199254740991L
+      val Number_MIN_SAFE_INTEGER = -9007199254740991L
+      val maxlong = encode[TestSchema](new ClassWithLong(Number_MAX_SAFE_INTEGER))
+      val minlong = encode[TestSchema](new ClassWithLong(Number_MIN_SAFE_INTEGER))
+      val maxint = encode[TestSchema](new ClassWithInt(Int.MaxValue))
+      val minint = encode[TestSchema](new ClassWithInt(Int.MinValue))
+      def bytes_to_str(xs: Array[Byte]): String = xs.map(x => if (x >= 0) x.toString else (x+256).toString).mkString(" ")
       val exp =
         s"""|module Cases where
             |
+            |import Prelude (negate)
             |import SchemaCommon
             |import Data.Tuple (Tuple(Tuple))
             |
-            |c1 :: TestSchema
-            |c1 = ClassWithMap { m: [ Tuple "en_GB" "Name", Tuple "ro_RO" "Nome" ] }
+            |map_schema :: TestSchema
+            |map_schema = ClassWithMap { m: [ Tuple "en_GB" "Hello", Tuple "it_IT" "Ciao" ] }
             |
-            |r1 :: String
-            |r1 = "${r1.mkString(" ")}"""".stripMargin
+            |map_bytestr :: String
+            |map_bytestr = "${bytes_to_str(hellomap)}"
+            |
+            |maxlong_schema :: TestSchema
+            |maxlong_schema = ClassWithLong { x: $Number_MAX_SAFE_INTEGER.0 }
+            |
+            |maxlong_bytestr :: String
+            |maxlong_bytestr = "${bytes_to_str(maxlong)}"
+            |
+            |minlong_schema :: TestSchema
+            |minlong_schema = ClassWithLong { x: $Number_MIN_SAFE_INTEGER.0 }
+            |
+            |minlong_bytestr :: String
+            |minlong_bytestr = "${bytes_to_str(minlong)}"
+            |
+            |maxint_schema :: TestSchema
+            |maxint_schema = ClassWithInt { x: ${Int.MaxValue} }
+            |
+            |maxint_bytestr :: String
+            |maxint_bytestr = "${bytes_to_str(maxint)}"
+            |
+            |minint_schema :: TestSchema
+            |minint_schema = ClassWithInt { x: ${Int.MinValue} }
+            |
+            |minint_bytestr :: String
+            |minint_bytestr = "${bytes_to_str(minint)}"
+            |""".stripMargin
       io.writeToFile("test/test/Cases.purs", exp)
     }
   }
@@ -44,6 +79,8 @@ final case class FieldNode(@N(1) root: String, @N(2) forest: List[FieldNode])
 final case class FieldNode1(@N(1) root: Option[String], @N(2) forest: List[FieldNode1])
 sealed trait TestSchema
 @N(1) final case class ClassWithMap(@N(1) m: Map[String,String]) extends TestSchema
+@N(2) final case class ClassWithLong(@N(1) x: Long) extends TestSchema
+@N(3) final case class ClassWithInt(@N(1) x: Int) extends TestSchema
 
 sealed trait Push
 @N(1) final case class SiteOpts(@N(1) xs: LazyList[SiteOpt]) extends Push

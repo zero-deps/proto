@@ -1,6 +1,6 @@
 module Test.Main where
 
-import Prelude (class Eq, Unit, discard, pure, unit, ($), (<>), (==))
+import Prelude (class Eq, Unit, discard, ($), (<>), (==))
 import Effect (Effect)
 import Effect.Console (log)
 import Node.Process (exit)
@@ -15,30 +15,61 @@ import SchemaPush (decodeTestSchema)
 main :: Effect Unit
 main = do
   encode_decode_map
-  log "encode_decode_map: ok"
   encode_map_in_scala_and_purs
-  log "encode_map_in_scala_and_purs: ok"
+  encode_maxlong_in_scala_and_purs
+  encode_minlong_in_scala_and_purs
+  encode_maxint_in_scala_and_purs
+  encode_minint_in_scala_and_purs
 
 encode_decode_map :: Effect Unit
 encode_decode_map = do
-  let xs = encodeTestSchema Cases.c1
+  let xs = encodeTestSchema Cases.map_schema
   case decodeTestSchema xs of
     Left err -> do
       log $ show err
       exit 1
-    Right { val } -> assertEqual val Cases.c1
+    Right { val } -> assertEqual val Cases.map_schema "encode_decode_map"
 
 encode_map_in_scala_and_purs :: Effect Unit
 encode_map_in_scala_and_purs = do
-  let xs = encodeTestSchema Cases.c1
+  let xs = encodeTestSchema Cases.map_schema
   let actual = printBytes xs
-  let expected = Cases.r1
-  assertEqual actual expected
+  let expected = Cases.map_bytestr
+  assertEqual actual expected "encode_map_in_scala_and_purs"
 
-assertEqual :: forall a. Eq a => a -> a -> Effect Unit
-assertEqual actual expected =
-  if actual == expected then pure unit
+encode_maxlong_in_scala_and_purs :: Effect Unit
+encode_maxlong_in_scala_and_purs = do
+  let xs = encodeTestSchema Cases.maxlong_schema
+  let actual = printBytes xs
+  let expected = Cases.maxlong_bytestr
+  assertEqual actual expected "encode_maxlong_in_scala_and_purs"
+
+encode_minlong_in_scala_and_purs :: Effect Unit
+encode_minlong_in_scala_and_purs = do
+  let xs = encodeTestSchema Cases.minlong_schema
+  let actual = printBytes xs
+  let expected = Cases.minlong_bytestr
+  assertEqual actual expected "encode_minlong_in_scala_and_purs"
+
+encode_maxint_in_scala_and_purs :: Effect Unit
+encode_maxint_in_scala_and_purs = do
+  let xs = encodeTestSchema Cases.maxint_schema
+  let actual = printBytes xs
+  let expected = Cases.maxint_bytestr
+  assertEqual actual expected "encode_maxint_in_scala_and_purs"
+
+encode_minint_in_scala_and_purs :: Effect Unit
+encode_minint_in_scala_and_purs = do
+  let xs = encodeTestSchema Cases.minint_schema
+  let actual = printBytes xs
+  let expected = Cases.minint_bytestr
+  assertEqual actual expected "encode_minint_in_scala_and_purs"
+
+assertEqual :: forall a. Eq a => a -> a -> String -> Effect Unit
+assertEqual actual expected msg =
+  if actual == expected then log $ msg <> ": ok"
   else do
+    log $ msg <> ": bad"
     log $ "  actual: " <> show actual
     log $ "expected: " <> show expected
     exit 1

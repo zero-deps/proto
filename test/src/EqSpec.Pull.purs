@@ -21,61 +21,61 @@ derive instance eqA :: Eq A
 type C = { bytes :: Uint8Array }
 
 encodePull :: Pull -> Uint8Array
-encodePull (Flow x) = concatAll [ Encode.uint32 10, encodeFlow x ]
-encodePull (B x) = concatAll [ Encode.uint32 18, encodeB x ]
+encodePull (Flow x) = concatAll [ Encode.unsignedVarint32 10, encodeFlow x ]
+encodePull (B x) = concatAll [ Encode.unsignedVarint32 18, encodeB x ]
 
 encodeFlow :: Flow -> Uint8Array
 encodeFlow msg = do
   let xs = concatAll
-        [ concatAll $ concatMap (\x -> [ Encode.uint32 10, encodeFlowStep x ]) msg.steps
+        [ concatAll $ concatMap (\x -> [ Encode.unsignedVarint32 10, encodeFlowStep x ]) msg.steps
         ]
-  concatAll [ Encode.uint32 $ length xs, xs ]
+  concatAll [ Encode.unsignedVarint32 $ length xs, xs ]
 
 encodeFlowStep :: FlowStep -> Uint8Array
 encodeFlowStep Start = do
-  let xs = concatAll [ Encode.uint32 10, encodeStart ]
-  concatAll [ Encode.uint32 $ length xs, xs ]
+  let xs = concatAll [ Encode.unsignedVarint32 10, encodeStart ]
+  concatAll [ Encode.unsignedVarint32 $ length xs, xs ]
 encodeFlowStep (Ext x) = do
-  let xs = concatAll [ Encode.uint32 18, encodeExt x ]
-  concatAll [ Encode.uint32 $ length xs, xs ]
+  let xs = concatAll [ Encode.unsignedVarint32 18, encodeExt x ]
+  concatAll [ Encode.unsignedVarint32 $ length xs, xs ]
 
 encodeStart :: Uint8Array
-encodeStart = Encode.uint32 0
+encodeStart = Encode.unsignedVarint32 0
 
 encodeExt :: Ext -> Uint8Array
 encodeExt msg = do
   let xs = concatAll
-        [ Encode.uint32 10
+        [ Encode.unsignedVarint32 10
         , encodeNode msg.tree
         ]
-  concatAll [ Encode.uint32 $ length xs, xs ]
+  concatAll [ Encode.unsignedVarint32 $ length xs, xs ]
 
 encodeNode :: Node -> Uint8Array
 encodeNode (Node msg) = do
   let xs = concatAll
-        [ Encode.uint32 10
+        [ Encode.unsignedVarint32 10
         , Encode.string msg.root
-        , concatAll $ concatMap (\x -> [ Encode.uint32 18, encodeNode x ]) msg.forest
+        , concatAll $ concatMap (\x -> [ Encode.unsignedVarint32 18, encodeNode x ]) msg.forest
         ]
-  concatAll [ Encode.uint32 $ length xs, xs ]
+  concatAll [ Encode.unsignedVarint32 $ length xs, xs ]
 
 encodeB :: B -> Uint8Array
 encodeB msg = do
   let xs = concatAll
-        [ Encode.uint32 10
+        [ Encode.unsignedVarint32 10
         , encodeA msg.a
         ]
-  concatAll [ Encode.uint32 $ length xs, xs ]
+  concatAll [ Encode.unsignedVarint32 $ length xs, xs ]
 
 encodeA :: A -> Uint8Array
 encodeA (C x) = do
-  let xs = concatAll [ Encode.uint32 10, encodeC x ]
-  concatAll [ Encode.uint32 $ length xs, xs ]
+  let xs = concatAll [ Encode.unsignedVarint32 10, encodeC x ]
+  concatAll [ Encode.unsignedVarint32 $ length xs, xs ]
 
 encodeC :: C -> Uint8Array
 encodeC msg = do
   let xs = concatAll
-        [ Encode.uint32 10
+        [ Encode.unsignedVarint32 10
         , Encode.bytes msg.bytes
         ]
-  concatAll [ Encode.uint32 $ length xs, xs ]
+  concatAll [ Encode.unsignedVarint32 $ length xs, xs ]

@@ -25,7 +25,7 @@ type Node' = { root :: Maybe String, forest :: Array Node }
 
 decodePush :: Uint8Array -> Decode.Result Push
 decodePush _xs_ = do
-  { pos: pos1, val: tag } <- Decode.uint32 _xs_ 0
+  { pos: pos1, val: tag } <- Decode.unsignedVarint32 _xs_ 0
   case tag `zshr` 3 of
     1 -> decode (decodeFlow _xs_ pos1) Flow
     i -> Left $ Decode.BadType i
@@ -35,12 +35,12 @@ decodePush _xs_ = do
 
 decodeFlow :: Uint8Array -> Int -> Decode.Result Flow
 decodeFlow _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   tailRecM3 decode (pos + msglen) { steps: [] } pos
     where
     decode :: Int -> Flow -> Int -> Decode.Result' (Step { a :: Int, b :: Flow, c :: Int } { pos :: Int, val :: Flow })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (decodeFlowStep _xs_ pos2) \val -> acc { steps = snoc acc.steps val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
@@ -48,12 +48,12 @@ decodeFlow _xs_ pos0 = do
 
 decodeFlowStep :: Uint8Array -> Int -> Decode.Result FlowStep
 decodeFlowStep _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   tailRecM3 decode (pos + msglen) Nothing pos
     where
     decode :: Int -> Maybe FlowStep -> Int -> Decode.Result' (Step { a :: Int, b :: Maybe FlowStep, c :: Int } { pos :: Int, val :: FlowStep })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (decodeStart _xs_ pos2) \_ -> Just Start
         2 -> decodeFieldLoop end (decodeExt _xs_ pos2) (Just <<< Ext)
@@ -63,12 +63,12 @@ decodeFlowStep _xs_ pos0 = do
 
 decodeStart :: Uint8Array -> Int -> Decode.Result Unit
 decodeStart _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   pure { pos: pos + msglen, val: unit }
 
 decodeExt :: Uint8Array -> Int -> Decode.Result Ext
 decodeExt _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { tree: Nothing } pos
   case val of
     { tree: Just tree } -> pure { pos: pos1, val: { tree } }
@@ -76,7 +76,7 @@ decodeExt _xs_ pos0 = do
     where
     decode :: Int -> Ext' -> Int -> Decode.Result' (Step { a :: Int, b :: Ext', c :: Int } { pos :: Int, val :: Ext' })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (decodeNode _xs_ pos2) \val -> acc { tree = Just val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
@@ -84,7 +84,7 @@ decodeExt _xs_ pos0 = do
 
 decodeNode :: Uint8Array -> Int -> Decode.Result Node
 decodeNode _xs_ pos0 = do
-  { pos, val: msglen } <- Decode.uint32 _xs_ pos0
+  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
   { pos: pos1, val } <- tailRecM3 decode (pos + msglen) { root: Nothing, forest: [] } pos
   case val of
     { root: Just root, forest } -> pure { pos: pos1, val: Node { root, forest } }
@@ -92,7 +92,7 @@ decodeNode _xs_ pos0 = do
     where
     decode :: Int -> Node' -> Int -> Decode.Result' (Step { a :: Int, b :: Node', c :: Int } { pos :: Int, val :: Node' })
     decode end acc pos1 | pos1 < end = do
-      { pos: pos2, val: tag } <- Decode.uint32 _xs_ pos1
+      { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
         1 -> decodeFieldLoop end (Decode.string _xs_ pos2) \val -> acc { root = Just val }
         2 -> decodeFieldLoop end (decodeNode _xs_ pos2) \val -> acc { forest = snoc acc.forest val }

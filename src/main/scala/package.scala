@@ -13,6 +13,8 @@ package object protopurs {
       "String" -> "(Maybe String)"
     } else if (tpe =:= IntClass.selfType) {
       "Int" -> "(Maybe Int)"
+    } else if (tpe =:= LongClass.selfType) {
+      "Number" -> "(Maybe Number)"
     } else if (tpe =:= BooleanClass.selfType) {
       "Boolean" -> "(Maybe Boolean)"
     } else if (tpe =:= DoubleClass.selfType) {
@@ -21,7 +23,9 @@ package object protopurs {
       "Uint8Array" -> "(Maybe Uint8Array)"
     } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
       val typeArg = tpe.typeArgs.head
-      if (typeArg =:= DoubleClass.selfType) {
+      if (typeArg =:= LongClass.selfType) {
+        "(Maybe Number)" -> "(Maybe Number)"
+      } else if (typeArg =:= DoubleClass.selfType) {
         "(Maybe Number)" -> "(Maybe Number)"
       } else {
         val name = typeArg.typeSymbol.name.encodedName.toString
@@ -86,6 +90,7 @@ package object protopurs {
     val complexType: Type => Boolean = {
       case tpe if tpe =:= StringClass.selfType => false
       case tpe if tpe =:= IntClass.selfType => false
+      case tpe if tpe =:= LongClass.selfType => false
       case tpe if tpe =:= BooleanClass.selfType => false
       case tpe if tpe =:= DoubleClass.selfType => false
       case tpe if tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]  => false
