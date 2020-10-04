@@ -100,12 +100,16 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     if (nums.size != cParams.size) throwError(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
     if (nums.groupBy(_._2).exists(_._2.size != 1)) throwError(s"nums ${nums} should be unique")
     val restrictedNums = aType.restrictedNums
+    val typeArgs: Map[String, Type] = aType.typeArgsToReplace
 
     val fields: List[FieldInfo] = cParams.zipWithIndex.map{ case (s, i) =>
-      val (name, tpt) = s.tree match
-        case ValDef(vName,vTpt,vRhs) => (vName, vTpt)
+      val (name, tpt, tpe) = s.tree match  
+        case ValDef(v_name, v_tpt, v_rhs) => 
+          typeArgs.get(v_tpt.tpe.typeSymbol.name) match
+            case Some(typeArg) => (v_name, typeArg.typeTree, typeArg)
+            case None => (v_name, v_tpt, v_tpt.tpe)
         case _ => throwError(s"wrong param definition of case class `${typeName}`")
-      val tpe = tpt.tpe
+      
       val defaultValue: Option[Term] = aTypeCompanionSym.method(defaultMethodName(i)) match {
         case List(x) =>
           if tpe.isOption && restrictDefaults then throwError(s"`${name}: ${tpe.seal.show}`: default value for Option isn't allowed")

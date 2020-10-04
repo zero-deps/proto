@@ -370,11 +370,21 @@ trait BuildCodec extends Common {
 
   def classApply(t: Type, params: List[Term]): Term =
     t match
-      case y: TermRef => Ident(y)
-      case x @ TypeRef(_) =>
-        val sym = x.typeSymbol
-        val applyMethod = sym.companionModule.method("apply").head
-        Apply(Select(Ref(sym.companionModule), applyMethod), params)
+      case x: TermRef => Ident(x)
+      case x: TypeRef =>
+        val companion = x.typeSymbol.companionModule
+        val applyMethod = companion.method("apply").head
+        Apply(Select(Ref(companion), applyMethod), params)
+      case x: AppliedType =>
+        val companion = x.typeSymbol.companionModule
+        val applyMethod = companion.method("apply").head
+        Apply(
+          TypeApply(
+            Select(Ref(companion), applyMethod)
+          , x.typeArgs.map(_.typeTree)
+          )
+        , params
+        )
 
   def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.seal.cast[Int]} + ${y} }.unseal)
 }

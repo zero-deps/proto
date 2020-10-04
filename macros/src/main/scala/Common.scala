@@ -96,6 +96,13 @@ trait Common {
   def defaultMethodName(i: Int): String = s"$$lessinit$$greater$$default$$${i+1}"
   def (s: Symbol) caseClassValueParams: List[Symbol] = s.primaryConstructor.paramSymss.find(_.headOption.fold(false)( _.isTerm)).getOrElse(Nil)
 
+  def (t: Type) typeArgsToReplace: Map[String, Type] = 
+    t.typeSymbol.primaryConstructor.paramSymss
+      .find(_.headOption.fold(false)( _.isType))
+      .map(_.map(_.name).zip(t.typeArgs)).getOrElse(Nil)
+      .toMap
+  def (t: Type) typeTree: TypeTree = TypeIdent(t.typeSymbol)
+
   def unitExpr: Expr[Unit] = '{ () }
 
   def builderType: Type = typeOf[scala.collection.mutable.Builder[Unit, Unit]]
@@ -123,6 +130,10 @@ trait Common {
   def (t: Type) isOption: Boolean = t match
     case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
     case _ => false
+
+  def (t: Type) typeArgs: List[Type] = t match
+    case AppliedType(t1, args)  => args.map(_.asInstanceOf[Type])
+    case _ => Nil
 
   def (t: Type) optionArgument: Type = t match
     case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head.asInstanceOf[Type]
