@@ -76,7 +76,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val aType = t.unseal.tpe
     val aTypeSymbol = aType.typeSymbol
     val typeName = t.unseal.tpe.typeSymbol.name
-    val params: List[Symbol] = aTypeSymbol.caseFields
+    val params: List[Symbol] = aTypeSymbol.caseClassValueParams
     messageCodec(aType, nums, params, restrictDefaults=true)
   }
 
@@ -86,7 +86,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val aType = t.unseal.tpe
     val aTypeSymbol = aType.typeSymbol
     val typeName = t.unseal.tpe.typeSymbol.name
-    val params: List[Symbol] = aTypeSymbol.caseFields
+    val params: List[Symbol] = aTypeSymbol.caseClassValueParams
     val nums: List[(String, Int)] = params.zipWithIndex.map{case (p, idx) => (p.name, idx + 1) }
     messageCodec(aType, nums, params, restrictDefaults=false)
   }
@@ -110,13 +110,12 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
             case None => (v_name, v_tpt, v_tpt.tpe)
         case _ => throwError(s"wrong param definition of case class `${typeName}`")
       
-      val defaultValue: Option[Term] = aTypeCompanionSym.method(defaultMethodName(i)) match {
+      val defaultValue: Option[Term] = aTypeCompanionSym.method(defaultMethodName(i)) match
         case List(x) =>
           if tpe.isOption && restrictDefaults then throwError(s"`${name}: ${tpe.seal.show}`: default value for Option isn't allowed")
           else if tpe.isIterable && restrictDefaults then throwError(s"`${name}: ${tpe.seal.show}`: default value for collections isn't allowed")
           else Some(Select(Ref(aTypeCompanionSym), x))
         case _ => None
-      }
       val num: Int =
         nums.collectFirst{ case (name1, num1) if name1 == name =>
           if restrictedNums.contains(num1) then throwError(s"num ${num1} for `${typeName}` is restricted") 
@@ -124,12 +123,17 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
         }.getOrElse{
           throwError(s"missing num for `${name}: ${typeName}`")
         }
+      val getter = aTypeSym.field(name) match
+        case x if x.isNoSymbol => aTypeSym.method(name) match
+          case x::Nil => x
+          case _ => throwError(s"could not find getter for `${name}: ${typeName}`")
+        case x => x
       FieldInfo(
         name = name
       , num = num
       , tpe = tpe
       , tpt = tpt
-      , getter = aTypeSym.field(name)
+      , getter = getter
       , sizeSym = Symbol.newVal(Symbol.currentOwner, s"${name}Size", IntType, Flags.Mutable, Symbol.noSymbol)
       , prepareSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
       , prepareOptionSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", appliedOptionType(PrepareType), Flags.Mutable, Symbol.noSymbol)
