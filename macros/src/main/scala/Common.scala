@@ -139,7 +139,7 @@ trait Common {
     case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head.asInstanceOf[Type]
     case _ => throwError(s"It isn't Option type: ${t.typeSymbol.name}")
 
-  def (t: Type) iterableArgument: Type = t match
+  def (t: Type) iterableArgument: Type = t.baseType(ItetableType.typeSymbol) match
     case AppliedType(_, args) if t.isIterable => args.head.asInstanceOf[Type]
     case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
