@@ -124,7 +124,7 @@ trait BuildCodec extends Common {
 
   def sizeCommon[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
     val fun = sizeFun(field.tpe, getterTerm(a, field))
-    val sum = '{ CodedOutputStream.computeTagSize(${Expr(field.num)}) + ${fun} }
+    val sum = '{ ${Expr(CodedOutputStream.computeTagSize(field.num))} + ${fun} }
     List(increment(sizeAcc, sum))
   
   def sizeOption[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
@@ -133,7 +133,7 @@ trait BuildCodec extends Common {
     val getterOption = getterOptionTerm(a, field)
     if (tpe.isCommonType) then
       val fun = sizeFun(tpe, getterOption)
-      val sum = '{ CodedOutputStream.computeTagSize(${Expr(field.num)}) + ${fun} }
+      val sum = '{ ${Expr(CodedOutputStream.computeTagSize(field.num))} + ${fun} }
       val incrementSize = increment(sizeAcc, sum)
       val isDefined = Select(getter, OptionClass.method("isDefined").head)
       List(If(isDefined, incrementSize, unitLiteral))
@@ -144,7 +144,7 @@ trait BuildCodec extends Common {
           ${
             increment(
               sizeAcc
-            , '{CodedOutputStream.computeTagSize(${Expr(field.num)}) + CodedOutputStream.computeUInt32SizeNoTag(p.size) + p.size }
+            , '{${Expr(CodedOutputStream.computeTagSize(field.num))} + CodedOutputStream.computeUInt32SizeNoTag(p.size) + p.size }
             ).seal
           }
           Some(p)
@@ -165,7 +165,7 @@ trait BuildCodec extends Common {
         val tagSizeName = s"${field.name}TagSize"
         val sizeExpr = '{ 
           @showName(${Expr(tagSizeName)})
-          val tagSize = CodedOutputStream.computeTagSize(${Expr(field.num)})
+          val tagSize = ${Expr(CodedOutputStream.computeTagSize(field.num))}
           ${getter}.foreach((v: ${pType}) => ${ increment(sizeRef, '{ ${sizeFun(tpe1, 'v.unseal)} + tagSize }).seal }  )
         }
         val incrementAcc = increment(sizeAcc, sizeRef.seal.cast[Int])
@@ -176,7 +176,7 @@ trait BuildCodec extends Common {
         }
         val sizeRefExpr = sizeRef.seal.cast[Int]
         val sum = '{ 
-          CodedOutputStream.computeTagSize(${Expr(field.num)}) + 
+          ${Expr(CodedOutputStream.computeTagSize(field.num))} + 
           CodedOutputStream.computeUInt32SizeNoTag(${sizeRefExpr}) +
           ${sizeRefExpr}
         }
@@ -195,7 +195,7 @@ trait BuildCodec extends Common {
           ${
             increment(
               sizeAcc
-            , '{CodedOutputStream.computeTagSize(${Expr(field.num)}) + CodedOutputStream.computeUInt32SizeNoTag(p.size) + p.size }
+            , '{${Expr(CodedOutputStream.computeTagSize(field.num))} + CodedOutputStream.computeUInt32SizeNoTag(p.size) + p.size }
             ).seal
           }
           counter = counter + 1
@@ -212,7 +212,7 @@ trait BuildCodec extends Common {
     val prepareValDef = ValDef(field.prepareSym, Some(prepare.unseal))
     val prepareRef = Ref(field.prepareSym).seal.cast[Prepare]
     val sum = '{ 
-      CodedOutputStream.computeTagSize(${Expr(field.num)}) + 
+      ${Expr(CodedOutputStream.computeTagSize(field.num))} + 
       CodedOutputStream.computeUInt32SizeNoTag(${prepareRef}.size) +
       ${prepareRef}.size
     }
