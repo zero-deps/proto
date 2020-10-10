@@ -44,6 +44,7 @@ object models {
   , @N(26) str: List[String]
   , @N(27) bytes: List[Array[Byte]]
   , @N(28) message: List[Message]
+  , @N(29) basicBasic: Map[Int, Int]
   )
 
   final case class Message(@N(2) int: Int, @N(4) str: String, @N(6) set: Set[String], @N(8) msg1: Option[Message1])
@@ -59,6 +60,9 @@ object models {
 
   final case class DefaultValuesClass1(@N(3) float: Float)
 
+  final case class ClassWithTypeParams[A,B,C](@N(1) a: A, @N(2) b: B, @N(3) c: C)
+
+  given MessageCodec[Tuple2[Int, Int]] = caseCodecIdx
   given MessageCodec[Basic] = caseCodecAuto
   given MessageCodec[OptionBasic] = caseCodecAuto
   given MessageCodec[ClassWithArray] = caseCodecAuto
@@ -173,6 +177,7 @@ class Testing {
         Message(0, "0", Set("1", "2", "3"), Some(Message1("msg1", 3.0)))
       , Message(1, "2", Set("4", "5", "6"), None)
       )
+    val basicBasic: Map[Int, Int] = Map(1->2, 2->3, 4->5)
 
     val data = Collections(
         int = int
@@ -183,6 +188,7 @@ class Testing {
       , str = str
       , bytes = bytes
       , message = message
+      , basicBasic = basicBasic
     )
     val encoded = encode[Collections](data)
     val decoded = decode[Collections](encoded)
@@ -224,6 +230,20 @@ class Testing {
     val expected = DefaultValuesClass(float=123)
     val decoded: DefaultValuesClass = decode[DefaultValuesClass](encode[DefaultValuesClass1](data))
     val _ = assert(decoded == expected)
+  }
+
+  @Test def testClassWithTypeParams1(): Unit = {
+    implicit val c = caseCodecAuto[ClassWithTypeParams[String, Int, Float]]
+    val data = ClassWithTypeParams[String, Int, Float]("test", 111, 3.14f)
+    val decoded = decode[ClassWithTypeParams[String, Int, Float]](encode(data))
+    val _ = assert(decoded == data)
+  }
+
+  @Test def testClassWithTypeParams2(): Unit = {
+    implicit val c: MessageCodec[ClassWithTypeParams[String, Int, List[Int]]] = caseCodecAuto[ClassWithTypeParams[String, Int, List[Int]]]
+    val data = ClassWithTypeParams[String, Int, List[Int]]("test", 111, List(1,2,3,4,5))
+    val decoded = decode[ClassWithTypeParams[String, Int, List[Int]]](encode(data))
+    val _ = assert(decoded == data)
   }
 
 }

@@ -17,7 +17,6 @@ trait Common {
     name: String
   , num: Int
   , tpe: Type
-  , tpt: TypeTree
   , getter: Symbol
   , sizeSym: Symbol
   , prepareSym: Symbol
@@ -101,7 +100,6 @@ trait Common {
       .find(_.headOption.fold(false)( _.isType))
       .map(_.map(_.name).zip(t.typeArgs)).getOrElse(Nil)
       .toMap
-  def (t: Type) typeTree: TypeTree = TypeIdent(t.typeSymbol)
 
   def unitExpr: Expr[Unit] = '{ () }
 

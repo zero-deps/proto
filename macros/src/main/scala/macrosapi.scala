@@ -48,7 +48,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val t = summon[quoted.Type[A]]
     val aType = t.unseal.tpe
     val aTypeSymbol = aType.typeSymbol
-    val typeName = t.unseal.tpe.typeSymbol.name
+    val typeName = aTypeSymbol.fullName
     val params: List[Symbol] = aTypeSymbol.caseClassValueParams
     val nums: List[(String, Int)] = params.map(p =>
       p.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant(num: Int)))) if tpt.tpe.isNType => p.name -> num } match {
@@ -75,7 +75,6 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val t = summon[quoted.Type[A]]
     val aType = t.unseal.tpe
     val aTypeSymbol = aType.typeSymbol
-    val typeName = t.unseal.tpe.typeSymbol.name
     val params: List[Symbol] = aTypeSymbol.caseClassValueParams
     messageCodec(aType, nums, params, restrictDefaults=true)
   }
@@ -85,7 +84,6 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val t = summon[quoted.Type[A]]
     val aType = t.unseal.tpe
     val aTypeSymbol = aType.typeSymbol
-    val typeName = t.unseal.tpe.typeSymbol.name
     val params: List[Symbol] = aTypeSymbol.caseClassValueParams
     val nums: List[(String, Int)] = params.zipWithIndex.map{case (p, idx) => (p.name, idx + 1) }
     messageCodec(aType, nums, params, restrictDefaults=false)
@@ -103,11 +101,11 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val typeArgsToReplace: Map[String, Type] = aType.typeArgsToReplace
 
     val fields: List[FieldInfo] = cParams.zipWithIndex.map{ case (s, i) =>
-      val (name, tpt, tpe) = s.tree match  
+      val (name, tpe) = s.tree match  
         case ValDef(v_name, v_tpt, v_rhs) => 
           typeArgsToReplace.get(v_tpt.tpe.typeSymbol.name) match
-            case Some(typeArg) => (v_name, typeArg.typeTree, typeArg)
-            case None => (v_name, v_tpt, v_tpt.tpe)
+            case Some(typeArg) => (v_name, typeArg)
+            case None => (v_name, v_tpt.tpe)
         case _ => throwError(s"wrong param definition of case class `${typeName}`")
       
       val defaultValue: Option[Term] = aTypeCompanionSym.method(defaultMethodName(i)) match
@@ -132,7 +130,6 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
         name = name
       , num = num
       , tpe = tpe
-      , tpt = tpt
       , getter = getter
       , sizeSym = Symbol.newVal(Symbol.currentOwner, s"${name}Size", IntType, Flags.Mutable, Symbol.noSymbol)
       , prepareSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)

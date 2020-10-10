@@ -321,7 +321,7 @@ trait BuildCodec extends Common {
     if field.tpe.isOption then
       // val pType = field.tpe.seal.asInstanceOf[quoted.Type[Any]]
       // val _none = '{ None:${pType} }.unseal
-      val _none = Typed(Ref(NoneModule), field.tpt)
+      val _none = Ref(NoneModule)
       val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", field.tpe, Flags.Mutable, Symbol.noSymbol)
       val init = ValDef(sym, Some(_none))
       val ref = Ref(sym).asInstanceOf[Ident]
@@ -353,13 +353,9 @@ trait BuildCodec extends Common {
       val error = s"missing required field `${field.name}: ${field.tpe.typeSymbol.name}`"
       val exception = '{ throw new RuntimeException(${Expr(error)}) }.unseal
       val orElse = field.defaultValue.getOrElse(exception)
-      Apply(
-        TypeApply(
-          Select(ref, OptionClass.method("getOrElse").head)
-        , List(field.tpt)
-        )
-      , List(orElse)
-      )
+      ref.select(OptionClass.method("getOrElse").head)
+        .appliedToType(field.tpe)
+        .appliedTo(orElse) // ref.getOrElse[feld.tpe](orElse)
 
   def findCodec(t: Type): Expr[MessageCodec[Any]] = 
     val tpe = t.seal.asInstanceOf[quoted.Type[Any]]
@@ -378,13 +374,9 @@ trait BuildCodec extends Common {
       case x: AppliedType =>
         val companion = x.typeSymbol.companionModule
         val applyMethod = companion.method("apply").head
-        Apply(
-          TypeApply(
-            Select(Ref(companion), applyMethod)
-          , x.typeArgs.map(_.typeTree)
-          )
-        , params
-        )
+        Ref(companion).select(applyMethod)
+          .appliedToTypes(x.typeArgs)
+          .appliedToArgs(params)
 
   def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.seal.cast[Int]} + ${y} }.unseal)
 }
