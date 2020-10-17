@@ -36,7 +36,7 @@ trait Common {
             t.isArrayByte || 
             t.isArraySeqByte || 
             t.isBytesType || 
-            t.isCaseClass ||
+            t.isCaseType ||
             t.isSealedTrait ||
             t.isIterable then 2
     else 2
@@ -89,11 +89,18 @@ trait Common {
   val CodedInputStreamType: Type = typeOf[CodedInputStream]
   def (t: Type) isNType: Boolean = t =:= NTpe
   def (t: Type) isCaseClass: Boolean = t.typeSymbol.flags.is(Flags.Case)
-  def (t: Type) isSealedTrait: Boolean = t.typeSymbol.flags.is(Flags.Sealed & Flags.Trait)
+  def (t: Type) isCaseObject: Boolean = t.termSymbol.flags.is(Flags.Case)
+  def (t: Type) isCaseType: Boolean = t.isCaseClass || t.isCaseObject
+  def (t: Type) isSealedTrait: Boolean = t.typeSymbol.flags.is(Flags.Sealed) && t.typeSymbol.flags.is(Flags.Trait)
   def (t: Type) isIterable: Boolean = t <:< ItetableType && !t.isArraySeqByte
   def unitLiteral: Literal = Literal(Constant(()))
   def defaultMethodName(i: Int): String = s"$$lessinit$$greater$$default$$${i+1}"
   def (s: Symbol) caseClassValueParams: List[Symbol] = s.primaryConstructor.paramSymss.find(_.headOption.fold(false)( _.isTerm)).getOrElse(Nil)
+
+  def (s: Symbol) tpe: Type = 
+    s.tree match
+      case x: ClassDef => x.constructor.returnTpt.tpe
+      case Bind(_, pattern: Term) => pattern.tpe
 
   def (t: Type) typeArgsToReplace: Map[String, Type] = 
     t.typeSymbol.primaryConstructor.paramSymss

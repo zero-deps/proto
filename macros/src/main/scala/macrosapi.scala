@@ -44,9 +44,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
   import qctx.tasty.defn._
 
   def caseCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
-    val ctx = summon[Context]
-    val t = summon[quoted.Type[A]]
-    val aType = t.unseal.tpe
+    val aType = getCaseClassType[A]
     val aTypeSymbol = aType.typeSymbol
     val typeName = aTypeSymbol.fullName
     val params: List[Symbol] = aTypeSymbol.caseClassValueParams
@@ -71,18 +69,14 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
         }
       case _ => Seq()
     }
-    val ctx = summon[Context]
-    val t = summon[quoted.Type[A]]
-    val aType = t.unseal.tpe
+    val aType = getCaseClassType[A]
     val aTypeSymbol = aType.typeSymbol
     val params: List[Symbol] = aTypeSymbol.caseClassValueParams
     messageCodec(aType, nums, params, restrictDefaults=true)
   }
 
   def caseCodecIdx[A: quoted.Type]: Expr[MessageCodec[A]] = {
-    val ctx = summon[Context]
-    val t = summon[quoted.Type[A]]
-    val aType = t.unseal.tpe
+    val aType = getCaseClassType[A]
     val aTypeSymbol = aType.typeSymbol
     val params: List[Symbol] = aTypeSymbol.caseClassValueParams
     val nums: List[(String, Int)] = params.zipWithIndex.map{case (p, idx) => (p.name, idx + 1) }
@@ -187,16 +181,64 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
   }
 
   def sealedTraitCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
-    val t = summon[quoted.Type[A]]
-    val aType = t.unseal.tpe
+    val aType = getSealedTrait[A]
     val aTypeSymbol = aType.typeSymbol
+    val typeName = aTypeSymbol.fullName
     val xs = aTypeSymbol.children
+    val nums: List[(Type, Int)] = xs.map{ x =>
+      x.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant(num: Int)))) if tpt.tpe.isNType => x.tpe -> num } match
+        case List(x) => x
+        case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+        case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
+    }
+    sealedTraitCodec(aType, nums)
+  }
+
+  def sealedTraitCodec[A: quoted.Type](aType: Type, nums: Seq[(Type, Int)]): Expr[MessageCodec[A]] = {
+    val aTypeSymbol = aType.typeSymbol
+    val typeName = aTypeSymbol.fullName
+    val subclasses = aTypeSymbol.children
+
+    if (subclasses.size <= 0) throwError(s"required at least 1 subclass for `${typeName}`")
+    if (nums.size != subclasses.size) throwError(s"`${typeName}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
+    if (nums.exists(_._2 < 1)) throwError(s"nums for ${typeName} should be > 0")
+    if (nums.groupBy(_._2).exists(_._2.size != 1)) throwError(s"nums for ${typeName} should be unique")
+    val restrictedNums = aType.restrictedNums
+
+    val fields: List[FieldInfo] = subclasses.map{ s =>
+      val tpe = s.tpe
+      val num: Int = nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(throwError(s"missing num for class `${tpe}` of trait `${aType}`"))
+      if (restrictedNums.contains(num)) throwError(s"num ${num} is restricted for class `${tpe}` of trait `${aType}`")
+      FieldInfo(
+        name = s.fullName
+      , num = num
+      , tpe = tpe
+      , getter = Symbol.noSymbol
+      , sizeSym = Symbol.noSymbol
+      , prepareSym = Symbol.noSymbol
+      , prepareOptionSym = Symbol.noSymbol
+      , prepareArraySym = Symbol.noSymbol
+      , defaultValue = None
+      )
+    }
     '{
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ???
-        def read(is: CodedInputStream): A = ???
+        def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).cast[A] }
       }
     }
+  }
+
+  private def getSealedTrait[A: quoted.Type]: Type = {
+    val t = summon[quoted.Type[A]]
+    val tpe = t.unseal.tpe
+    if tpe.isSealedTrait then tpe else throwError(s"`${t.show}` is not a sealed trait. Make sure that you specify codec type explicitly.\nExample:\n implicit val codecName: MessageCodec[SealedTraitTypeHere] = ...\n\n")
+  }
+
+  private def getCaseClassType[A: quoted.Type]: Type = {
+    val t = summon[quoted.Type[A]]
+    val tpe = t.unseal.tpe
+    if tpe.isCaseType then tpe else throwError(s"`${t.show}` is not a case class")
   }
 
 }

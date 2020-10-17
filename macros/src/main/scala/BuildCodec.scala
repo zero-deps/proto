@@ -227,43 +227,56 @@ trait BuildCodec extends Common {
 
   def readImpl(t: Type, params: List[FieldInfo], is: Expr[CodedInputStream])(using ctx: Context): Expr[Any] = {
 
-    if (params.size > 0) {
-      val xs: List[(Statement, Term, Term)] = params.map(p => {
-        val (init, ref) = initValDef(p)
-        val res = resTerm(ref, p)
-        (init, ref, res)
-      })
+    val (initStatements, readRefs, resExp): (List[Statement], List[Term], Term) =
+      if t.isSealedTrait then
+        val _type = t.seal.asInstanceOf[quoted.Type[Any]]
+        val _none = '{ None:Option[${_type}] }.unseal
+        val sym = Symbol.newVal(Symbol.currentOwner, "readRes", _none.tpe, Flags.Mutable, Symbol.noSymbol)
+        val init = ValDef(sym, Some(_none))
+        val ref = Ref(sym)
+        val error = s"missing one of required field for ${t.typeSymbol.fullName}"
+        val exception = '{ throw new RuntimeException(${Expr(error)}) }.unseal
+        val res = ref.select(OptionClass.method("getOrElse").head)
+          .appliedToType(t)
+          .appliedTo(exception) // ref.getOrElse[t](exception)
+        (List(init), List.fill(params.size)(ref), res)
+      else
+        val xs = params.map(p => {
+          val (init, ref) = initValDef(p)
+          val res = resTerm(ref, p)
+          (init, ref, res)
+        }).unzip3
+        (xs._1, xs._2, classApply(t, xs._3))
 
-      val read: Statement = '{
-        var done = false;
-        while (done == false) {
-          val tag: Int = ${is}.readTag
-          var tagMatch: Boolean = false
-          if (tag == 0) { done = true; tagMatch = true }
-          ${
-            Expr.block(params.zip(xs).map{ case (p, (_,ref,_)) => {
-              val paramTag = Expr(p.tag)
-              val readContent = readContentImpl(p, ref, is)
-              '{  if (tag == ${paramTag}) { 
-                    tagMatch = true
-                    ${readContent}
-                  }
-              }
-            }}, unitExpr)
-          }
-          if (tagMatch == false) ${is}.skipField(tag)
+    val tagMatch: Statement = '{
+      var done = false
+      while (done == false) {
+        val tag: Int = ${is}.readTag
+        var tagMatch: Boolean = false
+        if (tag == 0) { done = true; tagMatch = true }
+        ${
+          Expr.block(params.zip(readRefs).map{ case (p, ref) => {
+            val paramTag = Expr(p.tag)
+            val readContent = readContentImpl(p, ref, is)
+            '{  if (tag == ${paramTag}) { 
+                  tagMatch = true
+                  ${readContent}
+                }
+            }
+          }}, unitExpr)
         }
-      }.unseal
+        if (tagMatch == false) ${is}.skipField(tag)
+      }
+    }.unseal
 
-      val statements = xs.map(_._1) :+ (read)
-      val resTerms = xs.map(_._3)
-      Block(
-        statements
-      , classApply(t, resTerms)
-      ).seal
-    } else {
-      classApply(t, Nil).seal
-    }
+    val statements =
+      if (params.size > 0) then initStatements :+ (tagMatch) 
+      else Nil
+    
+    Block(
+      statements
+    , resExp
+    ).seal
   }
 
   def readContentImpl(p: FieldInfo, readRef: Term, is: Expr[CodedInputStream]): Expr[Any] =
@@ -317,14 +330,14 @@ trait BuildCodec extends Common {
       ${is}.popLimit(limit)
     }
 
-  def initValDef(field: FieldInfo)(using ctx: Context): (ValDef, Ident) =
+  def initValDef(field: FieldInfo)(using ctx: Context): (ValDef, Ref) =
     if field.tpe.isOption then
       // val pType = field.tpe.seal.asInstanceOf[quoted.Type[Any]]
       // val _none = '{ None:${pType} }.unseal
       val _none = Ref(NoneModule)
       val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", field.tpe, Flags.Mutable, Symbol.noSymbol)
       val init = ValDef(sym, Some(_none))
-      val ref = Ref(sym).asInstanceOf[Ident]
+      val ref = Ref(sym)
       init -> ref
     else if field.tpe.isIterable then
       val tpe1 = field.tpe.iterableArgument
@@ -335,17 +348,17 @@ trait BuildCodec extends Common {
       val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", builderType, Flags.EmptyFlags, Symbol.noSymbol)
       val rhs = Select(Ref(collectionCompanion), newBuilderMethod)
       val init = ValDef(sym, Some(rhs))
-      val ref = Ref(sym).asInstanceOf[Ident]
+      val ref = Ref(sym)
       init -> ref
     else
       val pType = field.tpe.seal.asInstanceOf[quoted.Type[Any]]
       val _none = '{ None:Option[${pType}] }.unseal
       val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", _none.tpe, Flags.Mutable, Symbol.noSymbol)
       val init = ValDef(sym, Some(_none))
-      val ref = Ref(sym).asInstanceOf[Ident]
+      val ref = Ref(sym)
       init -> ref
 
-  def resTerm(ref: Ident, field: FieldInfo): Term =
+  def resTerm(ref: Ref, field: FieldInfo): Term =
     if field.tpe.isOption then ref
     else if field.tpe.isIterable then
       Select(ref, ref.tpe.termSymbol.method("result").head)
