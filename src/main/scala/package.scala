@@ -46,11 +46,56 @@ package object protopurs {
       name -> s"(Maybe $name)"
     }
   }
+
+  def pursTypeParsTex(tpe: Type): String = {
+    if (tpe =:= StringClass.selfType) {
+      "String"
+    } else if (tpe =:= IntClass.selfType) {
+      "Int"
+    } else if (tpe =:= LongClass.selfType) {
+      "Number"
+    } else if (tpe =:= BooleanClass.selfType) {
+      "Boolean"
+    } else if (tpe =:= DoubleClass.selfType) {
+      "Number"
+    } else if (tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]) {
+      "Uint8Array"
+    } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+      val typeArg = tpe.typeArgs.head
+      if (typeArg =:= LongClass.selfType) {
+        "(Maybe Number)"
+      } else if (typeArg =:= DoubleClass.selfType) {
+        "(Maybe Number)"
+      } else {
+        val name = typeArg.typeSymbol.name.encodedName.toString
+        if (complexType(typeArg)) s"(Maybe \\hyperlink{$name}{$name})"
+        else s"(Maybe $name)"
+      }
+    } else if (isIterable(tpe)) {
+      iterablePurs(tpe) match {
+        case ArrayPurs(tpe) =>
+          val name = tpe.typeSymbol.asClass.name.encodedName.toString
+          if (complexType(tpe)) s"[\\hyperlink{$name}{$name}]"
+          else s"[$name]"
+        case ArrayTuplePurs(tpe1, tpe2) =>
+          val name1 = pursTypeParsTex(tpe1)
+          val name2 = pursTypeParsTex(tpe2)
+          s"[Tuple $name1 $name2]"
+      }
+    } else {
+      val name = tpe.typeSymbol.name.encodedName.toString
+      s"\\hyperlink{$name}{$name}"
+    }
+  }
   
   def pursType(tpe: Type): (String, String) = {
     def trim(x: String): String = x.stripPrefix("(").stripSuffix(")")
     val (a, b) = pursTypePars(tpe)
     trim(a) -> trim(b)
+  }
+  
+  def pursTypeTex(tpe: Type): String = {
+    pursTypeParsTex(tpe).stripPrefix("(").stripSuffix(")")
   }
 
   def isIterable(tpe: Type): Boolean = {
@@ -86,80 +131,90 @@ package object protopurs {
     }
   }
 
-  def collectTpes(tpe: Type): Seq[Tpe] = {
-    val complexType: Type => Boolean = {
-      case tpe if tpe =:= StringClass.selfType => false
-      case tpe if tpe =:= IntClass.selfType => false
-      case tpe if tpe =:= LongClass.selfType => false
-      case tpe if tpe =:= BooleanClass.selfType => false
-      case tpe if tpe =:= DoubleClass.selfType => false
-      case tpe if tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]  => false
-      case _ => true
+  val complexType: Type => Boolean = {
+    case tpe if tpe =:= StringClass.selfType => false
+    case tpe if tpe =:= IntClass.selfType => false
+    case tpe if tpe =:= LongClass.selfType => false
+    case tpe if tpe =:= BooleanClass.selfType => false
+    case tpe if tpe =:= DoubleClass.selfType => false
+    case tpe if tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]  => false
+    case _ => true
+  }
+  def isRecursive(base: Type): Boolean = {
+    @tailrec def loop(compareTo: List[Type]): Boolean = compareTo match {
+      case Nil => false
+      case x :: _ if x =:= base => true
+      case x :: xs => loop(x.typeArgs.map(_.typeSymbol.asType.toType) ++ xs)
     }
-    def isRecursive(base: Type): Boolean = {
-      @tailrec def loop(compareTo: List[Type]): Boolean = compareTo match {
-        case Nil => false
-        case x :: _ if x =:= base => true
-        case x :: xs => loop(x.typeArgs.map(_.typeSymbol.asType.toType) ++ xs)
-      }
-      loop(fields(base).map(_._2).filter(complexType))
-    }
-    def isTrait(t: Type): Boolean = {
-      t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
-    }
-    def knownFinalSubclasses(tpe: Type): Vector[Symbol] = tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.flatMap{
-      case t if isTrait(t.asType.toType) => t.asClass.knownDirectSubclasses.toVector
-      case t => List(t)
-    }
-    def findChildren(tpe: Type): Seq[ChildMeta] = {
-      knownFinalSubclasses(tpe).map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{
-        case (x, n) =>
-          val tpe1 = x.asType.toType
-          ChildMeta(name=tpe1.typeSymbol.name.encodedName.toString, tpe1, n, noargs=fields(tpe1).isEmpty, rec=isRecursive(tpe1))
-      }
-    }
-    @tailrec def loop(head: Type, tail: Seq[Type], acc: Seq[Tpe], firstLevel: Boolean): Seq[Tpe] = {
-      val (tail1, acc1): (Seq[Type], Seq[Tpe]) =
-        if (acc.exists(_.tpe =:= head)) {
-          (tail, acc)
-        } else if (isTrait(head)) {
-          val children = findChildren(head)
-          (children.map(_.tpe)++tail, acc:+TraitType(head, head.typeSymbol.name.encodedName.toString, children, firstLevel))
-        } else if (head.typeConstructor =:= OptionClass.selfType.typeConstructor) {
-          val typeArg = head.typeArgs.head.typeSymbol
-          val typeArgType = typeArg.asType.toType
-          if (complexType(typeArgType)) (typeArgType+:tail, acc)
-          else (tail, acc)
-        } else if (isIterable(head)) {
-          head.typeArgs match {
-            case x :: Nil =>
-              val typeArg = x.typeSymbol
-              val typeArgType = typeArg.asType.toType
-              if (complexType(typeArgType)) (typeArgType+:tail, acc)
-              else (tail, acc)
-            case x :: y :: Nil =>
-              val zs = List(x, y).filter(complexType)
-              (zs++tail, acc:+TupleType(appliedType(typeOf[Tuple2[Unit, Unit]].typeConstructor, x, y), tupleFunName(x, y), x, y))
-            case _ => throw new Exception(s"too many type args for ${head}")
-          }
-        } else {
-          val xs = fields(head).map(_._2)
-          val ys = xs.filter(complexType)
-          val z =
-            if (xs.isEmpty) NoargsType(head, head.typeSymbol.name.encodedName.toString)
-            else if (isRecursive(head)) RecursiveType(head, head.typeSymbol.name.encodedName.toString)
-            else RegularType(head, head.typeSymbol.name.encodedName.toString)
-          (ys++tail, acc:+z)
-        }
-      tail1 match {
-        case h +: t => loop(h, t, acc1, false)
-        case _ => acc1
-      }
-    }
-    loop(tpe, Nil, Nil, true)
+    loop(fields(base).map(_._2).filter(complexType))
+  }
+  def isTrait(t: Type): Boolean = {
+    t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
   }
 
-  private[this] def findN(x: Symbol): Option[Int] = {
+  def knownFinalSubclasses(tpe: Type): Vector[Symbol] = tpe.typeSymbol.asClass.knownDirectSubclasses.toVector.flatMap{
+    case t if isTrait(t.asType.toType) => t.asClass.knownDirectSubclasses.toVector
+    case t => List(t)
+  }
+
+  def findChildren(tpe: Type): Seq[ChildMeta] = {
+    knownFinalSubclasses(tpe).map(x => x -> findN(x)).collect{ case (x, Some(n)) => x -> n }.sortBy(_._2).map{
+      case (x, n) =>
+        val tpe1 = x.asType.toType
+        ChildMeta(name=tpe1.typeSymbol.name.encodedName.toString, tpe1, n, noargs=fields(tpe1).isEmpty, rec=isRecursive(tpe1))
+    }
+  }
+
+  @tailrec
+  def collectTpes(head: Type, tail: Seq[Type], acc: Seq[Tpe], firstLevel: Boolean): Seq[Tpe] = {
+    val (tail1, acc1): (Seq[Type], Seq[Tpe]) =
+      if (acc.exists(_.tpe =:= head)) {
+        (tail, acc)
+      } else if (isTrait(head)) {
+        val children = findChildren(head)
+        (children.map(_.tpe)++tail, acc:+TraitType(head, head.typeSymbol.name.encodedName.toString, children, firstLevel))
+      } else if (head.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+        val typeArg = head.typeArgs.head.typeSymbol
+        val typeArgType = typeArg.asType.toType
+        if (complexType(typeArgType)) (typeArgType+:tail, acc)
+        else (tail, acc)
+      } else if (isIterable(head)) {
+        head.typeArgs match {
+          case x :: Nil =>
+            val typeArg = x.typeSymbol
+            val typeArgType = typeArg.asType.toType
+            if (complexType(typeArgType)) (typeArgType+:tail, acc)
+            else (tail, acc)
+          case x :: y :: Nil =>
+            val zs = List(x, y).filter(complexType)
+            (zs++tail, acc:+TupleType(appliedType(typeOf[Tuple2[Unit, Unit]].typeConstructor, x, y), tupleFunName(x, y), x, y))
+          case _ => throw new Exception(s"too many type args for ${head}")
+        }
+      } else {
+        val (ys, z) = type_to_tpe(head)
+        (ys++tail, acc:+z)
+      }
+    tail1 match {
+      case h +: t => collectTpes(h, tail=t, acc=acc1, firstLevel=false)
+      case _ => acc1
+    }
+  }
+
+  def type_to_tpe(head: Type): (Seq[Type], Tpe) = {
+    val xs = fields(head).map(_._2)
+    val ys = xs.filter(complexType)
+    val z =
+      if (xs.isEmpty) NoargsType(head, head.typeSymbol.name.encodedName.toString)
+      else if (isRecursive(head)) RecursiveType(head, head.typeSymbol.name.encodedName.toString)
+      else RegularType(head, head.typeSymbol.name.encodedName.toString)
+    (ys, z)
+  }
+
+  def collectTpes(tpe: Type): Seq[Tpe] = {
+    collectTpes(tpe, tail=Nil, acc=Nil, firstLevel=true)
+  }
+
+  def findN(x: Symbol): Option[Int] = {
     x.annotations.filter(_.tree.tpe =:= typeOf[zd.proto.api.N]) match {
       case List(x1) => x1.tree.children.tail match {
         case List(Literal(Constant(n: Int))) => Some(n)

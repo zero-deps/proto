@@ -1,33 +1,34 @@
-organization := "io.github.zero-deps"
-version := zero.ext.git.version
-scalaVersion := "2.13.3"
-scalacOptions ++= Seq(
-    "-Ywarn-extra-implicit"
-  , "-Xfatal-warnings"
-  , "-deprecation"
-  , "-feature"
-  , "-unchecked"
-  , "-Ywarn-unused:implicits"
-  , "-Ywarn-unused:imports"
-  , "-Yno-completion"
-  , "-Ywarn-numeric-widen"
-  , "-Ywarn-value-discard"
-  , "-Xmaxerrs", "1"
-  , "-Xmaxwarns", "3"
-  , "-Wconf:cat=deprecation&msg=Auto-application:silent"
+lazy val protopurs = project.in(file(".")).settings(
+  libraryDependencies ++= deps
+, resolvers += Resolver.jcenterRepo
+, resolvers += Resolver.githubPackages("zero-deps")
+, scalacOptions ++= opts
+, scalaVersion := "2.13.3"
+, turbo := true
+, useCoursier := true
+, Global / onChangedBuildSource := ReloadOnSourceChanges
 )
-licenses += "MIT" -> url("http://opensource.org/licenses/MIT")
-isSnapshot := true
-resolvers += Resolver.bintrayRepo("zero-deps", "maven")
 
-ThisBuild / turbo := true
-ThisBuild / useCoursier := true
-Global / onChangedBuildSource := ReloadOnSourceChanges
+val deps = Seq(
+  "org.scala-lang" % "scala-reflect" % "2.13.3"
+, "io.github.zero-deps" %% "proto-runtime" % "1.8"
+, "io.github.zero-deps" %% "proto-macros"  % "1.8" % Test
+, "io.github.zero-deps" %% "ext" % "2.3.1.g6719341"
+, "org.scalatest" %% "scalatest" % "3.1.1" % Test
+)
 
-name := "proto-purs"
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % Test
-libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "1.8" % Test
-libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % "1.8"
-libraryDependencies += "io.github.zero-deps" %% "ext" % "2.2.0.7.g8f0877e"
+val opts = Seq(
+  "-Ywarn-extra-implicit"
+, "-Xfatal-warnings"
+, "-deprecation"
+, "-feature"
+, "-unchecked"
+, "-Ywarn-unused:implicits"
+, "-Ywarn-unused:imports"
+, "-Yno-completion"
+, "-Ywarn-numeric-widen"
+, "-Ywarn-value-discard"
+, "-Xmaxerrs", "1"
+, "-Xmaxwarns", "3"
+, "-Wconf:cat=deprecation&msg=Auto-application:silent"
+)

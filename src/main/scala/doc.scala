@@ -7,27 +7,71 @@ object Doc {
   type Version = String
   type Change = String
   type Message = String
-  type ChangeLog = List[(Version, List[(Message, Change)])]
-  def tex(xs: Seq[Tpe]): (String, ChangeLog) = {
-    val changeLog = xs.to(List).flatMap{ x =>
+  type ChangeLog = List[(Version, Seq[(Message, Change)])]
+  def tex(messages: Seq[ChildMeta], others: Seq[Tpe], all: Seq[Tpe], category: Int => String, ask: String, ok: String, err: String): (String, ChangeLog) = {
+    val changeLog = all.flatMap{ x =>
       val message = x.name
       since(x.tpe.typeSymbol).map{ case (version, change) => version -> (message -> change) }
     }.groupBy(_._1).view.mapValues(_.map(_._2)).to(List)
-    xs.flatMap{
-      case x: TraitType if x.firstLevel => None
-      case x: TraitType =>
-        val a = x.children.map(y => s"  \\item ${y.name}").mkString("\n")
-        val b = s"\\paragraph{${x.name}}\n" + (if (a.nonEmpty) s"\\begin{itemize}\n$a\n\\end{itemize}" else throw new Exception(s"no children: check @N on children for ${x.name}"))
-        b.some
-      case x @ (_: RegularType | _: RecursiveType | _: NoargsType) =>
-        val a = fields(x.tpe).map(y => s"  \\item[${y._1}] ${pursTypePars(y._2)._1}").mkString("\n")
-        val b = if (a.nonEmpty) s"\\paragraph{${x.name}}\n\\begin{description}\n${a}\n\\end{description}" else s"\\paragraph{${x.name}} No fields"
-        b.some
-      case x: TupleType => None
-    }.mkString("\n") -> changeLog
+    val messagestex = messages.groupBy(x => category(x.n)).toList.sortBy(_._1).map{
+      case (cat, ys) =>
+        s"""\\subsection{${cat}}
+        |${correlation_tex(ys, ask, ok, err)}
+        |${ys.map(y => type_to_tpe(y.tpe)._2).map(fields_tex).mkString("\n")}""".stripMargin
+    }.mkString("\n")
+    val otherstex = s"""\\newpage
+      |\\subsection{Other Types}
+      |${others.map(fields_tex).mkString("\n")}""".stripMargin
+    (messagestex+"\n"+otherstex, changeLog)
+  }
+
+  private def correlation_tex(xs: Seq[ChildMeta], ask: String, ok: String, err: String): String = {
+    val xs1 = xs.map(_.name).groupBy(x => x.stripSuffix(ask).stripSuffix(ok).stripSuffix(err)).map{ case (prefix, names1) =>
+      ( names1.filter(x => x.endsWith(ask))
+      , names1.filter(_.endsWith(ok)) ++ names1.filter(_.endsWith(err))
+      , names1.filterNot(x => x.endsWith(ask) || x.endsWith(ok) || x.endsWith(err))
+      )
+    }
+    val xstex = xs1.map{ case (a, b, c) =>
+      val max = Math.max(Math.max(a.size, b.size), c.size)
+      def f(xs: Seq[String], i: Int): String = {
+        xs.lift(i).cata(x => s"\\hyperlink{$x}{$x}", "")
+      }
+      (0 until max).map(i =>
+        s"""${f(a,i)} & ${f(b,i)} & ${f(c,i)}\\\\"""
+      ).mkString("\n")
+    }.mkString("\n").some.filter(_.nonEmpty).cata("\\hline\n"+_+"\n\\hline", "\\hline\\hline")
+    s"""\\begin{table}[H]
+    |\\begin{tabular}{lll}
+    |request & response & others\\\\
+    |$xstex
+    |\\end{tabular}
+    |\\end{table}""".stripMargin
+  }
+
+  private val fields_tex: Tpe => String = {
+    case x: TraitType if !x.firstLevel =>
+      val n = 2
+      val a = x.children.map(_.name).map(x => s"\\hyperlink{$x}{$x}").grouped(n).map(_.padTo(n,"").mkString("", " & ", "\\\\")).mkString(s"\\hline\n", "\n", "\n\\hline")
+      val name = x.name
+      if (a.nonEmpty) s"""\\begin{longtable}[l]{${"l".repeat(n)}}
+        |\\multicolumn{$n}{l}{\\hypertarget{$name}{$name}}\\\\
+        |$a
+        |\\end{longtable}""".stripMargin
+      else throw new Exception(s"no children: check @N on children for ${x.name}")
+    case x @ (_: RegularType | _: RecursiveType | _: NoargsType) =>
+      val a = fields(x.tpe).map(y => s"${y._1} & ${pursTypeTex(y._2)}\\\\").mkString("\n").some.filter(_.nonEmpty).cata("\\hline\n"+_+"\n\\hline", "\\hline\\hline")
+      import x.name
+      s"""\\begin{table}[H]
+      |\\begin{tabular}{l|r}
+      |\\multicolumn{2}{l}{\\hypertarget{$name}{$name}}\\\\
+      |$a
+      |\\end{tabular}
+      |\\end{table}""".stripMargin
+    case _ => ""
   }
   
-  private[this] def since(x: Symbol): List[(Version, Change)] = {
+  private def since(x: Symbol): List[(Version, Change)] = {
     x.annotations.filter(_.tree.tpe =:= typeOf[Since]).map{ x1 =>
       x1.tree.children.tail match {
         case List(Literal(Constant(version: String)), Literal(Constant(change: String))) =>

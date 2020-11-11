@@ -7,7 +7,7 @@ import zero.ext._, option._
 object Purescript {
   final case class GenRes(
     purs: Map[ModuleName, Content]
-  , doc: Map[ModuleName, (Content, Doc.ChangeLog)]
+  , doc: (Content, Doc.ChangeLog)
   )
   type ModuleName = String
   type Content = String
@@ -15,6 +15,8 @@ object Purescript {
       moduleEncode: ModuleName
     , moduleDecode: ModuleName
     , moduleCommon: ModuleName
+    , category: Int => String
+    , ask: String, ok: String, err: String
     , codecs: List[MessageCodec[_]]
   )(implicit dtag: TypeTag[D], etag: TypeTag[E]): GenRes = {
     val decodeTpes = collectTpes(typeOf[D])
@@ -108,10 +110,16 @@ object Purescript {
               |$code""".stripMargin
         }
       )
-      , Map(
-        moduleDecode -> Doc.tex(decodeTpes)
-      , moduleEncode -> Doc.tex(encodeTpes)
-      )
+      , {
+          val messages = findChildren(typeOf[D]) ++ findChildren(typeOf[E])
+          val others = messages.map(_.tpe).flatMap(x => type_to_tpe(x)._1) match {
+            case x +: xs =>
+              collectTpes(head=x, tail=xs, acc=Nil, firstLevel=false)
+            case Nil => Nil
+          }
+          val all = (decodeTpes++encodeTpes).distinct
+          Doc.tex(messages=messages, others=others, all=all, category=category, ask=ask, ok=ok, err=err)
+        }
     )
   }
 }

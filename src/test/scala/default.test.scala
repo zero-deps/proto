@@ -8,7 +8,7 @@ import zd.proto.api.N
 class DefaultSpec extends AnyFreeSpec with Matchers {
   "generate" - {
     "src" in {
-      val res = Purescript.generate[Push, Pull](moduleEncode="DefaultSpec.Pull", moduleDecode="DefaultSpec.Push", moduleCommon="DefaultSpec.Common", codecs=Nil)
+      val res = Purescript.generate[Push, Pull](moduleEncode="DefaultSpec.Pull", moduleDecode="DefaultSpec.Push", moduleCommon="DefaultSpec.Common", codecs=Nil, category=_=>"", ask="", ok="", err="")
       res.purs.foreach{ case (filename, content) =>
         io.writeToFile(s"test/src/$filename.purs", content)
       }

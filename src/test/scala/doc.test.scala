@@ -8,48 +8,13 @@ import zd.proto.macrosapi.caseCodecIdx
 
 class DocTest extends AnyFreeSpec with Matchers {
   val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
-  val res = Purescript.generate[Push, Pull](moduleEncode="DocTest.Pull", moduleDecode="DocTest.Push", moduleCommon="DocTest.Common", codecs=tc::Nil)
-  "doc" - {
-    "pull" in {
-      res.doc.collectFirst{ case ("DocTest.Pull", x) => x._1 }.get shouldBe
-      """\paragraph{Ping} No fields
-        |\paragraph{Ask}
-        |\begin{description}
-        |  \item[what] What
-        |\end{description}
-        |\paragraph{What}
-        |\begin{itemize}
-        |  \item Watt
-        |  \item Who
-        |\end{itemize}
-        |\paragraph{Watt} No fields
-        |\paragraph{Who}
-        |\begin{description}
-        |  \item[asks] String
-        |\end{description}""".stripMargin
-    }
-    "push" in {
-      res.doc.collectFirst{ case ("DocTest.Push", x) => x._1 }.get shouldBe
-      """\paragraph{Ping} No fields
-        |\paragraph{Translated}
-        |\begin{description}
-        |  \item[xs] (Array (Tuple String String))
-        |\end{description}""".stripMargin
-    }
-  }
-  "log" - {
-    "pull" in {
-      res.doc.collectFirst{ case ("DocTest.Pull", x) => x._2 }.get shouldBe
-        List("1.0.1" -> List("Ping" -> "added"))
-    }
-    "push" in {
-      res.doc.collectFirst{ case ("DocTest.Push", x) => x._2 }.get.sortBy(_._1) shouldBe
-        List(
-          "1.2.0" -> List("Translated" -> "change type of 'xs'")
-        , "1.1.0" -> List("Translated" -> "rename 'values' to 'xs'")
-        , "1.0.1" -> List("Ping" -> "added", "Translated" -> "added")
-        ).sortBy(_._1)
-    }
+  val res = Purescript.generate[Push, Pull](moduleEncode="DocTest.Pull", moduleDecode="DocTest.Push", moduleCommon="DocTest.Common", codecs=tc::Nil, category=_=>"All", ask="", ok="", err="")
+  "log" in {
+    res.doc._2 shouldBe List(
+      "1.1.0" -> List("Translated" -> "rename 'values' to 'xs'")
+    , "1.2.0" -> List("Translated" -> "change type of 'xs'")
+    , "1.0.1" -> List("Ping" -> "added", "Translated" -> "added")
+    )
   }
 }
 
@@ -61,7 +26,7 @@ sealed trait Pull
 sealed trait What
 @N(1) final case object Watt extends What
 @N(2) final case class Who(@N(1) asks: String) extends What
-@Since("1.2.0", "change type of 'xs'")
-@Since("1.1.0", "rename 'values' to 'xs'")
 @Since("1.0.1", "added")
+@Since("1.1.0", "rename 'values' to 'xs'")
+@Since("1.2.0", "change type of 'xs'")
 @N(2) final case class Translated(@N(1) xs: Map[String, String]) extends Push
