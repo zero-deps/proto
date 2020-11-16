@@ -4,7 +4,6 @@ package proto
 import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted._, report._
-import scala.internal.quoted.showName
 import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
 
@@ -40,8 +39,8 @@ object Macro {
 }
 
 private class Impl(using val qctx: QuoteContext) extends BuildCodec {
-  import qctx.tasty.{_, given _}
-  import qctx.tasty.defn._
+  import qctx.reflect.{_, given}
+  import qctx.reflect.defn._
 
   def caseCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
     val aType = getCaseClassType[A]
@@ -49,7 +48,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val typeName = aTypeSymbol.fullName
     val params: List[Symbol] = aTypeSymbol.caseClassValueParams
     val nums: List[(String, Int)] = params.map(p =>
-      p.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant(num: Int)))) if tpt.tpe.isNType => p.name -> num } match {
+      p.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num)))) if tpt.tpe.isNType => p.name -> num } match {
         case List(x) => x
         case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
@@ -65,7 +64,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
           case '{ ($x:String, $y:Int) } => x.unseal -> y.unseal
           case '{ ($x:String) -> ($y:Int) } => x.unseal -> y.unseal
         }.collect{
-          case (Literal(Constant(name: String)), Literal(Constant(num: Int))) => name -> num
+          case (Literal(Constant.String(name)), Literal(Constant.Int(num))) => name -> num
         }
       case _ => Seq()
     }
@@ -83,7 +82,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     messageCodec(aType, nums, params, restrictDefaults=false)
   }
 
-  def messageCodec[A: quoted.Type](aType: Type, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean)(using ctx: Context): Expr[MessageCodec[A]] = {
+  def messageCodec[A: quoted.Type](aType: TypeRepr, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean)(using ctx: Context): Expr[MessageCodec[A]] = {
     val aTypeSym = aType.typeSymbol
     val aTypeCompanionSym = aTypeSym.companionModule
     val typeName = aTypeSym.fullName
@@ -92,7 +91,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     if (nums.size != cParams.size) throwError(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
     if (nums.groupBy(_._2).exists(_._2.size != 1)) throwError(s"nums ${nums} should be unique")
     val restrictedNums = aType.restrictedNums
-    val typeArgsToReplace: Map[String, Type] = aType.typeArgsToReplace
+    val typeArgsToReplace: Map[String, TypeRepr] = aType.typeArgsToReplace
 
     val fields: List[FieldInfo] = cParams.zipWithIndex.map{ case (s, i) =>
       val (name, tpe) = s.tree match  
@@ -104,8 +103,8 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
       
       val defaultValue: Option[Term] = aTypeCompanionSym.method(defaultMethodName(i)) match
         case List(x) =>
-          if tpe.isOption && restrictDefaults then throwError(s"`${name}: ${tpe.seal.show}`: default value for Option isn't allowed")
-          else if tpe.isIterable && restrictDefaults then throwError(s"`${name}: ${tpe.seal.show}`: default value for collections isn't allowed")
+          if tpe.isOption && restrictDefaults then throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for Option isn't allowed")
+          else if tpe.isIterable && restrictDefaults then throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for collections isn't allowed")
           else Some(Select(Ref(aTypeCompanionSym), x))
         case _ => None
       val num: Int =
@@ -115,27 +114,21 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
         }.getOrElse{
           throwError(s"missing num for `${name}: ${typeName}`")
         }
-      val getter = aTypeSym.field(name) match
-        case x if x.isNoSymbol => aTypeSym.method(name) match
-          case x::Nil => x
-          case _ => throwError(s"could not find getter for `${name}: ${typeName}`")
-        case x => x
       FieldInfo(
         name = name
       , num = num
       , tpe = tpe
-      , getter = getter
-      , sizeSym = Symbol.newVal(Symbol.currentOwner, s"${name}Size", IntType, Flags.Mutable, Symbol.noSymbol)
+      , sizeSym = Symbol.newVal(Symbol.currentOwner, s"${name}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
       , prepareSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
-      , prepareOptionSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", appliedOptionType(PrepareType), Flags.Mutable, Symbol.noSymbol)
-      , prepareArraySym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", typeOf[Array[Prepare]], Flags.Mutable, Symbol.noSymbol)
+      , prepareOptionSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", OptionType.appliedTo(PrepareType), Flags.Mutable, Symbol.noSymbol)
+      , prepareArraySym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", TypeRepr.of[Array[Prepare]], Flags.Mutable, Symbol.noSymbol)
       , defaultValue = defaultValue
       )
     }
     '{ 
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ${ prepareImpl('a, fields) }
-        def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).cast[A] }
+        def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).asExprOf[A] }
       }
     }
   }
@@ -151,7 +144,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     xs.map{ x =>
       val num: Int =
         x.annots.collect{
-          case Apply(Select(New(tpt),_), List(Literal(Constant(num1: Int)))) if tpt.tpe.isNType => num1
+          case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num1)))) if tpt.tpe.isNType => num1
         } match {
           case List(num1) if restrictedN.contains(num1) => throwError(s"num ${num1} for `${typeName}` is restricted") 
           case List(num1) => num1
@@ -185,8 +178,8 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val aTypeSymbol = aType.typeSymbol
     val typeName = aTypeSymbol.fullName
     val xs = aTypeSymbol.children
-    val nums: List[(Type, Int)] = xs.map{ x =>
-      x.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant(num: Int)))) if tpt.tpe.isNType => x.tpe -> num } match
+    val nums: List[(TypeRepr, Int)] = xs.map{ x =>
+      x.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num)))) if tpt.tpe.isNType => x.tpe -> num } match
         case List(x) => x
         case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
@@ -194,7 +187,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     sealedTraitCodec(aType, nums)
   }
 
-  def sealedTraitCodec[A: quoted.Type](aType: Type, nums: Seq[(Type, Int)]): Expr[MessageCodec[A]] = {
+  def sealedTraitCodec[A: quoted.Type](aType: TypeRepr, nums: Seq[(TypeRepr, Int)]): Expr[MessageCodec[A]] = {
     val aTypeSymbol = aType.typeSymbol
     val typeName = aTypeSymbol.fullName
     val subclasses = aTypeSymbol.children
@@ -213,7 +206,6 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
         name = s.fullName
       , num = num
       , tpe = tpe
-      , getter = Symbol.noSymbol
       , sizeSym = Symbol.noSymbol
       , prepareSym = Symbol.noSymbol
       , prepareOptionSym = Symbol.noSymbol
@@ -224,21 +216,21 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     '{
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ???
-        def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).cast[A] }
+        def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).asExprOf[A] }
       }
     }
   }
 
-  private def getSealedTrait[A: quoted.Type]: Type = {
+  private def getSealedTrait[A: quoted.Type]: TypeRepr = {
     val t = summon[quoted.Type[A]]
     val tpe = t.unseal.tpe
-    if tpe.isSealedTrait then tpe else throwError(s"`${t.show}` is not a sealed trait. Make sure that you specify codec type explicitly.\nExample:\n implicit val codecName: MessageCodec[SealedTraitTypeHere] = ...\n\n")
+    if tpe.isSealedTrait then tpe else throwError(s"`${tpe.typeSymbol.fullName}` is not a sealed trait. Make sure that you specify codec type explicitly.\nExample:\n implicit val codecName: MessageCodec[SealedTraitTypeHere] = ...\n\n")
   }
 
-  private def getCaseClassType[A: quoted.Type]: Type = {
+  private def getCaseClassType[A: quoted.Type]: TypeRepr = {
     val t = summon[quoted.Type[A]]
     val tpe = t.unseal.tpe
-    if tpe.isCaseType then tpe else throwError(s"`${t.show}` is not a case class")
+    if tpe.isCaseType then tpe else throwError(s"`${tpe.typeSymbol.fullName}` is not a case class")
   }
 
 }
