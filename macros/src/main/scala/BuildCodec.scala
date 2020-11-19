@@ -26,12 +26,7 @@ trait BuildCodec extends Common {
     }
     val error = s"Wrong type of child of sealed trait: ${aTpe}"
     val elseBranch: Term = '{ throw new RuntimeException(${Expr(error)}) }.unseal
-    val prepareExpr = mkIfStatement(ifBranches, elseBranch).seal.cast[Prepare]
-
-    Block(
-      List()
-    , prepareExpr.unseal
-    ).seal.cast[Prepare]
+    mkIfStatement(ifBranches, elseBranch).seal.cast[Prepare]
 
   def prepareImpl[A: quoted.Type](a: Expr[A], params: List[FieldInfo])(using ctx: Context): Expr[Prepare] =
     val sizeAccSym = Symbol.newVal(Symbol.currentOwner, "sizeAcc", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
