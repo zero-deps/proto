@@ -16,6 +16,7 @@ trait Common {
     name: String
   , num: Int
   , tpe: TypeRepr
+  , getter: Term => Term
   , sizeSym: Symbol
   , prepareSym: Symbol
   , prepareOptionSym: Symbol
@@ -169,4 +170,10 @@ trait Common {
           nums
         case Nil => Nil
         case _ => throwError(s"multiple ${aName} annotations applied for `${tName}`")
+
+  def mkIfStatement(branches: List[(Term, Term)], elseBranch: Term): Term =
+    branches match
+      case (cond, thenp) :: xs =>
+        If(cond, thenp, mkIfStatement(xs, elseBranch))
+      case Nil => elseBranch
 }

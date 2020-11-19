@@ -13,6 +13,26 @@ trait BuildCodec extends Common {
   import qctx.reflect.{_, given}
   import qctx.reflect.defn._
 
+  def prepareTrait[A: quoted.Type](a: Expr[A], params: List[FieldInfo])(using ctx: Context): Expr[Prepare] =
+    val aTpe = a.unseal.tpe
+    val ifBranches: List[(Term, Term)] = params.map { p =>
+      val condition: Term = 
+        if p.tpe.typeSymbol.isTerm then
+          Select.unique(a.unseal, "==").appliedTo(p.getter(a.unseal))
+        else
+          Select.unique(a.unseal, "isInstanceOf").appliedToType(p.tpe)
+      val action: Term = prepareImpl(a, List(p)).unseal
+      condition -> action
+    }
+    val error = s"Wrong type of child of sealed trait: ${aTpe}"
+    val elseBranch: Term = '{ throw new RuntimeException(${Expr(error)}) }.unseal
+    val prepareExpr = mkIfStatement(ifBranches, elseBranch).seal.cast[Prepare]
+
+    Block(
+      List()
+    , prepareExpr.unseal
+    ).seal.cast[Prepare]
+
   def prepareImpl[A: quoted.Type](a: Expr[A], params: List[FieldInfo])(using ctx: Context): Expr[Prepare] =
     val sizeAccSym = Symbol.newVal(Symbol.currentOwner, "sizeAcc", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
     val sizeAccRef = Ref(sizeAccSym)
@@ -42,12 +62,12 @@ trait BuildCodec extends Common {
   def writeCommon[A: quoted.Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     List(
       '{ ${os}.writeUInt32NoTag(${Expr(field.tag)}) }
-    , writeFun(os, field.tpe, getterTerm(a, field))
+    , writeFun(os, field.tpe, field.getter(a.unseal))
     )
   
   def writeOption[A: quoted.Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     val tpe = field.tpe.optionArgument
-    val getter = getterTerm(a, field)
+    val getter = field.getter(a.unseal)
     val getterOption = Select.unique(getter, "get")
     if tpe.isCommonType then
       List(
@@ -73,7 +93,7 @@ trait BuildCodec extends Common {
 
   def writeCollection[A: quoted.Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     val tpe1 = field.tpe.iterableArgument
-    val getter = getterTerm(a, field)
+    val getter = field.getter(a.unseal)
     val pType = tpe1.seal.asInstanceOf[quoted.Type[_]]
     val sizeRef = Ref(field.sizeSym)
     if tpe1.isCommonType then
@@ -136,13 +156,13 @@ trait BuildCodec extends Common {
    else sizeMessage(a, field, sizeAcc)
 
   def sizeCommon[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
-    val fun = sizeFun(field.tpe, getterTerm(a, field))
+    val fun = sizeFun(field.tpe, field.getter(a.unseal))
     val sum = '{ ${Expr(CodedOutputStream.computeTagSize(field.num))} + ${fun} }
     List(increment(sizeAcc, sum))
   
   def sizeOption[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
     val tpe = field.tpe.optionArgument
-    val getter: Term = getterTerm(a, field)
+    val getter: Term = field.getter(a.unseal)
     val getterOption: Term = Select.unique(getter, "get")//getterOptionTerm(a, field)
     if (tpe.isCommonType) then
       val fun = sizeFun(tpe, getterOption)
@@ -169,7 +189,7 @@ trait BuildCodec extends Common {
 
   def sizeCollection[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] = 
     val tpe1 = field.tpe.iterableArgument
-    val getter = getterTerm(a, field)
+    val getter = field.getter(a.unseal)
     val pType = tpe1.seal.asInstanceOf[quoted.Type[_]]
     pType match
       case '[$V] =>
@@ -240,7 +260,7 @@ trait BuildCodec extends Common {
           )
 
   def sizeMessage[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
-    val getter = getterTerm(a, field)
+    val getter = field.getter(a.unseal)
     val prepare = Select.unique(findCodec(field.tpe), "prepare").appliedTo(getter)
     val prepareValDef = ValDef(field.prepareSym, Some(prepare))
     val prepareRef = Ref(field.prepareSym).seal.asExprOf[Prepare]
@@ -252,15 +272,12 @@ trait BuildCodec extends Common {
     val incrementAcc = increment(sizeAcc, sum)
     List(prepareValDef, incrementAcc)
 
-  def getterTerm[A: quoted.Type](a: Expr[A], field: FieldInfo): Term =
-    Select.unique(a.unseal, field.name)
-
   def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream])(using ctx: Context): Expr[Any] = {
 
     val (initStatements, readRefs, resExp): (List[Statement], List[Term], Term) =
       if t.isSealedTrait then
         val _none = Ref(NoneModule)
-        val sym = Symbol.newVal(Symbol.currentOwner, "readRes", _none.tpe, Flags.Mutable, Symbol.noSymbol)
+        val sym = Symbol.newVal(Symbol.currentOwner, "readRes", OptionType.appliedTo(t), Flags.Mutable, Symbol.noSymbol)
         val init = ValDef(sym, Some(_none))
         val ref = Ref(sym)
         val error = s"missing one of required field for ${t.typeSymbol.fullName}"

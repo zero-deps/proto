@@ -118,6 +118,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
         name = name
       , num = num
       , tpe = tpe
+      , getter = (a: Term) => Select.unique(a, name)
       , sizeSym = Symbol.newVal(Symbol.currentOwner, s"${name}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
       , prepareSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
       , prepareOptionSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", OptionType.appliedTo(PrepareType), Flags.Mutable, Symbol.noSymbol)
@@ -202,12 +203,18 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
       val tpe = s.tpe
       val num: Int = nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(throwError(s"missing num for class `${tpe}` of trait `${aType}`"))
       if (restrictedNums.contains(num)) throwError(s"num ${num} is restricted for class `${tpe}` of trait `${aType}`")
+    
       FieldInfo(
         name = s.fullName
       , num = num
       , tpe = tpe
-      , sizeSym = Symbol.noSymbol
-      , prepareSym = Symbol.noSymbol
+      , getter = 
+          if s.isTerm then
+            (a: Term) => Ref(s)
+          else
+            (a: Term) => Select.unique(a, "asInstanceOf").appliedToType(tpe)
+      , sizeSym = Symbol.newVal(Symbol.currentOwner, s"field${num}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
+      , prepareSym = Symbol.newVal(Symbol.currentOwner, s"field${num}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
       , prepareOptionSym = Symbol.noSymbol
       , prepareArraySym = Symbol.noSymbol
       , defaultValue = None
@@ -215,7 +222,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     }
     '{
       new MessageCodec[A] {
-        def prepare(a: A): Prepare = ???
+        def prepare(a: A): Prepare = ${ prepareTrait('a, fields) }
         def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).asExprOf[A] }
       }
     }
