@@ -60,14 +60,28 @@ object Doc {
         |\\end{longtable}""".stripMargin
       else throw new Exception(s"no children: check @N on children for ${x.name}")
     case x @ (_: RegularType | _: RecursiveType | _: NoargsType) =>
-      val a = fields(x.tpe).map(y => s"${y._1} & ${pursTypeTex(y._2)}\\\\").mkString("\n").some.filter(_.nonEmpty).cata("\\hline\n"+_+"\n\\hline", "\\hline\\hline")
+      val fs = fields(x.tpe)
+      val (rows, col3, align3) =
+        if (hasdefval(fs)) (fs.map(y => s"${y._1} & ${pursTypeTex(y._2)} & ${defval(y._4)}\\\\"), " & default", "|r")
+        else (fs.map(y => s"${y._1} & ${pursTypeTex(y._2)}\\\\"), "", "")
       import x.name
-      s"""\\begin{table}[H]
-      |\\begin{tabular}{l|r}
-      |\\multicolumn{2}{l}{\\hypertarget{$name}{$name}}\\\\
-      |$a
+      s"""
+      |\\begin{table}[H]
+      |\\begin{tabular}{l|r$align3}
+      |\\multicolumn{2}{l}{\\hypertarget{$name}{$name}}$col3\\\\
+      |${rows.mkString("\n").some.filter(_.nonEmpty).cata("\\hline\n"+_+"\n\\hline", "\\hline\\hline")}
       |\\end{tabular}
-      |\\end{table}""".stripMargin
+      |\\end{table}
+      |""".stripMargin.stripPrefix("\n").stripSuffix("\n")
+    case _ => ""
+  }
+
+  private def hasdefval(xs: Seq[(Any,Any,Any,DefVal)]): Boolean = {
+    xs.exists(x => defval(x._4).nonEmpty)
+  }
+
+  private val defval: DefVal => String = {
+    case x: FillDef => x.value
     case _ => ""
   }
   

@@ -249,13 +249,13 @@ object Decoders {
     }.distinct
   }
 
-  private[this] def decodeFieldLoop(name: String, tpe: Type, n: Int, @unused defval: DefVal): List[String] = {
+  private[this] def decodeFieldLoop(name: String, tpe: Type, n: Int, defval: DefVal): List[String] = {
     decodeFieldLoopTmpl{ case (n: Int, fun: String, mod: String) =>
       s"$n -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> acc { $mod }" :: Nil
     }(name, tpe, n, defval)
   }
 
-  private[this] def decodeFieldLoopNewtype(newtype: String)(name: String, tpe: Type, n: Int, @unused defval: DefVal): List[String] = {
+  private[this] def decodeFieldLoopNewtype(newtype: String)(name: String, tpe: Type, n: Int, defval: DefVal): List[String] = {
     decodeFieldLoopTmpl{ case (n: Int, fun: String, mod: String) =>
       s"$n -> decodeFieldLoop end ($fun _xs_ pos2) \\val -> $newtype $$ acc { $mod }" :: Nil
     }(name, tpe, n, defval)
