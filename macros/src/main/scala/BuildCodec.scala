@@ -4,47 +4,47 @@ package proto
 import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted._, report._
-import scala.internal.quoted.showName
 import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
 
 trait BuildCodec extends Common {
-  implicit val qctx: QuoteContext
+  implicit val qctx: Quotes
   import qctx.reflect.{_, given}
   import qctx.reflect.defn._
 
-  def prepareTrait[A: quoted.Type](a: Expr[A], params: List[FieldInfo])(using ctx: Context): Expr[Prepare] =
-    val aTpe = a.unseal.tpe
+  def prepareTrait[A: Type](a: Expr[A], params: List[FieldInfo]): Expr[Prepare] =
+    val a_term = Term.of(a)
+    val a_tpe = a_term.tpe
     val ifBranches: List[(Term, Term)] = params.map { p =>
       val condition: Term = 
         if p.tpe.typeSymbol.isTerm then
-          Select.unique(a.unseal, "==").appliedTo(p.getter(a.unseal))
+          Select.unique(a_term, "==").appliedTo(p.getter(a_term))
         else
-          Select.unique(a.unseal, "isInstanceOf").appliedToType(p.tpe)
-      val action: Term = prepareImpl(a, List(p)).unseal
+          Select.unique(a_term, "isInstanceOf").appliedToType(p.tpe)
+      val action: Term = Term.of(prepareImpl(a, List(p)))
       condition -> action
     }
-    val error = s"Wrong type of child of sealed trait: ${aTpe}"
-    val elseBranch: Term = '{ throw new RuntimeException(${Expr(error)}) }.unseal
-    mkIfStatement(ifBranches, elseBranch).seal.cast[Prepare]
+    val error = s"Wrong type of child of sealed trait: ${a_tpe}"
+    val elseBranch: Term = Term.of('{ throw new RuntimeException(${Expr(error)}) })
+    mkIfStatement(ifBranches, elseBranch).asExprOf[Prepare]
 
-  def prepareImpl[A: quoted.Type](a: Expr[A], params: List[FieldInfo])(using ctx: Context): Expr[Prepare] =
-    val sizeAccSym = Symbol.newVal(Symbol.currentOwner, "sizeAcc", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
+  def prepareImpl[A: Type](a: Expr[A], params: List[FieldInfo]): Expr[Prepare] =
+    val sizeAccSym = Symbol.newVal(Symbol.spliceOwner, "sizeAcc", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
     val sizeAccRef = Ref(sizeAccSym)
     val sizeAccValDef = ValDef(sizeAccSym, Some(Literal(Constant.Int(0))))
     val xs = params.flatMap(p => size(a, p, sizeAccRef))
-    val newPrepare = '{
+    val newPrepare = Term.of('{
       new Prepare {
-        val size: Int = ${ sizeAccRef.seal.asExprOf[Int] }
+        val size: Int = ${ sizeAccRef.asExprOf[Int] }
         def write(os: CodedOutputStream): Unit = ${ writeImpl(a, params, 'os) }
       }
-    }.unseal
+    })
     Block(
       sizeAccValDef :: xs
     , newPrepare
-    ).seal.asExprOf[Prepare]
+    ).asExprOf[Prepare]
 
-  def writeImpl[A: quoted.Type](a: Expr[A], params: List[FieldInfo], os: Expr[CodedOutputStream]): Expr[Unit] =
+  def writeImpl[A: Type](a: Expr[A], params: List[FieldInfo], os: Expr[CodedOutputStream]): Expr[Unit] =
     Expr.block(
       params.flatMap(p =>
         if p.tpe.isCommonType then writeCommon(a, os, p)
@@ -54,27 +54,27 @@ trait BuildCodec extends Common {
       )
     , unitExpr)
 
-  def writeCommon[A: quoted.Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+  def writeCommon[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     List(
       '{ ${os}.writeUInt32NoTag(${Expr(field.tag)}) }
-    , writeFun(os, field.tpe, field.getter(a.unseal))
+    , writeFun(os, field.tpe, field.getter(Term.of(a)))
     )
   
-  def writeOption[A: quoted.Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+  def writeOption[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     val tpe = field.tpe.optionArgument
-    val getter = field.getter(a.unseal)
+    val getter = field.getter(Term.of(a))
     val getterOption = Select.unique(getter, "get")
     if tpe.isCommonType then
       List(
         '{
-          if ${Select.unique(getter, "isDefined").seal.asExprOf[Boolean]} then {
+          if ${Select.unique(getter, "isDefined").asExprOf[Boolean]} then {
             ${os}.writeUInt32NoTag(${Expr(field.tag)})
             ${writeFun(os, tpe, getterOption)}
           }
         }
       )
     else
-      val prepareOptionRef = Ref(field.prepareOptionSym).seal.asExprOf[Option[Prepare]]
+      val prepareOptionRef = Ref(field.prepareOptionSym).asExprOf[Option[Prepare]]
       List(
         '{
           if ${prepareOptionRef}.isDefined then {
@@ -86,24 +86,24 @@ trait BuildCodec extends Common {
         }
       )
 
-  def writeCollection[A: quoted.Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+  def writeCollection[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     val tpe1 = field.tpe.iterableArgument
-    val getter = field.getter(a.unseal)
-    val pType = tpe1.seal.asInstanceOf[quoted.Type[_]]
+    val getter = field.getter(Term.of(a))
+    val pType = tpe1.asType
     val sizeRef = Ref(field.sizeSym)
     if tpe1.isCommonType then
       pType match
-        case '[$V] =>
+        case '[t] =>
           if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || tpe1.isBytesType then
             val expr = 
               Select.unique(getter, "foreach")
                 .appliedToType(unitLiteral.tpe)
-                .appliedTo('{ (v: V) => {
+                .appliedTo(Term.of('{ (v: t) => {
                       ${os}.writeUInt32NoTag(${Expr(field.tag)})
-                      ${writeFun(os, tpe1, 'v.unseal)}
+                      ${writeFun(os, tpe1, Term.of('v))}
                     }
-                  }.unseal)
-                .seal.asExprOf[Unit]
+                  }))
+                .asExprOf[Unit]
               // a.field.foreach((v: V) => {
               //   os.writeUInt32NoTag(field.tag)
               //   writeFun(os, v)
@@ -112,19 +112,17 @@ trait BuildCodec extends Common {
           else
             List(
               '{ ${os}.writeUInt32NoTag(${Expr(field.tag)}) }
-            , '{ ${os}.writeUInt32NoTag(${sizeRef.seal.asExprOf[Int]}) }
+            , '{ ${os}.writeUInt32NoTag(${sizeRef.asExprOf[Int]}) }
             , Select.unique(getter, "foreach")
                 .appliedToType(unitLiteral.tpe)
-                .appliedTo('{ (v: V) => ${writeFun(os, tpe1, 'v.unseal)} }.unseal)
-                .seal.asExprOf[Unit]
+                .appliedTo(Term.of('{ (v: t) => ${writeFun(os, tpe1, Term.of('v))} }))
+                .asExprOf[Unit]
               // a.field.foreach((v: V) => writeFun(os, v))
             )
     else
-      val prepareArrayRef = Ref(field.prepareArraySym).seal.asExprOf[Array[Prepare]]
-      val counterName = s"${field.name}Counter"
+      val prepareArrayRef = Ref(field.prepareArraySym).asExprOf[Array[Prepare]]
       List(
         '{
-          @showName(${Expr(counterName)})
           var counter = 0
           while (counter < ${prepareArrayRef}.length) {
             val p = ${prepareArrayRef}(counter)
@@ -136,28 +134,28 @@ trait BuildCodec extends Common {
         }
       )
 
-  def writeMessage[A: quoted.Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
-    val prepareRef = Ref(field.prepareSym).seal.asExprOf[Prepare]
+  def writeMessage[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+    val prepareRef = Ref(field.prepareSym).asExprOf[Prepare]
     List(
       '{ ${os}.writeUInt32NoTag(${Expr(field.tag)}) }
     , '{ ${os}.writeUInt32NoTag(${prepareRef}.size) }
     , '{ ${prepareRef}.write(${os}) }
     )
 
-  def size[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
+  def size[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
    if field.tpe.isCommonType then sizeCommon(a, field, sizeAcc)
    else if field.tpe.isOption then sizeOption(a, field, sizeAcc)
    else if field.tpe.isIterable then sizeCollection(a, field, sizeAcc)
    else sizeMessage(a, field, sizeAcc)
 
-  def sizeCommon[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
-    val fun = sizeFun(field.tpe, field.getter(a.unseal))
+  def sizeCommon[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
+    val fun = sizeFun(field.tpe, field.getter(Term.of(a)))
     val sum = '{ ${Expr(CodedOutputStream.computeTagSize(field.num))} + ${fun} }
     List(increment(sizeAcc, sum))
   
-  def sizeOption[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
+  def sizeOption[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
     val tpe = field.tpe.optionArgument
-    val getter: Term = field.getter(a.unseal)
+    val getter: Term = field.getter(Term.of(a))
     val getterOption: Term = Select.unique(getter, "get")//getterOptionTerm(a, field)
     if (tpe.isCommonType) then
       val fun = sizeFun(tpe, getterOption)
@@ -167,51 +165,49 @@ trait BuildCodec extends Common {
       List(If(isDefined, incrementSize, unitLiteral))
     else
       val prepareOptionRhs = '{
-        if (${Select.unique(getter, "isDefined").seal.asExprOf[Boolean]}) {
-          val p: Prepare = ${Select.unique(findCodec(tpe), "prepare").appliedTo(getterOption).seal.asExprOf[Prepare]}
+        if (${Select.unique(getter, "isDefined").asExprOf[Boolean]}) {
+          val p: Prepare = ${Select.unique(findCodec(tpe), "prepare").appliedTo(getterOption).asExprOf[Prepare]}
           ${
             increment(
               sizeAcc
             , '{${Expr(CodedOutputStream.computeTagSize(field.num))} + CodedOutputStream.computeUInt32SizeNoTag(p.size) + p.size }
-            ).seal
+            ).asExpr
           }
           Some(p)
         } else None
       }
       List(
-        ValDef(field.prepareOptionSym, Some(prepareOptionRhs.unseal))
+        ValDef(field.prepareOptionSym, Some(Term.of(prepareOptionRhs)))
       )
 
-  def sizeCollection[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] = 
+  def sizeCollection[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] = 
     val tpe1 = field.tpe.iterableArgument
-    val getter = field.getter(a.unseal)
-    val pType = tpe1.seal.asInstanceOf[quoted.Type[_]]
+    val getter = field.getter(Term.of(a))
+    val pType = tpe1.asType
     pType match
-      case '[$V] =>
+      case '[t] =>
         if tpe1.isCommonType then
           val sizeRef = Ref(field.sizeSym)
           val sizeValDef = ValDef(field.sizeSym, Some(Literal(Constant.Int(0))))
           if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || tpe1.isBytesType then
-            val tagSizeName = s"${field.name}TagSize"
             val sizeExpr = '{ 
-              @showName(${Expr(tagSizeName)})
               val tagSize = ${Expr(CodedOutputStream.computeTagSize(field.num))}
               ${
                 Select.unique(getter, "foreach")
                   .appliedToType(unitLiteral.tpe)
-                  .appliedTo('{ (v: V) => ${ increment(sizeRef, '{ ${sizeFun(tpe1, 'v.unseal)} + tagSize }).seal.asExprOf[Unit] } }.unseal)
-                  .seal
+                  .appliedTo(Term.of('{ (v: t) => ${ increment(sizeRef, '{ ${sizeFun(tpe1, Term.of('v))} + tagSize }).asExprOf[Unit] } }))
+                  .asExpr
               } // a.field.foreach((v: V) =>  sizeRef = sizeRef + sizeFun(v) + tagSize)
             }
-            val incrementAcc = increment(sizeAcc, sizeRef.seal.asExprOf[Int])
-            List(sizeValDef, sizeExpr.unseal, incrementAcc)
+            val incrementAcc = increment(sizeAcc, sizeRef.asExprOf[Int])
+            List(sizeValDef, Term.of(sizeExpr), incrementAcc)
           else
             // a.field.foreach((v: V) =>  sizeRef = sizeRef + sizeFun(v))
             val sizeExpr = 
               Select.unique(getter, "foreach")
                 .appliedToType(unitLiteral.tpe)
-                .appliedTo('{ (v: V) => ${ increment(sizeRef, sizeFun(tpe1, 'v.unseal)).seal.asExprOf[Unit] } }.unseal)
-            val sizeRefExpr = sizeRef.seal.asExprOf[Int]
+                .appliedTo(Term.of('{ (v: t) => ${ increment(sizeRef, sizeFun(tpe1, Term.of('v))).asExprOf[Unit] } }))
+            val sizeRefExpr = sizeRef.asExprOf[Int]
             val sum = '{ 
               ${Expr(CodedOutputStream.computeTagSize(field.num))} + 
               CodedOutputStream.computeUInt32SizeNoTag(${sizeRefExpr}) +
@@ -221,26 +217,24 @@ trait BuildCodec extends Common {
             List(sizeValDef, sizeExpr, incrementAcc)
         else
           val prepareArrayRef = Ref(field.prepareArraySym)
-          val prepareArrayRhs = '{ new Array[Prepare](${Select.unique(getter, "size").seal.asExprOf[Int]}) }
-          val counterName = s"${field.name}Counter"
+          val prepareArrayRhs = '{ new Array[Prepare](${Select.unique(getter, "size").asExprOf[Int]}) }
           val sizeExpr = '{
-            @showName(${Expr(counterName)})
             var counter = 0
             ${ Select.unique(getter, "foreach")
                   .appliedToType(unitLiteral.tpe)
-                  .appliedTo('{ (v: V) =>
-                      val p: Prepare = ${Select.unique(findCodec(tpe1), "prepare").appliedTo('v.unseal).seal.asExprOf[Prepare]}
-                      ${prepareArrayRef.seal.asExprOf[Array[Prepare]]}(counter) = p
+                  .appliedTo(Term.of('{ (v: t) =>
+                      val p: Prepare = ${Select.unique(findCodec(tpe1), "prepare").appliedTo(Term.of('v)).asExprOf[Prepare]}
+                      ${prepareArrayRef.asExprOf[Array[Prepare]]}(counter) = p
                       ${
                         increment(
                           sizeAcc
                         , '{${Expr(CodedOutputStream.computeTagSize(field.num))} + CodedOutputStream.computeUInt32SizeNoTag(p.size) + p.size }
-                        ).seal
+                        ).asExpr
                       }
                       counter = counter + 1                    
-                    }.unseal
+                    })
                   )
-                  .seal 
+                  .asExpr 
                   // a.field.foreach((v: V) => {
                   //   val p: Prepare = implicitly[MessageCodec[V]].prepare(v)
                   //   prepareArra[counter] = p
@@ -250,15 +244,15 @@ trait BuildCodec extends Common {
             }
           }
           List(
-            ValDef(field.prepareArraySym, Some(prepareArrayRhs.unseal))
-          , sizeExpr.unseal
+            ValDef(field.prepareArraySym, Some(Term.of(prepareArrayRhs)))
+          , Term.of(sizeExpr)
           )
 
-  def sizeMessage[A: quoted.Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
-    val getter = field.getter(a.unseal)
+  def sizeMessage[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
+    val getter = field.getter(Term.of(a))
     val prepare = Select.unique(findCodec(field.tpe), "prepare").appliedTo(getter)
     val prepareValDef = ValDef(field.prepareSym, Some(prepare))
-    val prepareRef = Ref(field.prepareSym).seal.asExprOf[Prepare]
+    val prepareRef = Ref(field.prepareSym).asExprOf[Prepare]
     val sum = '{ 
       ${Expr(CodedOutputStream.computeTagSize(field.num))} + 
       CodedOutputStream.computeUInt32SizeNoTag(${prepareRef}.size) +
@@ -267,16 +261,16 @@ trait BuildCodec extends Common {
     val incrementAcc = increment(sizeAcc, sum)
     List(prepareValDef, incrementAcc)
 
-  def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream])(using ctx: Context): Expr[Any] = {
+  def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream]): Expr[Any] = {
 
     val (initStatements, readRefs, resExp): (List[Statement], List[Term], Term) =
       if t.isSealedTrait then
         val _none = Ref(NoneModule)
-        val sym = Symbol.newVal(Symbol.currentOwner, "readRes", OptionType.appliedTo(t), Flags.Mutable, Symbol.noSymbol)
+        val sym = Symbol.newVal(Symbol.spliceOwner, "readRes", OptionType.appliedTo(t), Flags.Mutable, Symbol.noSymbol)
         val init = ValDef(sym, Some(_none))
         val ref = Ref(sym)
         val error = s"missing one of required field for ${t.typeSymbol.fullName}"
-        val exception = '{ throw new RuntimeException(${Expr(error)}) }.unseal
+        val exception = Term.of('{ throw new RuntimeException(${Expr(error)}) })
         val res = ref.select(OptionClass.method("getOrElse").head)
           .appliedToType(t)
           .appliedTo(exception) // ref.getOrElse[t](exception)
@@ -289,7 +283,7 @@ trait BuildCodec extends Common {
         }).unzip3
         (xs._1, xs._2, classApply(t, xs._3))
 
-    val tagMatch: Statement = '{
+    val tagMatch: Statement = Term.of('{
       var done = false
       while (done == false) {
         val tag: Int = ${is}.readTag
@@ -308,7 +302,7 @@ trait BuildCodec extends Common {
         }
         if (tagMatch == false) ${is}.skipField(tag)
       }
-    }.unseal
+    })
 
     val statements =
       if (params.size > 0) then initStatements :+ (tagMatch) 
@@ -317,7 +311,7 @@ trait BuildCodec extends Common {
     Block(
       statements
     , resExp
-    ).seal
+    ).asExpr
   }
 
   def readContentImpl(p: FieldInfo, readRef: Term, is: Expr[CodedInputStream]): Expr[Any] =
@@ -326,23 +320,23 @@ trait BuildCodec extends Common {
       Assign(
         readRef
       , Some_Apply(tpe=p.tpe, value=fun)
-      ).seal
+      ).asExpr
     else if p.tpe.isOption && p.tpe.optionArgument.isCommonType then
       val tpe1 = p.tpe.optionArgument
       val fun: Term = readFun(tpe1, is)
       Assign(
         readRef
       , Some_Apply(tpe=tpe1, value=fun)
-      ).seal
+      ).asExpr
     else if p.tpe.isOption then
       val tpe1 = p.tpe.optionArgument
-      val fun: Term = Select.unique(findCodec(tpe1), "read").appliedTo(is.unseal)
+      val fun: Term = Select.unique(findCodec(tpe1), "read").appliedTo(Term.of(is))
       putLimit(
         is
       , Assign(
           readRef
         , Some_Apply(tpe=tpe1, value=fun)
-        ).seal      
+        ).asExpr      
       )
     else if p.tpe.isIterable && p.tpe.iterableArgument.isCommonType then
       val tpe1 = p.tpe.iterableArgument
@@ -350,7 +344,7 @@ trait BuildCodec extends Common {
       val addOneApply = Apply(
         Select(readRef, readRef.tpe.termSymbol.method("addOne").head)
       , List(fun)
-      ).seal
+      ).asExpr
       if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || tpe1.isBytesType then 
         addOneApply
       else
@@ -360,23 +354,23 @@ trait BuildCodec extends Common {
         )
     else if p.tpe.isIterable then
       val tpe1 = p.tpe.iterableArgument
-      val fun: Term = Select.unique(findCodec(tpe1), "read").appliedTo(is.unseal)
+      val fun: Term = Select.unique(findCodec(tpe1), "read").appliedTo(Term.of(is))
       val addOneApply = Apply(
         Select(readRef, readRef.tpe.termSymbol.method("addOne").head)
       , List(fun)
-      ).seal
+      ).asExpr
       putLimit(
         is
       , addOneApply
       )
     else
-      val fun: Term = Select.unique(findCodec(p.tpe), "read").appliedTo(is.unseal)
+      val fun: Term = Select.unique(findCodec(p.tpe), "read").appliedTo(Term.of(is))
       putLimit(
         is
       , Assign(
           readRef
         , Some_Apply(tpe=p.tpe, value=fun)
-        ).seal 
+        ).asExpr 
       )
 
   def putLimit(is: Expr[CodedInputStream], read: Expr[Any]): Expr[Unit] =
@@ -387,10 +381,10 @@ trait BuildCodec extends Common {
       ${is}.popLimit(limit)
     }
 
-  def initValDef(field: FieldInfo)(using ctx: Context): (ValDef, Ref) =
+  def initValDef(field: FieldInfo): (ValDef, Ref) =
     if field.tpe.isOption then
       val _none = Ref(NoneModule)
-      val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", field.tpe, Flags.Mutable, Symbol.noSymbol)
+      val sym = Symbol.newVal(Symbol.spliceOwner, s"${field.name}Read", field.tpe, Flags.Mutable, Symbol.noSymbol)
       val init = ValDef(sym, Some(_none))
       val ref = Ref(sym)
       init -> ref
@@ -400,14 +394,14 @@ trait BuildCodec extends Common {
       val collectionCompanion = collectionType.typeSymbol.companionModule
       val newBuilderMethod = collectionCompanion.method("newBuilder").head
       val builderTpe = builderType.appliedTo(List(tpe1, field.tpe))
-      val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", builderTpe, Flags.EmptyFlags, Symbol.noSymbol)
+      val sym = Symbol.newVal(Symbol.spliceOwner, s"${field.name}Read", builderTpe, Flags.EmptyFlags, Symbol.noSymbol)
       val rhs = Select(Ref(collectionCompanion), newBuilderMethod)
       val init = ValDef(sym, Some(rhs))
       val ref = Ref(sym)
       init -> ref
     else
       val _none = Ref(NoneModule)
-      val sym = Symbol.newVal(Symbol.currentOwner, s"${field.name}Read", OptionType.appliedTo(field.tpe), Flags.Mutable, Symbol.noSymbol)
+      val sym = Symbol.newVal(Symbol.spliceOwner, s"${field.name}Read", OptionType.appliedTo(field.tpe), Flags.Mutable, Symbol.noSymbol)
       val init = ValDef(sym, Some(_none))
       val ref = Ref(sym)
       init -> ref
@@ -418,7 +412,7 @@ trait BuildCodec extends Common {
       Select(ref, ref.tpe.termSymbol.method("result").head)
     else
       val error = s"missing required field `${field.name}: ${field.tpe.typeSymbol.name}`"
-      val exception = '{ throw new RuntimeException(${Expr(error)}) }.unseal
+      val exception = Term.of('{ throw new RuntimeException(${Expr(error)}) })
       val orElse = field.defaultValue.getOrElse(exception)
       ref.select(OptionClass.method("getOrElse").head)
         .appliedToType(field.tpe)
@@ -445,5 +439,5 @@ trait BuildCodec extends Common {
           .appliedToTypes(x.typeArgs)
           .appliedToArgs(params)
 
-  def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.seal.asExprOf[Int]} + ${y} }.unseal)
+  def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, Term.of('{ ${x.asExprOf[Int]} + ${y} }))
 }

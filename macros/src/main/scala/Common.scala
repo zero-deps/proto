@@ -8,7 +8,7 @@ import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
 
 trait Common {
-  implicit val qctx: QuoteContext
+  implicit val qctx: Quotes
   import qctx.reflect.{_, given}
   import qctx.reflect.defn._
 
@@ -41,42 +41,40 @@ trait Common {
     else 2
 
   def writeFun(os: Expr[CodedOutputStream], t: TypeRepr, getterTerm: Term): Expr[Unit] =
-    val getValue = getterTerm.seal
-    if      t.isInt then '{ ${os}.writeInt32NoTag(${getValue.asExprOf[Int]}) }
-    else if t.isLong then '{ ${os}.writeInt64NoTag(${getValue.asExprOf[Long]}) }
-    else if t.isBoolean then '{ ${os}.writeBoolNoTag(${getValue.asExprOf[Boolean]}) }
-    else if t.isDouble then '{ ${os}.writeDoubleNoTag(${getValue.asExprOf[Double]}) }
-    else if t.isFloat then '{ ${os}.writeFloatNoTag(${getValue.asExprOf[Float]}) }
-    else if t.isString then '{ ${os}.writeStringNoTag(${getValue.asExprOf[String]}) }
-    else if t.isArrayByte then '{ ${os}.writeByteArrayNoTag(${getValue.asExprOf[Array[Byte]]}) }
-    else if t.isArraySeqByte then '{ ${os}.writeByteArrayNoTag(${getValue.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
-    else if t.isBytesType then '{ ${os}.writeByteArrayNoTag(${getValue.asExprOf[Bytes]}.unsafeArray) }
+    if      t.isInt then '{ ${os}.writeInt32NoTag(${getterTerm.asExprOf[Int]}) }
+    else if t.isLong then '{ ${os}.writeInt64NoTag(${getterTerm.asExprOf[Long]}) }
+    else if t.isBoolean then '{ ${os}.writeBoolNoTag(${getterTerm.asExprOf[Boolean]}) }
+    else if t.isDouble then '{ ${os}.writeDoubleNoTag(${getterTerm.asExprOf[Double]}) }
+    else if t.isFloat then '{ ${os}.writeFloatNoTag(${getterTerm.asExprOf[Float]}) }
+    else if t.isString then '{ ${os}.writeStringNoTag(${getterTerm.asExprOf[String]}) }
+    else if t.isArrayByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
+    else if t.isArraySeqByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
+    else if t.isBytesType then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[Bytes]}.unsafeArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def sizeFun(t: TypeRepr, getterTerm: Term): Expr[Int] =
     val CodedOutputStreamRef = Ref(TypeRepr.of[CodedOutputStream].typeSymbol.companionModule)
-    val getValue = getterTerm.seal
-    if      t.isInt then '{ CodedOutputStream.computeInt32SizeNoTag(${getValue.asExprOf[Int]}) }
-    else if t.isLong then '{ CodedOutputStream.computeInt64SizeNoTag(${getValue.asExprOf[Long]}) }
+    if      t.isInt then '{ CodedOutputStream.computeInt32SizeNoTag(${getterTerm.asExprOf[Int]}) }
+    else if t.isLong then '{ CodedOutputStream.computeInt64SizeNoTag(${getterTerm.asExprOf[Long]}) }
     else if t.isBoolean then Expr(1)
     else if t.isDouble then Expr(8)
     else if t.isFloat then Expr(4)
-    else if t.isString then '{ CodedOutputStream.computeStringSizeNoTag(${getValue.asExprOf[String]}) }
-    else if t.isArrayByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getValue.asExprOf[Array[Byte]]}) }
-    else if t.isArraySeqByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getValue.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
-    else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getValue.asExprOf[Bytes]}.unsafeArray) }
+    else if t.isString then '{ CodedOutputStream.computeStringSizeNoTag(${getterTerm.asExprOf[String]}) }
+    else if t.isArrayByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
+    else if t.isArraySeqByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
+    else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[Bytes]}.unsafeArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def readFun(t: TypeRepr, is: Expr[CodedInputStream]): Term =
-    if      t.isInt then '{ ${is}.readInt32 }.unseal
-    else if t.isLong then '{ ${is}.readInt64 }.unseal
-    else if t.isBoolean then '{ ${is}.readBool }.unseal
-    else if t.isDouble then '{ ${is}.readDouble }.unseal
-    else if t.isFloat then '{ ${is}.readFloat }.unseal
-    else if t.isString then '{ ${is}.readString }.unseal
-    else if t.isArrayByte then '{ ${is}.readByteArray }.unseal
-    else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray) }.unseal
-    else if t.isBytesType then '{ Bytes.unsafeWrap(${is}.readByteArray) }.unseal
+    if      t.isInt then Term.of('{ ${is}.readInt32 })
+    else if t.isLong then Term.of('{ ${is}.readInt64 })
+    else if t.isBoolean then Term.of('{ ${is}.readBool })
+    else if t.isDouble then Term.of('{ ${is}.readDouble })
+    else if t.isFloat then Term.of('{ ${is}.readFloat })
+    else if t.isString then Term.of('{ ${is}.readString })
+    else if t.isArrayByte then Term.of('{ ${is}.readByteArray })
+    else if t.isArraySeqByte then Term.of('{ ArraySeq.unsafeWrapArray(${is}.readByteArray) })
+    else if t.isBytesType then Term.of('{ Bytes.unsafeWrap(${is}.readByteArray) })
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
@@ -98,7 +96,7 @@ trait Common {
   def unitLiteral: Literal = Literal(Constant.Unit())
   def defaultMethodName(i: Int): String = s"$$lessinit$$greater$$default$$${i+1}"
 
-  def unitExpr: Expr[Unit] = unitLiteral.seal.asExprOf[Unit]
+  def unitExpr: Expr[Unit] = unitLiteral.asExprOf[Unit]
 
   def builderType: TypeRepr = TypeRepr.of[scala.collection.mutable.Builder]
     

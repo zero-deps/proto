@@ -28,17 +28,17 @@ object macrosapi {
 }
 
 object Macro {
-  def caseCodecAuto[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
-  def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().caseCodecNums[A](numsExpr)
-  def caseCodecIdx[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().caseCodecIdx[A]
+  def caseCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
+  def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecNums[A](numsExpr)
+  def caseCodecIdx[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecIdx[A]
 
-  def enumByN[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().enumByN[A]
+  def enumByN[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().enumByN[A]
 
-  def sealedTraitCodecAuto[A: Type](using qctx: QuoteContext): Expr[MessageCodec[A]] = Impl().sealedTraitCodecAuto[A]
+  def sealedTraitCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecAuto[A]
 
 }
 
-private class Impl(using val qctx: QuoteContext) extends BuildCodec {
+private class Impl(using val qctx: Quotes) extends BuildCodec {
   import qctx.reflect.{_, given}
   import qctx.reflect.defn._
 
@@ -61,8 +61,8 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     val nums: Seq[(String, Int)] = numsExpr match {
       case Varargs(argExprs) =>
         argExprs.collect{
-          case '{ ($x:String, $y:Int) } => x.unseal -> y.unseal
-          case '{ ($x:String) -> ($y:Int) } => x.unseal -> y.unseal
+          case '{ ($x:String, $y:Int) } => Term.of(x) -> Term.of(y)
+          case '{ ($x:String) -> ($y:Int) } => Term.of(x) -> Term.of(y)
         }.collect{
           case (Literal(Constant.String(name)), Literal(Constant.Int(num))) => name -> num
         }
@@ -82,7 +82,7 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     messageCodec(aType, nums, params, restrictDefaults=false)
   }
 
-  def messageCodec[A: quoted.Type](aType: TypeRepr, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean)(using ctx: Context): Expr[MessageCodec[A]] = {
+  def messageCodec[A: quoted.Type](aType: TypeRepr, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean): Expr[MessageCodec[A]] = {
     val aTypeSym = aType.typeSymbol
     val aTypeCompanionSym = aTypeSym.companionModule
     val typeName = aTypeSym.fullName
@@ -119,10 +119,10 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
       , num = num
       , tpe = tpe
       , getter = (a: Term) => Select.unique(a, name)
-      , sizeSym = Symbol.newVal(Symbol.currentOwner, s"${name}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
-      , prepareSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
-      , prepareOptionSym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", OptionType.appliedTo(PrepareType), Flags.Mutable, Symbol.noSymbol)
-      , prepareArraySym = Symbol.newVal(Symbol.currentOwner, s"${name}Prepare", TypeRepr.of[Array[Prepare]], Flags.Mutable, Symbol.noSymbol)
+      , sizeSym = Symbol.newVal(Symbol.spliceOwner, s"${name}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
+      , prepareSym = Symbol.newVal(Symbol.spliceOwner, s"${name}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
+      , prepareOptionSym = Symbol.newVal(Symbol.spliceOwner, s"${name}Prepare", OptionType.appliedTo(PrepareType), Flags.Mutable, Symbol.noSymbol)
+      , prepareArraySym = Symbol.newVal(Symbol.spliceOwner, s"${name}Prepare", TypeRepr.of[Array[Prepare]], Flags.Mutable, Symbol.noSymbol)
       , defaultValue = defaultValue
       )
     }
@@ -134,14 +134,12 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     }
   }
 
-  def enumByN[A: quoted.Type]: Expr[MessageCodec[A]] = {
-    val ctx = summon[Context]
-    val t = summon[quoted.Type[A]]
-    val aType = t.unseal.tpe
-    val aTypeSym = aType.typeSymbol
-    val typeName = aTypeSym.fullName
-    val xs = aTypeSym.children
-    val restrictedN: List[Int] = aType.restrictedNums
+  def enumByN[A: Type]: Expr[MessageCodec[A]] = {
+    val a_tpe = TypeRepr.of[A]
+    val a_typeSym = a_tpe.typeSymbol
+    val typeName = a_typeSym.fullName
+    val xs = a_typeSym.children
+    val restrictedN: List[Int] = a_tpe.restrictedNums
     xs.map{ x =>
       val num: Int =
         x.annots.collect{
@@ -213,8 +211,8 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
             (a: Term) => Ref(s)
           else
             (a: Term) => Select.unique(a, "asInstanceOf").appliedToType(tpe)
-      , sizeSym = Symbol.newVal(Symbol.currentOwner, s"field${num}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
-      , prepareSym = Symbol.newVal(Symbol.currentOwner, s"field${num}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
+      , sizeSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
+      , prepareSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
       , prepareOptionSym = Symbol.noSymbol
       , prepareArraySym = Symbol.noSymbol
       , defaultValue = None
@@ -228,15 +226,13 @@ private class Impl(using val qctx: QuoteContext) extends BuildCodec {
     }
   }
 
-  private def getSealedTrait[A: quoted.Type]: TypeRepr = {
-    val t = summon[quoted.Type[A]]
-    val tpe = t.unseal.tpe
+  private def getSealedTrait[A: Type]: TypeRepr = {
+    val tpe = TypeRepr.of[A]
     if tpe.isSealedTrait then tpe else throwError(s"`${tpe.typeSymbol.fullName}` is not a sealed trait. Make sure that you specify codec type explicitly.\nExample:\n implicit val codecName: MessageCodec[SealedTraitTypeHere] = ...\n\n")
   }
 
-  private def getCaseClassType[A: quoted.Type]: TypeRepr = {
-    val t = summon[quoted.Type[A]]
-    val tpe = t.unseal.tpe
+  private def getCaseClassType[A: Type]: TypeRepr = {
+    val tpe = TypeRepr.of[A]
     if tpe.isCaseType then tpe else throwError(s"`${tpe.typeSymbol.fullName}` is not a case class")
   }
 
