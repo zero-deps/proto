@@ -26,9 +26,9 @@ lazy val root = project.in(file(".")).settings(
   libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
   skip in publish := true,
 // ).dependsOn(macros).aggregate(macros, runtime, benchmark)
-).dependsOn(macros).aggregate(macros, runtime)
+).dependsOn(scala3macros).aggregate(scala3macros, runtime)
 
-lazy val macros = project.in(file("macros")).settings(
+lazy val scala3macros = project.in(file("scala3macros")).settings(
   name := "proto-macros",
   // libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
 ).dependsOn(runtime)
@@ -50,6 +50,6 @@ lazy val benchmark = project.in(file("benchmark")).settings(
   // ),
   skip in publish := true,
 // ).enablePlugins(JmhPlugin).dependsOn(macros)
-).dependsOn(macros)
+).dependsOn(scala3macros)
 
-lazy val test = project.in(file("test")).dependsOn(macros, runtime)
+lazy val test = project.in(file("test")).dependsOn(scala3macros, runtime)

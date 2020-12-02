@@ -82,16 +82,16 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     messageCodec(aType, nums, params, restrictDefaults=false)
   }
 
-  def messageCodec[A: quoted.Type](aType: TypeRepr, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean): Expr[MessageCodec[A]] = {
-    val aTypeSym = aType.typeSymbol
+  def messageCodec[A: quoted.Type](a_tpe: TypeRepr, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean): Expr[MessageCodec[A]] = {
+    val aTypeSym = a_tpe.typeSymbol
     val aTypeCompanionSym = aTypeSym.companionModule
     val typeName = aTypeSym.fullName
     
     if (nums.exists(_._2 < 1)) throwError(s"nums ${nums} should be > 0")
     if (nums.size != cParams.size) throwError(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
     if (nums.groupBy(_._2).exists(_._2.size != 1)) throwError(s"nums ${nums} should be unique")
-    val restrictedNums = aType.restrictedNums
-    val typeArgsToReplace: Map[String, TypeRepr] = aType.typeArgsToReplace
+    val restrictedNums = a_tpe.restrictedNums
+    val typeArgsToReplace: Map[String, TypeRepr] = a_tpe.typeArgsToReplace
 
     val fields: List[FieldInfo] = cParams.zipWithIndex.map{ case (s, i) =>
       val (name, tpe) = s.tree match  
@@ -126,10 +126,14 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
       , defaultValue = defaultValue
       )
     }
+    val nums_expr = Expr(nums.toMap)
+    val aType_xpr = Expr(typeName)
     '{ 
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ${ prepareImpl('a, fields) }
-        def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).asExprOf[A] }
+        def read(is: CodedInputStream): A = ${ readImpl(a_tpe, fields, 'is).asExprOf[A] }
+        val nums: Map[String, Int] = $nums_expr
+        val aType: String = $aType_xpr
       }
     }
   }
@@ -168,6 +172,8 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ???
         def read(is: CodedInputStream): A = ???
+        val nums: Map[String, Int] = ???
+        val aType: String = ???
       }
     }
   }
@@ -186,8 +192,8 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     sealedTraitCodec(aType, nums)
   }
 
-  def sealedTraitCodec[A: quoted.Type](aType: TypeRepr, nums: Seq[(TypeRepr, Int)]): Expr[MessageCodec[A]] = {
-    val aTypeSymbol = aType.typeSymbol
+  def sealedTraitCodec[A: quoted.Type](a_tpe: TypeRepr, nums: Seq[(TypeRepr, Int)]): Expr[MessageCodec[A]] = {
+    val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
     val subclasses = aTypeSymbol.children
 
@@ -195,12 +201,12 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     if (nums.size != subclasses.size) throwError(s"`${typeName}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
     if (nums.exists(_._2 < 1)) throwError(s"nums for ${typeName} should be > 0")
     if (nums.groupBy(_._2).exists(_._2.size != 1)) throwError(s"nums for ${typeName} should be unique")
-    val restrictedNums = aType.restrictedNums
+    val restrictedNums = a_tpe.restrictedNums
 
     val fields: List[FieldInfo] = subclasses.map{ s =>
       val tpe = s.tpe
-      val num: Int = nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(throwError(s"missing num for class `${tpe}` of trait `${aType}`"))
-      if (restrictedNums.contains(num)) throwError(s"num ${num} is restricted for class `${tpe}` of trait `${aType}`")
+      val num: Int = nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(throwError(s"missing num for class `${tpe}` of trait `${a_tpe}`"))
+      if (restrictedNums.contains(num)) throwError(s"num ${num} is restricted for class `${tpe}` of trait `${a_tpe}`")
     
       FieldInfo(
         name = s.fullName
@@ -218,10 +224,14 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
       , defaultValue = None
       )
     }
+    val nums_expr = Expr(fields.map(x => x.name -> x.num).toMap)
+    val aType_expr = Expr(typeName)
     '{
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ${ prepareTrait('a, fields) }
-        def read(is: CodedInputStream): A = ${ readImpl(aType, fields, 'is).asExprOf[A] }
+        def read(is: CodedInputStream): A = ${ readImpl(a_tpe, fields, 'is).asExprOf[A] }
+        val nums: Map[String, Int] = $nums_expr
+        val aType: String = $aType_expr
       }
     }
   }
