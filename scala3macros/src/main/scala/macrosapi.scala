@@ -143,44 +143,18 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     val a_typeSym = a_tpe.typeSymbol
     val typeName = a_typeSym.fullName
     val xs = a_typeSym.children
-    val restrictedN: List[Int] = a_tpe.restrictedNums
-    xs.map{ x =>
-      val num: Int =
-        x.annots.collect{
-          case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num1)))) if tpt.tpe.isNType => num1
-        } match {
-          case List(num1) if restrictedN.contains(num1) => throwError(s"num ${num1} for `${typeName}` is restricted") 
-          case List(num1) => num1
-          case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
-          case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
-        }
-      // val field = FieldInfo(
-      //   name = s"field${num}"
-      // , num = num
-      // , tpe = ???
-      // , tpt = ???
-      // , getter = aTypeSym //?
-      // , sizeSym = Symbol.newVal(ctx.owner, s"field${num}Size", IntType, Flags.Mutable, Symbol.noSymbol)
-      // , prepareSym = Symbol.newVal(ctx.owner, s"field${num}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
-      // , prepareOptionSym = Symbol.newVal(ctx.owner, s"field${num}Prepare", appliedOptionType(PrepareType), Flags.Mutable, Symbol.noSymbol)
-      // , prepareArraySym = Symbol.newVal(ctx.owner, s"field${num}Prepare", typeOf[Array[Prepare]], Flags.Mutable, Symbol.noSymbol)
-      // , defaultValue = None
-      // )
-      // prepareImpl(x, List(field))
+    val nums: List[(TypeRepr, Int)] = xs.map{ x =>
+      x.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num)))) if tpt.tpe.isNType => x.tpe -> num } match
+        case List(x) => x
+        case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+        case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     }
-    '{
-      new MessageCodec[A] {
-        def prepare(a: A): Prepare = ???
-        def read(is: CodedInputStream): A = ???
-        val nums: Map[String, Int] = ???
-        val aType: String = ???
-      }
-    }
+    sealedTraitCodec(a_tpe, nums)
   }
 
   def sealedTraitCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
-    val aType = getSealedTrait[A]
-    val aTypeSymbol = aType.typeSymbol
+    val a_tpe = getSealedTrait[A]
+    val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
     val xs = aTypeSymbol.children
     val nums: List[(TypeRepr, Int)] = xs.map{ x =>
@@ -189,7 +163,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
         case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     }
-    sealedTraitCodec(aType, nums)
+    sealedTraitCodec(a_tpe, nums)
   }
 
   def sealedTraitCodec[A: quoted.Type](a_tpe: TypeRepr, nums: Seq[(TypeRepr, Int)]): Expr[MessageCodec[A]] = {
@@ -229,7 +203,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     '{
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ${ prepareTrait('a, fields) }
-        def read(is: CodedInputStream): A = ${ readImpl(a_tpe, fields, 'is).asExprOf[A] }
+        def read(is: CodedInputStream): A = ${ readImpl(a_tpe, fields, 'is, isTrait=true).asExprOf[A] }
         val nums: Map[String, Int] = $nums_expr
         val aType: String = $aType_expr
       }

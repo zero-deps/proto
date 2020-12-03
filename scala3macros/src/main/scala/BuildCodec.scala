@@ -261,10 +261,11 @@ trait BuildCodec extends Common {
     val incrementAcc = increment(sizeAcc, sum)
     List(prepareValDef, incrementAcc)
 
-  def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream]): Expr[Any] = {
+  def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream], isTrait: Boolean=false): Expr[Any] = {
 
     val (initStatements, readRefs, resExp): (List[Statement], List[Term], Term) =
-      if t.isSealedTrait then
+      if isTrait then
+      // if t.isSealedTrait then
         val _none = Ref(NoneModule)
         val sym = Symbol.newVal(Symbol.spliceOwner, "readRes", OptionType.appliedTo(t), Flags.Mutable, Symbol.noSymbol)
         val init = ValDef(sym, Some(_none))
