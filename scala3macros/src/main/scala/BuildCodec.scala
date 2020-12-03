@@ -143,10 +143,10 @@ trait BuildCodec extends Common {
     )
 
   def size[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
-   if field.tpe.isCommonType then sizeCommon(a, field, sizeAcc)
-   else if field.tpe.isOption then sizeOption(a, field, sizeAcc)
-   else if field.tpe.isIterable then sizeCollection(a, field, sizeAcc)
-   else sizeMessage(a, field, sizeAcc)
+    if field.tpe.isCommonType then sizeCommon(a, field, sizeAcc)
+    else if field.tpe.isOption then sizeOption(a, field, sizeAcc)
+    else if field.tpe.isIterable then sizeCollection(a, field, sizeAcc)
+    else sizeMessage(a, field, sizeAcc)
 
   def sizeCommon[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
     val fun = sizeFun(field.tpe, field.getter(Term.of(a)))

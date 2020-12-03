@@ -87,7 +87,7 @@ trait Common {
   val CodedInputStreamType: TypeRepr = TypeRepr.of[CodedInputStream]
   
   extension (s: Symbol)
-    def caseClassValueParams: List[Symbol] = s.primaryConstructor.paramSymss.find(_.headOption.fold(false)( _.isTerm)).getOrElse(Nil)
+    def constructorParams: List[Symbol] = s.primaryConstructor.paramSymss.find(_.headOption.fold(false)( _.isTerm)).getOrElse(Nil)
     def tpe: TypeRepr = 
       s.tree match
         case x: ClassDef => x.constructor.returnTpt.tpe

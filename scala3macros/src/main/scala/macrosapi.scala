@@ -17,13 +17,10 @@ object macrosapi {
   inline def caseCodecAuto[A]: MessageCodec[A] = ${Macro.caseCodecAuto[A]}
   inline def caseCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.caseCodecNums[A]('nums)}
   inline def caseCodecIdx[A]: MessageCodec[A] = ${Macro.caseCodecIdx[A]}
-
-  inline def classCodecAuto[A]: MessageCodec[A] = ???
+  inline def classCodecAuto[A]: MessageCodec[A] = ${Macro.classCodecAuto[A]}
   inline def classCodecNums[A](nums: (String, Int)*)(constructor: Any): MessageCodec[A] = ???
-
   inline def sealedTraitCodecAuto[A]: MessageCodec[A] = ${Macro.sealedTraitCodecAuto[A]}
   inline def sealedTraitCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.sealedTraitCodecNums[A]('nums)}
-  
   inline def enumByN[A]: MessageCodec[A] = ${Macro.enumByN[A]}
 }
 
@@ -31,6 +28,7 @@ object Macro {
   def caseCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
   def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecNums[A](numsExpr)
   def caseCodecIdx[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecIdx[A]
+  def classCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().classCodecAuto[A]
   def enumByN[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().enumByN[A]
   def sealedTraitCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecAuto[A]
   def sealedTraitCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecNums[A](numsExpr)
@@ -44,7 +42,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
-    val params: List[Symbol] = aTypeSymbol.caseClassValueParams
+    val params: List[Symbol] = aTypeSymbol.constructorParams
     val nums: List[(String, Int)] = params.map(p =>
       p.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num)))) if tpt.tpe.isNType => p.name -> num } match {
         case List(x) => x
@@ -59,16 +57,31 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     val nums: Seq[(String, Int)] = numsFromExpr(numsExpr)
     val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
-    val params: List[Symbol] = aTypeSymbol.caseClassValueParams
-    messageCodec(a_tpe, nums, params, restrictDefaults=true)
+    val params: List[Symbol] = aTypeSymbol.constructorParams
+    messageCodec(a_tpe, nums, params, restrictDefaults=false)
   }
 
   def caseCodecIdx[A: quoted.Type]: Expr[MessageCodec[A]] = {
     val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
-    val params: List[Symbol] = aTypeSymbol.caseClassValueParams
+    val params: List[Symbol] = aTypeSymbol.constructorParams
     val nums: List[(String, Int)] = params.zipWithIndex.map{case (p, idx) => (p.name, idx + 1) }
     messageCodec(a_tpe, nums, params, restrictDefaults=false)
+  }
+
+  def classCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
+    val a_tpe = TypeRepr.of[A]
+    val aTypeSymbol = a_tpe.typeSymbol
+    val typeName = aTypeSymbol.fullName
+    val params: List[Symbol] = aTypeSymbol.constructorParams
+    val nums: List[(String, Int)] = params.map(p =>
+      p.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num)))) if tpt.tpe.isNType => p.name -> num } match {
+        case List(x) => x
+        case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+        case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
+      }
+    )
+    messageCodec(a_tpe, nums, params, restrictDefaults=true)
   }
 
   def messageCodec[A: quoted.Type](a_tpe: TypeRepr, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean): Expr[MessageCodec[A]] = {
@@ -89,13 +102,16 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
             case Some(typeArg) => (v_name, typeArg)
             case None => (v_name, v_tpt.tpe)
         case _ => throwError(s"wrong param definition of case class `${typeName}`")
-      
-      val defaultValue: Option[Term] = aTypeCompanionSym.method(defaultMethodName(i)) match
-        case List(x) =>
-          if tpe.isOption && restrictDefaults then throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for Option isn't allowed")
-          else if tpe.isIterable && restrictDefaults then throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for collections isn't allowed")
-          else Some(Select(Ref(aTypeCompanionSym), x))
-        case _ => None
+
+      val defaultValue: Option[Term] = 
+        if s.flags.is(Flags.HasDefault) then
+          aTypeCompanionSym.method(defaultMethodName(i)) match
+          case List(x) =>
+            if tpe.isOption && restrictDefaults then throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for Option isn't allowed")
+            else if tpe.isIterable && restrictDefaults then throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for collections isn't allowed")
+            else Some(Select(Ref(aTypeCompanionSym), x))
+          case _ => throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value method not found")
+        else None
       val num: Int =
         nums.collectFirst{ case (name1, num1) if name1 == name =>
           if restrictedNums.contains(num1) then throwError(s"num ${num1} for `${typeName}` is restricted") 
