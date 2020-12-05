@@ -261,7 +261,7 @@ trait BuildCodec extends Common {
     val incrementAcc = increment(sizeAcc, sum)
     List(prepareValDef, incrementAcc)
 
-  def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream], isTrait: Boolean=false): Expr[Any] = {
+  def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream], isTrait: Boolean=false, constructor: Option[Term]=None): Expr[Any] = {
 
     val (initStatements, readRefs, resExp): (List[Statement], List[Term], Term) =
       if isTrait then
@@ -282,7 +282,8 @@ trait BuildCodec extends Common {
           val res = resTerm(ref, p)
           (init, ref, res)
         }).unzip3
-        (xs._1, xs._2, classApply(t, xs._3))
+        val res = classApply(t, xs._3, constructor)
+        (xs._1, xs._2, res)
 
     val tagMatch: Statement = Term.of('{
       var done = false
@@ -426,19 +427,23 @@ trait BuildCodec extends Common {
       case _: ImplicitSearchFailure => throwError(s"could not find implicit codec for `${t.typeSymbol.fullName}`")
     }
 
-  def classApply(t: TypeRepr, params: List[Term]): Term =
-    t match
-      case x: TermRef => Ident(x)
-      case x: TypeRef =>
-        val companion = x.typeSymbol.companionModule
-        val applyMethod = companion.method("apply").head
-        Apply(Select(Ref(companion), applyMethod), params)
-      case x: AppliedType =>
-        val companion = x.typeSymbol.companionModule
-        val applyMethod = companion.method("apply").head
-        Ref(companion).select(applyMethod)
-          .appliedToTypes(x.typeArgs)
+  def classApply(t: TypeRepr, params: List[Term], constructor: Option[Term]): Term =
+    constructor match
+      case Some(fun) =>
+        Select.unique(fun, "apply")
           .appliedToArgs(params)
+      case None => 
+        t match
+          case x: TermRef => Ident(x)
+          case x: TypeRef =>
+            val companion = x.typeSymbol.companionModule
+            Select.unique(Ref(companion) , "apply")
+              .appliedToArgs(params)
+          case x: AppliedType =>
+            val companion = x.typeSymbol.companionModule
+            Select.unique(Ref(companion) , "apply")
+              .appliedToTypes(x.typeArgs)
+              .appliedToArgs(params)
 
   def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, Term.of('{ ${x.asExprOf[Int]} + ${y} }))
 }
