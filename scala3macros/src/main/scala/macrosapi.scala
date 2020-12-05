@@ -124,6 +124,10 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
           typeArgsToReplace.get(v_tpt.tpe.typeSymbol.name) match
             case Some(typeArg) => (v_name, typeArg)
             case None => (v_name, v_tpt.tpe)
+        case DefDef(v_name, _, _, v_tpt, rhs) => 
+          typeArgsToReplace.get(v_tpt.tpe.typeSymbol.name) match
+            case Some(typeArg) => (v_name, typeArg)
+            case None => (v_name, v_tpt.tpe)
         case _ => throwError(s"wrong param definition of case class `${typeName}`")
 
       val defaultValue: Option[Term] = 
@@ -159,7 +163,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     '{ 
       new MessageCodec[A] {
         def prepare(a: A): Prepare = ${ prepareImpl('a, fields) }
-        def read(is: CodedInputStream): A = ${ readImpl(a_tpe, fields, 'is).asExprOf[A] }
+        def read(is: CodedInputStream): A = ${ readImpl(a_tpe, fields, 'is, constructor=constructor).asExprOf[A] }
         val nums: Map[String, Int] = $nums_expr
         val aType: String = $aType_xpr
       }
