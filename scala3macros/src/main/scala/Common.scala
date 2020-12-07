@@ -134,12 +134,16 @@ trait Common {
       .map(_.map(_.name).zip(t.typeArgs)).getOrElse(Nil)
       .toMap
 
+    def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t match
+      case AppliedType(t1, args)  => t1.appliedTo(args.map(_.replaceTypeArgs(map)))
+      case _ => map.getOrElse(t.typeSymbol.name, t)
+
     def isOption: Boolean = t match
       case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
       case _ => false
 
     def typeArgs: List[TypeRepr] = t match
-      case AppliedType(t1, args)  => args.map(_.asInstanceOf[TypeRepr])//TODO
+      case AppliedType(t1, args)  => args
       case _ => Nil
 
     def optionArgument: TypeRepr = t match

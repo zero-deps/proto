@@ -120,14 +120,12 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
 
     val fields: List[FieldInfo] = cParams.zipWithIndex.map{ case (s, i) =>
       val (name, tpe) = s.tree match  
-        case ValDef(v_name, v_tpt, v_rhs) => 
-          typeArgsToReplace.get(v_tpt.tpe.typeSymbol.name) match
-            case Some(typeArg) => (v_name, typeArg)
-            case None => (v_name, v_tpt.tpe)
-        case DefDef(v_name, _, _, v_tpt, rhs) => 
-          typeArgsToReplace.get(v_tpt.tpe.typeSymbol.name) match
-            case Some(typeArg) => (v_name, typeArg)
-            case None => (v_name, v_tpt.tpe)
+        case ValDef(v_name, v_tpt, v_rhs) =>
+          val tpe1 = v_tpt.tpe
+          (v_name, tpe1.replaceTypeArgs(typeArgsToReplace))
+        case DefDef(d_name, _, _, d_tpt, d_rhs) =>
+          val tpe1 = d_tpt.tpe
+          (d_name, tpe1.replaceTypeArgs(typeArgsToReplace))
         case _ => throwError(s"wrong param definition of case class `${typeName}`")
 
       val defaultValue: Option[Term] = 
