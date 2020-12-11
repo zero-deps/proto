@@ -22,10 +22,15 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 lazy val root = project.in(file(".")).settings(
   name := "proto",
-  // libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0-RC3" % Test,
-  libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % Test,
   skip in publish := true,
 // ).dependsOn(macros).aggregate(macros, runtime, benchmark)
+).dependsOn(scala3macros).aggregate(scala3macros, runtime)
+
+lazy val scala3test = project.in(file("scala3test")).settings(
+  name := "proto-macros-test",
+  libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
+  skip in publish := true,
 ).dependsOn(scala3macros).aggregate(scala3macros, runtime)
 
 lazy val scala3macros = project.in(file("scala3macros")).settings(
