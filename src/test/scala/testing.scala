@@ -2,7 +2,7 @@ package zd.proto.test
 
 import org.scalatest.freespec.AnyFreeSpec
 import zd.proto.api.{MessageCodec, encode, decode, N}
-import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto, sealedTraitCodecAuto, sealedTraitCodecNums, classCodecNums, classCodecAuto}
+import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto, sealedTraitCodecAuto, sealedTraitCodecNums, classCodecNums, classCodecAuto, enumByN}
 import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
 
@@ -95,6 +95,11 @@ object models {
   final case class DefaultValuesClass1(@N(3) float: Float)
 
   final case class ClassWithTypeParams[A,B,C](@N(1) a: A, @N(2) b: B, @N(3) c: C)
+
+  enum Push {
+    @N(1) case Pong
+    @N(2) case Msg(@N(1) txt: String, @N(2) id: Int)
+  }
 }
 
 class testing extends AnyFreeSpec {
@@ -505,5 +510,18 @@ class testing extends AnyFreeSpec {
     "autocodec (test2)" in { import classWithTypeParams.autocodec._; test2 }
     "numscodec (test2)" in { import classWithTypeParams.numscodec._; test2 }
     "idxcodec (test2)" in { import classWithTypeParams.idxcodec._; test2 }
+  }
+
+  "enum by name" - {
+    implicit val enumCodec1: MessageCodec[Push.Msg] = caseCodecAuto
+    implicit val enumCodec2: MessageCodec[Push.Pong.type] = caseCodecAuto
+    implicit val enumCodec: MessageCodec[Push] = enumByN
+    def test[A:MessageCodec](data: A) = {
+      val bytes = encode[A](data)
+      val decoded: A = decode(bytes)
+      val _ = assert(decoded === data)
+    }
+    "object" in test(data=Push.Pong)
+    "case class" in test(data=Push.Msg(txt="binary message", id=1001))
   }
 }
