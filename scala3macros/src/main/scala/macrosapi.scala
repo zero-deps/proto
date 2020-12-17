@@ -3,7 +3,7 @@ package proto
 
 import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
-import scala.quoted._, report._
+import scala.quoted._
 import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
 
@@ -45,6 +45,7 @@ object Macro {
 private class Impl(using val qctx: Quotes) extends BuildCodec {
   import qctx.reflect.{_, given}
   import qctx.reflect.defn._
+  import report._
 
   def caseCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
     val a_tpe = getCaseClassType[A]
@@ -52,7 +53,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     val typeName = aTypeSymbol.fullName
     val params: List[Symbol] = aTypeSymbol.constructorParams
     val nums: List[(String, Int)] = params.map(p =>
-      p.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num)))) if tpt.tpe.isNType => p.name -> num } match {
+      p.annotations.collect{ case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType => p.name -> num } match {
         case List(x) => x
         case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
@@ -62,7 +63,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
   }
 
   def caseCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] = {
-    val nums: Seq[(String, Int)] = numsExpr.unliftOrError
+    val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val params: List[Symbol] = aTypeSymbol.constructorParams
@@ -83,7 +84,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     val typeName = aTypeSymbol.fullName
     val params: List[Symbol] = aTypeSymbol.constructorParams
     val nums: List[(String, Int)] = params.map(p =>
-      p.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num)))) if tpt.tpe.isNType => p.name -> num } match {
+      p.annotations.collect{ case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType => p.name -> num } match {
         case List(x) => x
         case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
@@ -93,18 +94,18 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
   }
 
   def classCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]])(constructor: Expr[Any]): Expr[MessageCodec[A]] = {
-    val nums: Seq[(String, Int)] = numsExpr.unliftOrError
+    val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = TypeRepr.of[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
-    val members: List[Symbol] = aTypeSymbol.fields ++ aTypeSymbol.classMethods
+    val members: List[Symbol] = aTypeSymbol.memberFields ++ aTypeSymbol.memberMethods
     val params: List[Symbol] = nums.map{ case (name, num) =>
       members.find(_.name == name) match
         case Some(s) if s.isTerm => s
         case Some(s) => throwError(s"`${typeName}` field `${name}` is not a term")
         case None => throwError(s"`${typeName}` has no field `${name}`")
     }.toList
-    messageCodec(a_tpe, nums, params, restrictDefaults=false, constructor=Some(Term.of(constructor)))
+    messageCodec(a_tpe, nums, params, restrictDefaults=false, constructor=Some(constructor.asTerm))
   }
 
   def messageCodec[A: quoted.Type](a_tpe: TypeRepr, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean, constructor: Option[Term] = None): Expr[MessageCodec[A]] = {
@@ -130,7 +131,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
 
       val defaultValue: Option[Term] = 
         if s.flags.is(Flags.HasDefault) then
-          aTypeCompanionSym.method(defaultMethodName(i)) match
+          aTypeCompanionSym.memberMethod(defaultMethodName(i)) match
           case List(x) =>
             if tpe.isOption && restrictDefaults then throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for Option isn't allowed")
             else if tpe.isIterable && restrictDefaults then throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for collections isn't allowed")
@@ -174,7 +175,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     val typeName = a_typeSym.fullName
     val xs = a_typeSym.children
     val nums: List[(TypeRepr, Int)] = xs.map{ x =>
-      x.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num)))) if tpt.tpe.isNType => x.tpe -> num } match
+      x.annotations.collect{ case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType => x.tpe -> num } match
         case List(x) => x
         case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
@@ -188,7 +189,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     val typeName = aTypeSymbol.fullName
     val xs = aTypeSymbol.children
     val nums: List[(TypeRepr, Int)] = xs.map{ x =>
-      x.annots.collect{ case Apply(Select(New(tpt),_), List(Literal(Constant.Int(num)))) if tpt.tpe.isNType => x.tpe -> num } match
+      x.annotations.collect{ case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType => x.tpe -> num } match
         case List(x) => x
         case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
@@ -197,7 +198,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
   }
 
   def sealedTraitCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] = {
-    val nums: Seq[(String, Int)] = numsExpr.unliftOrError
+    val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = getSealedTrait[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName

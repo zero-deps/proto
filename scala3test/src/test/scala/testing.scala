@@ -4,7 +4,7 @@ import org.junit.Test
 import org.junit.Assert._
 import java.util.Arrays
 
-import zd.proto.macrosapi.{caseCodecAuto, caseCodecNums, caseCodecIdx}
+import zd.proto.macrosapi.{caseCodecAuto, caseCodecNums, caseCodecIdx, classCodecAuto, classCodecNums, sealedTraitCodecAuto, enumByN}
 import zd.proto.api.{MessageCodec, N, RestrictedN, decode, encode, Prepare}
 import zd.proto.Bytes
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
@@ -62,6 +62,52 @@ object models {
 
   final case class ClassWithTypeParams[A,B,C](@N(1) a: A, @N(2) b: B, @N(3) c: C)
 
+  enum Push {
+    @N(1) case Pong
+    @N(2) case Msg(@N(1) txt: String, @N(2) id: Int)
+  }
+
+  sealed trait Color
+  @N(1) final case class Black(
+      @N(1) name: String
+    , @N(2) value: Int
+    , @N(3) msg: Message
+    ) extends Color
+  @N(2) final case class White(@N(1) value: Int) extends Color
+  @N(3) case object Yellow extends Color
+  @N(4) case object Red extends Color
+
+  final class Teleport(@N(21) val id: String, @N(22) val n: Int) {
+    override def toString(): String = s"Teleport(id=$id, n=$n)"
+  }
+
+  object Teleport {
+    def apply(id: String, n: Int): Teleport = {
+      new Teleport(id, n)
+    }
+  }
+
+  abstract class SimpleClass[A] {
+    def id: Int
+    def id2: List[A]
+    override def toString(): String = s"(id=$id, id2=$id2)"
+  }
+  
+  object SimpleClass{
+    def init(p1: Int): SimpleClass[String] = new SimpleClass[String] {
+      override def id: Int = p1
+      override def id2: List[String] = List("0")
+    }
+    def init2(p1: Int, p2: List[String]): SimpleClass[String] = new SimpleClass[String] {
+      override def id: Int = p1
+      override def id2: List[String] = p2
+    }
+    def init3[A](p1: Int, p2: List[A]): SimpleClass[A] = new SimpleClass[A] {
+      override def id: Int = p1
+      override def id2: List[A] = p2
+    }
+  }
+
   given MessageCodec[Tuple2[Int, Int]] = caseCodecIdx
   given MessageCodec[Basic] = caseCodecAuto
   given MessageCodec[OptionBasic] = caseCodecAuto
@@ -90,6 +136,11 @@ class Testing {
 
   @Test def encodeDecodeCaseCodecIdx(): Unit = {
     val c: MessageCodec[Basic] = caseCodecIdx
+    encodeDecode(c)
+  }
+
+  @Test def encodeDecodeClassCodecAuto(): Unit = {
+    val c: MessageCodec[Basic] = classCodecAuto
     encodeDecode(c)
   }
 
@@ -245,5 +296,74 @@ class Testing {
     val decoded = decode[ClassWithTypeParams[String, Int, List[Int]]](encode(data))
     val _ = assert(decoded == data)
   }
+
+  def test[A:MessageCodec](data: A) = {
+    val bytes = encode[A](data)
+    val decoded: A = decode(bytes)
+    val _ = assert(decoded == data)
+  }
+
+  object traitCodecs {
+    implicit val c1: MessageCodec[Black] = caseCodecAuto[Black]
+    implicit val c2: MessageCodec[White] = caseCodecAuto[White]
+    implicit val c3: MessageCodec[Yellow.type] = caseCodecAuto[Yellow.type]
+    implicit val c4: MessageCodec[Red.type] = caseCodecAuto[Red.type]
+  }
+
+  @Test def classCodecNumsTest1(): Unit = {
+    implicit val c: MessageCodec[Teleport] = classCodecNums[Teleport]("id"->2, "n"->3)(Teleport.apply(_,_))
+    val data = Teleport(id="ID", n=101)
+    val decoded: Teleport = decode(encode(data))
+    val _ = assert(decoded.id == data.id)
+    val _ = assert(decoded.n == data.n)
+  }
+
+  @Test def classCodecNumsTest2(): Unit = {
+    val c = classCodecNums[SimpleClass[String]]("id"->1)(SimpleClass.init(_))
+    val data: SimpleClass[String] = SimpleClass.init(111)
+    val decoded: SimpleClass[String] = decode(encode(data)(c))(c)
+    val _ = assert(decoded.id == data.id)
+    val _ = assert(decoded.id2 == data.id2)
+  }
+
+  @Test def classCodecNumsTest3(): Unit = {
+    val c = classCodecNums[SimpleClass[String]]("id"->1, "id2"->2)(SimpleClass.init2(_, _))
+    val data: SimpleClass[String] = SimpleClass.init2(111, List("a", "b"))
+    val decoded: SimpleClass[String] = decode(encode(data)(c))(c)
+    val _ = assert(decoded.id == data.id)
+    val _ = assert(decoded.id2 == data.id2)
+  }
+
+  @Test def classCodecNumsTest4(): Unit = {
+    def codecSynthetic[A:MessageCodec] = classCodecNums[SimpleClass[A]]("id"->1, "id2"->2)(SimpleClass.init3[A](_, _))
+    val c0: MessageCodec[Message1] = caseCodecAuto[Message1]
+    val c: MessageCodec[SimpleClass[Message1]] = codecSynthetic[Message1]
+    val data: SimpleClass[Message1] = SimpleClass.init3(101, List(Message1("name", 10d)))
+    val decoded: SimpleClass[Message1] = decode(encode(data)(c))(c)
+    val _ = assert(decoded.id == data.id)
+    val _ = assert(decoded.id2 == data.id2)
+  }
+
+  @Test def sealedTraitCodecAutoTest(): Unit = {
+    import traitCodecs._
+    implicit val codec: MessageCodec[Color] = sealedTraitCodecAuto[Color]
+    test[Color](data=White(value=100))
+    test[Color](data=Black(name="black color111", value=33, msg=Message(int=1, str="str", set=Set("1","2"), msg1=None)))
+    test[Color](data=Yellow)
+    test[Color](data=Red)
+  }
+
+  // @Test def enumByNameTest(): Unit = {
+  //   implicit val enumCodec1: MessageCodec[Push.Msg] = caseCodecAuto[Push.Msg]
+  //   implicit val enumCodec2: MessageCodec[Push.Pong.type] = caseCodecAuto[Push.Pong.type]
+  //   implicit val enumCodec: MessageCodec[Push] = enumByN[Push]
+  //   def test[A:MessageCodec](data: A) = {
+  //     val bytes = encode[A](data)
+  //     val decoded: A = decode(bytes)
+  //     val _ = assert(decoded == data)
+  //   }
+  //   test(data=Push.Pong)
+  //   test(data=Push.Msg(txt="binary message", id=1001))
+  // }
 
 }

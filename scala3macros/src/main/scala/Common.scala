@@ -3,7 +3,7 @@ package proto
 
 import proto.api.{MessageCodec, Prepare, N, RestrictedN}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
-import scala.quoted._, report._
+import scala.quoted._
 import scala.collection.immutable.ArraySeq
 import zd.proto.Bytes
 
@@ -11,6 +11,7 @@ trait Common {
   implicit val qctx: Quotes
   import qctx.reflect.{_, given}
   import qctx.reflect.defn._
+  import report._
 
   private[proto] case class FieldInfo(
     name: String
@@ -66,15 +67,15 @@ trait Common {
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def readFun(t: TypeRepr, is: Expr[CodedInputStream]): Term =
-    if      t.isInt then Term.of('{ ${is}.readInt32 })
-    else if t.isLong then Term.of('{ ${is}.readInt64 })
-    else if t.isBoolean then Term.of('{ ${is}.readBool })
-    else if t.isDouble then Term.of('{ ${is}.readDouble })
-    else if t.isFloat then Term.of('{ ${is}.readFloat })
-    else if t.isString then Term.of('{ ${is}.readString })
-    else if t.isArrayByte then Term.of('{ ${is}.readByteArray })
-    else if t.isArraySeqByte then Term.of('{ ArraySeq.unsafeWrapArray(${is}.readByteArray) })
-    else if t.isBytesType then Term.of('{ Bytes.unsafeWrap(${is}.readByteArray) })
+    if      t.isInt then '{ ${is}.readInt32 }.asTerm
+    else if t.isLong then '{ ${is}.readInt64 }.asTerm
+    else if t.isBoolean then '{ ${is}.readBool }.asTerm
+    else if t.isDouble then '{ ${is}.readDouble }.asTerm
+    else if t.isFloat then '{ ${is}.readFloat }.asTerm
+    else if t.isString then '{ ${is}.readString }.asTerm
+    else if t.isArrayByte then '{ ${is}.readByteArray }.asTerm
+    else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray) }.asTerm
+    else if t.isBytesType then '{ Bytes.unsafeWrap(${is}.readByteArray) }.asTerm
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
@@ -88,12 +89,13 @@ trait Common {
   
   extension (s: Symbol)
     def constructorParams: List[Symbol] = s.primaryConstructor.paramSymss.find(_.headOption.fold(false)( _.isTerm)).getOrElse(Nil)
-    def tpe: TypeRepr = 
+    def tpe: TypeRepr =
       s.tree match
         case x: ClassDef => x.constructor.returnTpt.tpe
+        case ValDef(_,tpt,_) => tpt.tpe
         case Bind(_, pattern: Term) => pattern.tpe
 
-  def unitLiteral: Literal = Literal(Constant.Unit())
+  def unitLiteral: Literal = Literal(UnitConstant())
   def defaultMethodName(i: Int): String = s"$$lessinit$$greater$$default$$${i+1}"
 
   def unitExpr: Expr[Unit] = unitLiteral.asExprOf[Unit]
@@ -161,11 +163,11 @@ trait Common {
     def restrictedNums: List[Int] =
       val aName = RestrictedNType.typeSymbol.name
       val tName = t.typeSymbol.fullName
-      t.typeSymbol.annots.collect{ case Apply(Select(New(tpt),_), List(Typed(Repeated(args,_),_))) if tpt.tpe =:= RestrictedNType => args } match
+      t.typeSymbol.annotations.collect{ case Apply(Select(New(tpt),_), List(Typed(Repeated(args,_),_))) if tpt.tpe =:= RestrictedNType => args } match
         case List(Nil) => throwError(s"empty annotation ${aName} for `${tName}`")
         case List(xs) =>
           val nums = xs.collect{
-            case Literal(Constant.Int(n)) => n
+            case Literal(IntConstant(n)) => n
             case x => throwError(s"wrong annotation ${aName} for `${tName}` $x")
           }
           if (nums.size != nums.distinct.size) throwError(s"nums not unique in annotation ${aName} for `${tName}`")
