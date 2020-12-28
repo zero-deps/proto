@@ -25,7 +25,7 @@ trait BuildCodec extends Common {
       val action: Term = prepareImpl(a, List(p)).asTerm
       condition -> action
     }
-    val error = s"Wrong type of child of sealed trait: ${a_tpe}"
+    val error = s"Wrong type of child of sealed trait: ${a_tpe.typeSymbol.fullName}"
     val elseBranch: Term = '{ throw new RuntimeException(${Expr(error)}) }.asTerm
     mkIfStatement(ifBranches, elseBranch).asExprOf[Prepare]
 
@@ -298,20 +298,16 @@ trait BuildCodec extends Common {
       var done = false
       while (done == false) {
         val tag: Int = ${is}.readTag
-        var tagMatch: Boolean = false
-        if (tag == 0) { done = true; tagMatch = true }
         ${
-          Expr.block(params.zip(readRefs).map{ case (p, ref) => {
-            val paramTag = Expr(p.tag)
-            val readContent = readContentImpl(p, ref, is)
-            '{  if (tag == ${paramTag}) { 
-                  tagMatch = true
-                  ${readContent}
-                }
+          val ifBranches: List[(Term, Term)] =
+            ('{ tag == 0 }.asTerm -> '{ done = true; }.asTerm) ::
+            params.zip(readRefs).map{ case (p, ref) =>
+              val paramTag = Expr(p.tag)
+              '{ tag == ${paramTag} }.asTerm -> readContentImpl(p, ref, is).asTerm
             }
-          }}, unitExpr)
+          val elseBranch: Term = '{ ${is}.skipField(tag) }.asTerm
+          mkIfStatement(ifBranches, elseBranch).asExprOf[Any]
         }
-        if (tagMatch == false) ${is}.skipField(tag)
       }
     }.asTerm
 
@@ -424,10 +420,9 @@ trait BuildCodec extends Common {
   
   def findCodec(t: TypeRepr): Term = 
     val tpe = TypeRepr.of[MessageCodec].appliedTo(t)
-    Implicits.search(tpe) match {
+    Implicits.search(tpe) match
       case x: ImplicitSearchSuccess => x.tree
       case _: ImplicitSearchFailure => throwError(s"could not find implicit codec for `${t.typeSymbol.fullName}`")
-    }
 
   def classApply(t: TypeRepr, params: List[Term], constructor: Option[Term]): Term =
     constructor match

@@ -512,16 +512,16 @@ class testing extends AnyFreeSpec {
     "idxcodec (test2)" in { import classWithTypeParams.idxcodec._; test2 }
   }
 
-  "enum by name" - {
-    implicit val enumCodec1: MessageCodec[Push.Msg] = caseCodecAuto
-    implicit val enumCodec2: MessageCodec[Push.Pong.type] = caseCodecAuto
-    implicit val enumCodec: MessageCodec[Push] = enumByN
-    def test[A:MessageCodec](data: A) = {
-      val bytes = encode[A](data)
-      val decoded: A = decode(bytes)
-      val _ = assert(decoded === data)
-    }
-    "object" in test(data=Push.Pong)
-    "case class" in test(data=Push.Msg(txt="binary message", id=1001))
-  }
+  // "enum by name" - {
+  //   implicit val enumCodec1: MessageCodec[Push.Msg] = caseCodecAuto
+  //   implicit val enumCodec2: MessageCodec[Push.Pong.type] = caseCodecAuto
+  //   implicit val enumCodec: MessageCodec[Push] = enumByN
+  //   def test[A:MessageCodec](data: A) = {
+  //     val bytes = encode[A](data)
+  //     val decoded: A = decode(bytes)
+  //     val _ = assert(decoded === data)
+  //   }
+  //   "object" in test(data=Push.Pong)
+  //   "case class" in test(data=Push.Msg(txt="binary message", id=1001))
+  // }
 }

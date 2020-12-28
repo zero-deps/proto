@@ -53,11 +53,10 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     val typeName = aTypeSymbol.fullName
     val params: List[Symbol] = aTypeSymbol.constructorParams
     val nums: List[(String, Int)] = params.map(p =>
-      p.annotations.collect{ case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType => p.name -> num } match {
+      p.annotations.collect{ case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType => p.name -> num } match
         case List(x) => x
         case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
-      }
     )
     messageCodec(a_tpe, nums, params, restrictDefaults=true)
   }
@@ -84,11 +83,10 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
     val typeName = aTypeSymbol.fullName
     val params: List[Symbol] = aTypeSymbol.constructorParams
     val nums: List[(String, Int)] = params.map(p =>
-      p.annotations.collect{ case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType => p.name -> num } match {
+      p.annotations.collect{ case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType => p.name -> num } match
         case List(x) => x
         case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
-      }
     )
     messageCodec(a_tpe, nums, params, restrictDefaults=true)
   }
