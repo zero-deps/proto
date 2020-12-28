@@ -16,13 +16,15 @@ trait Common {
   private[proto] case class FieldInfo(
     name: String
   , num: Int
+  , sym: Symbol
   , tpe: TypeRepr
   , getter: Term => Term
   , sizeSym: Symbol
   , prepareSym: Symbol
-  , prepareOptionSym: Symbol
-  , prepareArraySym: Symbol
+  , prepareOptionSym: Symbol = Symbol.noSymbol
+  , prepareArraySym: Symbol = Symbol.noSymbol
   , defaultValue: Option[Term]
+  , isCaseObject: Boolean = false
   ) {
     def tag: Int = num << 3 | wireType(tpe)
   }

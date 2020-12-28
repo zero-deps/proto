@@ -306,8 +306,6 @@ class Testing {
   object traitCodecs {
     implicit val c1: MessageCodec[Black] = caseCodecAuto[Black]
     implicit val c2: MessageCodec[White] = caseCodecAuto[White]
-    implicit val c3: MessageCodec[Yellow.type] = caseCodecAuto[Yellow.type]
-    implicit val c4: MessageCodec[Red.type] = caseCodecAuto[Red.type]
   }
 
   @Test def classCodecNumsTest1(): Unit = {
@@ -353,17 +351,16 @@ class Testing {
     test[Color](data=Red)
   }
 
-  // @Test def enumByNameTest(): Unit = {
-  //   implicit val enumCodec1: MessageCodec[Push.Msg] = caseCodecAuto[Push.Msg]
-  //   implicit val enumCodec2: MessageCodec[Push.Pong.type] = caseCodecAuto[Push.Pong.type]
-  //   implicit val enumCodec: MessageCodec[Push] = enumByN[Push]
-  //   def test[A:MessageCodec](data: A) = {
-  //     val bytes = encode[A](data)
-  //     val decoded: A = decode(bytes)
-  //     val _ = assert(decoded == data)
-  //   }
-  //   test(data=Push.Pong)
-  //   test(data=Push.Msg(txt="binary message", id=1001))
-  // }
+  @Test def enumByNameTest(): Unit = {
+    implicit val enumCodec1: MessageCodec[Push.Msg] = caseCodecAuto[Push.Msg]
+    implicit val enumCodec: MessageCodec[Push] = enumByN[Push]
+    def test[A:MessageCodec](data: A) = {
+      val bytes = encode[A](data)
+      val decoded: A = decode(bytes)
+      val _ = assert(decoded == data)
+    }
+    test[Push](data=Push.Pong)
+    test[Push](data=Push.Msg(txt="binary message", id=1001))
+  }
 
 }

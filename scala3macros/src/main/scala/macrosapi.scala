@@ -146,6 +146,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
       FieldInfo(
         name = name
       , num = num
+      , sym = s
       , tpe = tpe
       , getter = (a: Term) => Select.unique(a, name)
       , sizeSym = Symbol.newVal(Symbol.spliceOwner, s"${name}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
@@ -227,17 +228,15 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
       FieldInfo(
         name = s.fullName
       , num = num
+      , sym = s
       , tpe = tpe
       , getter = 
-          if s.isTerm then
-            (a: Term) => Ref(s)
-          else
-            (a: Term) => Select.unique(a, "asInstanceOf").appliedToType(tpe)
+          if s.isTerm then (a: Term) => Ref(s)
+          else (a: Term) => Select.unique(a, "asInstanceOf").appliedToType(tpe)
       , sizeSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
       , prepareSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
-      , prepareOptionSym = Symbol.noSymbol
-      , prepareArraySym = Symbol.noSymbol
       , defaultValue = None
+      , isCaseObject = s.isTerm
       )
     }
     val nums_expr = Expr(fields.map(x => x.name -> x.num).toMap)

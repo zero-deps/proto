@@ -15,13 +15,11 @@ trait BuildCodec extends Common {
 
   def prepareTrait[A: Type](a: Expr[A], params: List[FieldInfo]): Expr[Prepare] =
     val a_term = a.asTerm
-    val a_tpe = a_term.tpe
+    val a_tpe = TypeRepr.of[A]
     val ifBranches: List[(Term, Term)] = params.map { p =>
       val condition: Term = 
-        if p.tpe.typeSymbol.isTerm then
-          Select.unique(a_term, "==").appliedTo(p.getter(a_term))
-        else
-          Select.unique(a_term, "isInstanceOf").appliedToType(p.tpe)
+        if p.isCaseObject then Select.unique(a_term, "==").appliedTo(Ref(p.sym))
+        else Select.unique(a_term, "isInstanceOf").appliedToType(p.tpe)
       val action: Term = prepareImpl(a, List(p)).asTerm
       condition -> action
     }
@@ -48,9 +46,10 @@ trait BuildCodec extends Common {
   def writeImpl[A: Type](a: Expr[A], params: List[FieldInfo], os: Expr[CodedOutputStream]): Expr[Unit] =
     Expr.block(
       params.flatMap(p =>
-        if p.tpe.isCommonType then writeCommon(a, os, p)
-        else if p.tpe.isOption then writeOption(a, os, p)
-        else if p.tpe.isIterable then writeCollection(a, os, p)
+        if      p.isCaseObject then writeCaseObject(os, p)
+        else if p.tpe.isCommonType then writeCommon(a, os, p)
+        else if p.tpe.isOption     then writeOption(a, os, p)
+        else if p.tpe.isIterable   then writeCollection(a, os, p)
         else writeMessage(a, os, p)
       )
     , unitExpr)
@@ -143,11 +142,17 @@ trait BuildCodec extends Common {
     , '{ ${os}.writeUInt32NoTag(${prepareRef}.size) }
     , '{ ${prepareRef}.write(${os}) }
     )
+  def writeCaseObject(os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+    List(
+      '{ ${os}.writeUInt32NoTag(${Expr(field.tag)}) }
+    , '{ ${os}.writeUInt32NoTag(0) }
+    )
 
   def size[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
-    if field.tpe.isCommonType then sizeCommon(a, field, sizeAcc)
-    else if field.tpe.isOption then sizeOption(a, field, sizeAcc)
-    else if field.tpe.isIterable then sizeCollection(a, field, sizeAcc)
+    if      field.isCaseObject     then sizeCaseObject(field, sizeAcc)
+    else if field.tpe.isCommonType then sizeCommon(a, field, sizeAcc)
+    else if field.tpe.isOption     then sizeOption(a, field, sizeAcc)
+    else if field.tpe.isIterable   then sizeCollection(a, field, sizeAcc)
     else sizeMessage(a, field, sizeAcc)
 
   def sizeCommon[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
@@ -269,6 +274,13 @@ trait BuildCodec extends Common {
     }
     val incrementAcc = increment(sizeAcc, sum)
     List(prepareValDef, incrementAcc)
+  
+  def sizeCaseObject(field: FieldInfo, sizeAcc: Ref): List[Statement] =
+    val sum = '{ 
+      ${ Expr(CodedOutputStream.computeTagSize(field.num)) } + 
+      ${ Expr(CodedOutputStream.computeUInt32SizeNoTag(0)) }
+    }
+    List(increment(sizeAcc, sum))
 
   def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream], isTrait: Boolean=false, constructor: Option[Term]=None): Expr[Any] = {
 
@@ -322,7 +334,16 @@ trait BuildCodec extends Common {
   }
 
   def readContentImpl(p: FieldInfo, readRef: Term, is: Expr[CodedInputStream]): Expr[Any] =
-    if (p.tpe.isCommonType) then
+    if p.isCaseObject then
+      val fun: Term = Ref(p.sym)
+      putLimit(
+        is
+      , Assign(
+          readRef
+        , Some_Apply(tpe=p.tpe, value=fun)
+        ).asExpr 
+      )
+    else if p.tpe.isCommonType then
       val fun: Term = readFun(p.tpe, is)
       Assign(
         readRef
