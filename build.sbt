@@ -1,47 +1,38 @@
-ThisBuild / organization := "io.github.zero-deps"
-ThisBuild / version := zd.gs.git.GitOps.version
-ThisBuild / scalaVersion := "3.0.0-M3"
-ThisBuild / scalacOptions ++= Seq(
-  // "-Ywarn-extra-implicit",
-  "-Xfatal-warnings",
-  "-deprecation",
-  "-feature",
-  "-unchecked",
-  // "-Ywarn-unused:implicits",
-  // "-Ywarn-unused:imports",
-  // "-Yno-completion",
-  // "-Ywarn-numeric-widen",
-  // "-Ywarn-value-discard"
-)
-ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
-ThisBuild / isSnapshot := true
-
-ThisBuild / turbo := true
-ThisBuild / useCoursier := true
-Global / onChangedBuildSource := ReloadOnSourceChanges
+// ThisBuild / organization := "io.github.zero-deps"
+// ThisBuild / version := zero.git.version()
+// ThisBuild / scalacOptions ++= Seq(
+//   // "-Ywarn-extra-implicit",
+//   "-Xfatal-warnings",
+//   "-deprecation",
+//   "-feature",
+//   "-unchecked",
+//   // "-Ywarn-unused:implicits",
+//   // "-Ywarn-unused:imports",
+//   // "-Yno-completion",
+//   // "-Ywarn-numeric-widen",
+//   // "-Ywarn-value-discard"
+// )
+// ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
+// ThisBuild / isSnapshot := true
 
 lazy val root = project.in(file(".")).settings(
   name := "proto",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % Test,
   skip in publish := true,
+  scalaVersion := "3.0.0-M3",
+  version := zero.git.version(),
 // ).dependsOn(macros).aggregate(macros, runtime, benchmark)
-).dependsOn(scala3macros).aggregate(scala3macros, runtime)
+).dependsOn(proto3).aggregate(proto3)
 
 lazy val scala3test = project.in(file("scala3test")).settings(
   name := "proto-macros-test",
   libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
   skip in publish := true,
-).dependsOn(scala3macros).aggregate(scala3macros, runtime)
+  scalaVersion := "3.0.0-M3",
+  version := zero.git.version(),
+).dependsOn(proto3).aggregate(proto3)
 
-lazy val scala3macros = project.in(file("scala3macros")).settings(
-  name := "proto-macros",
-  // libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-).dependsOn(runtime)
-
-lazy val runtime = project.in(file("runtime")).settings(
-  name := "proto-runtime",
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.11.0",
-)
+lazy val proto3 = project.in(file("scala3macros"))
 
 lazy val benchmark = project.in(file("benchmark")).settings(
   // libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.10.0",
@@ -54,7 +45,11 @@ lazy val benchmark = project.in(file("benchmark")).settings(
   //   scalapb.gen() -> (sourceManaged in Compile).value
   // ),
   skip in publish := true,
+  scalaVersion := "3.0.0-M3",
+  version := zero.git.version(),
 // ).enablePlugins(JmhPlugin).dependsOn(macros)
-).dependsOn(scala3macros)
+).dependsOn(proto3)
 
-lazy val test = project.in(file("test")).dependsOn(scala3macros, runtime)
+turbo := true
+useCoursier := true
+Global / onChangedBuildSource := ReloadOnSourceChanges
