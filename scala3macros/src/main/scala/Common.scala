@@ -74,8 +74,8 @@ trait Common {
     else if t.isBoolean then '{ ${is}.readBool }.asTerm
     else if t.isDouble then '{ ${is}.readDouble }.asTerm
     else if t.isFloat then '{ ${is}.readFloat }.asTerm
-    else if t.isString then '{ ${is}.readString }.asTerm
-    else if t.isArrayByte then '{ ${is}.readByteArray }.asTerm
+    else if t.isString then '{ ${is}.readString.nn }.asTerm
+    else if t.isArrayByte then '{ ${is}.readByteArray.nn }.asTerm
     else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray) }.asTerm
     else if t.isBytesType then '{ Bytes.unsafeWrap(${is}.readByteArray) }.asTerm
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
