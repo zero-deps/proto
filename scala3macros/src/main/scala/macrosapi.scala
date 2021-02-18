@@ -122,7 +122,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
         case ValDef(v_name, v_tpt, v_rhs) =>
           val tpe1 = v_tpt.tpe
           (v_name, tpe1.replaceTypeArgs(typeArgsToReplace))
-        case DefDef(d_name, _, _, d_tpt, d_rhs) =>
+        case DefDef(d_name, _, d_tpt, d_rhs) =>
           val tpe1 = d_tpt.tpe
           (d_name, tpe1.replaceTypeArgs(typeArgsToReplace))
         case _ => throwError(s"wrong param definition of case class `${typeName}`")

@@ -19,7 +19,7 @@ lazy val root = project.in(file(".")).settings(
   name := "proto",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % Test,
   skip in publish := true,
-  scalaVersion := "3.0.0-M3",
+  scalaVersion := "3.0.0-RC1",
   version := zero.git.version(),
 // ).dependsOn(macros).aggregate(macros, runtime, benchmark)
 ).dependsOn(proto3).aggregate(proto3)
@@ -28,7 +28,7 @@ lazy val scala3test = project.in(file("scala3test")).settings(
   name := "proto-macros-test",
   libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
   skip in publish := true,
-  scalaVersion := "3.0.0-M3",
+  scalaVersion := "3.0.0-RC1",
   version := zero.git.version(),
 ).dependsOn(proto3).aggregate(proto3)
 
@@ -45,7 +45,7 @@ lazy val benchmark = project.in(file("benchmark")).settings(
   //   scalapb.gen() -> (sourceManaged in Compile).value
   // ),
   skip in publish := true,
-  scalaVersion := "3.0.0-M3",
+  scalaVersion := "3.0.0-RC1",
   version := zero.git.version(),
 // ).enablePlugins(JmhPlugin).dependsOn(macros)
 ).dependsOn(proto3)

@@ -303,11 +303,6 @@ class Testing {
     val _ = assert(decoded == data)
   }
 
-  object traitCodecs {
-    implicit val c1: MessageCodec[Black] = caseCodecAuto[Black]
-    implicit val c2: MessageCodec[White] = caseCodecAuto[White]
-  }
-
   @Test def classCodecNumsTest1(): Unit = {
     implicit val c: MessageCodec[Teleport] = classCodecNums[Teleport]("id"->2, "n"->3)(Teleport.apply(_,_))
     val data = Teleport(id="ID", n=101)
@@ -343,7 +338,8 @@ class Testing {
   }
 
   @Test def sealedTraitCodecAutoTest(): Unit = {
-    import traitCodecs._
+    implicit val c1: MessageCodec[Black] = caseCodecAuto[Black]
+    implicit val c2: MessageCodec[White] = caseCodecAuto[White]
     implicit val codec: MessageCodec[Color] = sealedTraitCodecAuto[Color]
     test[Color](data=White(value=100))
     test[Color](data=Black(name="black color111", value=33, msg=Message(int=1, str="str", set=Set("1","2"), msg1=None)))
