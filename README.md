@@ -21,44 +21,44 @@ With easy to migrate possibility.
 - serialization/deserialization without changes in models
 - possibility to use specific types in model
 
-# Benchmark
+# Benchmark (Scala 2)
 
-data |        | library                | score
+     |        | library                | score
 ---- | ------ |:---------------------- | -------------:
-data | decode | java_                  | `   19073.590`
-data | decode | jackson                | `  104793.164`
-data | decode | jsoniter_scala         | `  250291.760`
-data | decode | boopickle_             | ` 1511503.588`
-data | decode | protobuf_scala_macros  | ` 1841584.774`
-data | decode | scalapb                | ` 2191344.254`
+data | decode | java                   | `   44079,139`
+data | decode | jackson                | `  176941,468`
+data | decode | jsoniter-scala         | `  483788,001`
+data | decode | boopickle              | ` 2885610,648`
+data | decode | scalapb                | ` 3270691,564`
+data | decode | proto                  | ` 3383845,458`
 
-data |        | library                | score
+     |        | library                | score
 ---- | ------ |:---------------------- | -------------:
-data | encode | java_                  | `  115404.671`
-data | encode | jackson                | `  239388.147`
-data | encode | kryo_macros            | `  398249.642`
-data | encode | jsoniter_scala         | `  564752.678`
-data | encode | boopickle_             | `  672294.937`
-data | encode | protobuf_scala_macros  | ` 1760090.157`
-data | encode | scalapb                | ` 2022918.710`
+data | encode | java                   | `  220444,268`
+data | encode | jackson                | `  431318,803`
+data | encode | kryo-macros            | `  991944,758`
+data | encode | jsoniter-scala         | ` 1054650,233`
+data | encode | boopickle              | ` 1520834,519`
+data | encode | proto                  | ` 3186951,441`
+data | encode | scalapb                | ` 3628779,864`
 
-data |        | library                | score
+     |        | library                | score
 ---- | ------ |:---------------------- | -------------:
-msg  | decode | jsoniter_scala         | ` 2442577.755`
-msg  | decode | protobuf_scala_macros  | ` 2786830.341`
-msg  | decode | scalapb                | ` 2914400.904`
+msg  | decode | jsoniter-scala         | ` 3486552,303`
+msg  | decode | scalapb                | ` 4898257,671`
+msg  | decode | proto                  | ` 5825174,170`
 
-data |        | library                | score
+     |        | library                | score
 ---- | ------ |:---------------------- | -------------:
-msg  | encode | jsoniter_scala         | ` 3601656.904`
-msg  | encode | protobuf_scala_macros  | ` 3736006.117`
-msg  | encode | scalapb                | ` 4464953.270`
+msg  | encode | jsoniter-scala         | ` 6372602,760`
+msg  | encode | proto                  | ` 6487748,959`
+msg  | encode | scalapb                | ` 9202135,451`
 
 ## Environment
 
-1.1 GHz Dual-Core Intel Core m3 \
-8 GB 1867 MHz LPDDR3 \
-JDK 13, OpenJDK 64-Bit Server VM, 13+33
+2.8 GHz Quadro-Core Intel Core i7\
+16 GB 2133 MHz LPDDR3\
+javac 15.0.1
 
 ## Run Benchmark
 
@@ -72,7 +72,6 @@ jmh:run -i 2 -wi 1 -f1 -t1
 
 Add dependency:
 ```
-resolvers += Resolver.jcenterRepo
 libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "latest.integration" % Provided
 libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % "latest.integration"
 ```
