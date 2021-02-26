@@ -109,3 +109,11 @@ val car2: Car = decode[Car](bytes)
 ```
 
 More examples in [testing.scala](src/test/scala/testing.scala)
+
+# Publishing
+
+```
+sbt
++publishSigned
+sonatypeRelease
+```
