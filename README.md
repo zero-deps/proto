@@ -1,6 +1,6 @@
-# protobuf-scala-macros
+# proto
 
-Lightweight and fast serialization library for Scala 2/3 based on Protocol Buffers (protobuf) without .proto files with macros magic.
+Lightweight and fast serialization library for Scala 2/3 based on Protocol Buffers with macros magic.
 
 # Motivation
 
@@ -10,7 +10,7 @@ With easy to migrate possibility.
 - Lightweight
 - Fast
 - Protocol Buffers compatible
-- No proto files
+- No .proto files
 - No model convertation
 - Typesafe
 - Serialization/deserialization without changes in models
