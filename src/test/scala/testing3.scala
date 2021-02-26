@@ -1,4 +1,4 @@
-package zd.proto.test
+package zd.proto.test3
 
 import org.junit.Test
 import org.junit.Assert._
