@@ -23,7 +23,7 @@ With easy to migrate possibility.
 
 # Benchmark (Scala 2)
 
-     |        | library                | score
+data |        | library                | score
 ---- | ------ |:---------------------- | -------------:
 data | decode | java                   | `   44079,139`
 data | decode | jackson                | `  176941,468`
@@ -32,7 +32,7 @@ data | decode | boopickle              | ` 2885610,648`
 data | decode | scalapb                | ` 3270691,564`
 data | decode | proto                  | ` 3383845,458`
 
-     |        | library                | score
+data |        | library                | score
 ---- | ------ |:---------------------- | -------------:
 data | encode | java                   | `  220444,268`
 data | encode | jackson                | `  431318,803`
@@ -42,13 +42,13 @@ data | encode | boopickle              | ` 1520834,519`
 data | encode | proto                  | ` 3186951,441`
 data | encode | scalapb                | ` 3628779,864`
 
-     |        | library                | score
+data |        | library                | score
 ---- | ------ |:---------------------- | -------------:
 msg  | decode | jsoniter-scala         | ` 3486552,303`
 msg  | decode | scalapb                | ` 4898257,671`
 msg  | decode | proto                  | ` 5825174,170`
 
-     |        | library                | score
+data |        | library                | score
 ---- | ------ |:---------------------- | -------------:
 msg  | encode | jsoniter-scala         | ` 6372602,760`
 msg  | encode | proto                  | ` 6487748,959`
