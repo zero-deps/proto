@@ -1,0 +1,23 @@
+name: test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2.3.4
+      with:
+        clean: false
+        fetch-depth: 0 # with tags
+        submodules: 'recursive'
+    - uses: actions/setup-java@v1.4.3
+      with:
+        java-version: 15.0.1
+    - env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: sbt +test
