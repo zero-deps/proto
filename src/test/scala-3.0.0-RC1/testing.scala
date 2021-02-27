@@ -1,11 +1,12 @@
 package zd.proto.test
 
+import scala.language.adhocExtensions
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.ArraySeq
 import scala.language.adhocExtensions
 import zd.proto.*, api.*, macrosapi.*
 
-object models {
+object models:
   case class Basic(
     @N(21) int: Int
   , @N(22) long: Long
@@ -49,22 +50,19 @@ object models {
   @N(23) final class Teleport(@N(21) val id: String) extends Vehicle
   @N(50) case object Unknown extends Vehicle
 
-  object Teleport {
-    def apply(id: String): Teleport = {
+  object Teleport:
+    def apply(id: String): Teleport =
       new Teleport(id)
-    }
-  }
 
   final case class Parking(@N(21) place1: Option[Vehicle], @N(22) place2: Option[Vehicle], @N(23) other: List[Vehicle], @N(50) reserved: Vehicle)
 
   final case class ShoppingMall(@N(21) parking1: Option[Parking], @N(50) parking2: Option[Parking])
 
-  abstract class SimpleClass[A] {
+  abstract class SimpleClass[A]:
     def id: Int
     def id2: List[A]
-  }
 
-  object SimpleClass{
+  object SimpleClass:
     def init(p1: Int): SimpleClass[String] = new SimpleClass[String] {
       override def id: Int = p1
       override def id2: List[String] = List("0")
@@ -77,7 +75,6 @@ object models {
       override def id: Int = p1
       override def id2: List[A] = p2
     }
-  }
 
   final case class ClassWithArray(@N(1) x: Array[Byte])
   final case class ClassWithArraySeq(@N(1) y: ArraySeq[Byte])
@@ -95,14 +92,12 @@ object models {
 
   final case class ClassWithTypeParams[A,B,C](@N(1) a: A, @N(2) b: B, @N(3) c: C)
 
-  enum Push {
+  enum Push:
     @N(1) case Pong
     @N(2) case Msg(@N(1) txt: String, @N(2) id: Int)
-  }
-}
 
-class testing extends AnyFreeSpec {
-  import models._
+class testing extends AnyFreeSpec:
+  import models.*
 
   "ArraySeq[Byte] is compatible with Array[Byte]" in {
     import java.util.Arrays
@@ -130,8 +125,8 @@ class testing extends AnyFreeSpec {
   }
 
   "basic" - {
-    def test(implicit codec: MessageCodec[Basic]): Unit = {
-      (for {
+    def test(implicit codec: MessageCodec[Basic]): Unit =
+      (for
         int <- List(Int.MinValue, -2, -1, 0, 1, 2, Int.MaxValue)
         long <- List(Long.MinValue, -2L, -1L, 0L, 1L, 2L, Long.MaxValue)
         bool <- List(false, true)
@@ -139,7 +134,7 @@ class testing extends AnyFreeSpec {
         float <- List(Float.MinValue, -2.0F, -1.0F, 0.0F, 1.0F, 2.0F, Float.MaxValue)
         str <- List("", "str")
         bytes <- List(Array.empty[Byte], Array(0.toByte), Array(1.toByte), Array(2.toByte), Array(255.toByte))
-      } yield Basic(int = int, long = long, bool = bool, double = double, float = float, str = str, bytes = bytes)).foreach{ data =>
+      yield Basic(int = int, long = long, bool = bool, double = double, float = float, str = str, bytes = bytes)).foreach{ data =>
         val decoded = decode(encode(data))
         assert(decoded.int === data.int)
         assert(decoded.long === data.long)
@@ -149,7 +144,6 @@ class testing extends AnyFreeSpec {
         assert(decoded.str === data.str)
         assert(decoded.bytes === data.bytes)
       }
-    }
     "encode <-> decode" - {
       "auto codec" in { implicit val codec: MessageCodec[Basic] = caseCodecAuto[Basic]; test }
       "nums codec" in { implicit val codec: MessageCodec[Basic]  = caseCodecNums[Basic]("int"->6, "long"->7, "bool"->8, "double"->9, "float"->10, "str"->20, "bytes"->21); test }
@@ -164,20 +158,19 @@ class testing extends AnyFreeSpec {
 
     "empty bytearray <-> all fields none" - {
       val data = OptionBasic(int = None, long = None, bool = None, double = None, float = None, str = None, bytes = None)
-      def test(implicit codec: MessageCodec[OptionBasic]): Unit = {
+      def test(implicit codec: MessageCodec[OptionBasic]): Unit =
         assert(encode(data) === Array.empty[Byte])
         val decoded = decode[OptionBasic](Array.empty[Byte])
         val _ = assert(decoded === data)
-      }
-      "auto codec" in { import autocodec._; test }
-      "nums codec" in { import numscodec._; test }
-      "idx codec" in { import idxcodec._; test }
+      "auto codec" in { import autocodec.*; test }
+      "nums codec" in { import numscodec.*; test }
+      "idx codec" in { import idxcodec.*; test }
     }
 
     "bytearray <-> all fields" - {
       val data = OptionBasic(int = Some(1), long = Some(2L), bool = Some(true), double = Some(3.0D), float = Some(4.0F), str = Some("5"), bytes = Some(Array(6, 7, 8, 9, 0)))
       "auto codec" in {
-        import autocodec._
+        import autocodec.*
 
         val bytes = Array[Byte](168.toByte,1,1, 176.toByte,1,2, 184.toByte,1,1, 193.toByte,1,0,0,0,0,0,0,8,64, 205.toByte,1,0,0,128.toByte,64, 210.toByte,1,1,53, 146.toByte,3,5,6,7,8,9,0)
         assert(encode(data) === bytes)
@@ -191,7 +184,7 @@ class testing extends AnyFreeSpec {
         assert(decoded.bytes.get === data.bytes.get)
       }
       "nums codec" in { 
-        import numscodec._
+        import numscodec.*
         val bytes = Array[Byte](48,1, 56,2, 64,1, 73,0,0,0,0,0,0,8,64, 85,0,0,128.toByte,64, 162.toByte,1,1,53, 170.toByte,1,5,6,7,8,9,0)
         assert(encode(data) === bytes)
         val decoded = decode[OptionBasic](bytes)
@@ -204,7 +197,7 @@ class testing extends AnyFreeSpec {
         assert(decoded.bytes.get === data.bytes.get)
       }
       "idx codec" in {
-        import idxcodec._
+        import idxcodec.*
         val bytes = Array[Byte](8,1, 16,2, 24,1, 33,0,0,0,0,0,0,8,64, 45,0,0,128.toByte,64, 50,1,53, 58,5,6,7,8,9,0)
         assert(encode(data) === bytes)
         val decoded = decode[OptionBasic](bytes)
@@ -219,53 +212,45 @@ class testing extends AnyFreeSpec {
     }
   }
 
-  object messages {
-    object autocodec {
-      implicit val vehicleCodec: MessageCodec[Vehicle] = {
+  object messages:
+    object autocodec:
+      implicit val vehicleCodec: MessageCodec[Vehicle] =
         implicit val carCodec: MessageCodec[Car] = caseCodecAuto[Car]
         implicit val busCodec: MessageCodec[Bus] = caseCodecAuto[Bus]
         implicit val teleportCodec: MessageCodec[Teleport] = classCodecAuto[Teleport]
         implicit val unknownCodec: MessageCodec[Unknown.type] = caseCodecAuto[Unknown.type]
         sealedTraitCodecAuto[Vehicle]
-      }
       implicit val parkingCodec: MessageCodec[Parking] = caseCodecAuto[Parking]
       implicit val shoppingMallCodec: MessageCodec[ShoppingMall] = caseCodecAuto[ShoppingMall]
-    }
-    object numscodec {
-      implicit val vehicleCodec: MessageCodec[Vehicle] = {
+    object numscodec:
+      implicit val vehicleCodec: MessageCodec[Vehicle] =
         implicit val carCodec: MessageCodec[Car] = caseCodecNums[Car]("id"->2)
         implicit val busCodec: MessageCodec[Bus] = caseCodecNums[Bus]("id"->2)
         implicit val teleportCodec: MessageCodec[Teleport] = classCodecNums[Teleport]("id"->2)(Teleport.apply(_))
         implicit val unknownCodec = caseCodecNums[Unknown.type]()
         sealedTraitCodecNums[Vehicle]("Car"->10, "Bus"->22, "Teleport"->23, "Unknown"->51)
-      }
       implicit val parkingCodec: MessageCodec[Parking] = caseCodecNums[Parking]("place1"->1, "place2"->2, "other"->3, "reserved"->4)
       implicit val shoppingMallCodec: MessageCodec[ShoppingMall] = caseCodecNums[ShoppingMall]("parking1"->1, "parking2"->2)
-    }
-    object idxcodec {
-      implicit val vehicleCodec: MessageCodec[Vehicle] = {
+    object idxcodec:
+      implicit val vehicleCodec: MessageCodec[Vehicle] =
         implicit val carCodec = caseCodecIdx[Car]
         implicit val busCodec = caseCodecIdx[Bus]
         implicit val teleportCodec: MessageCodec[Teleport] = classCodecNums[Teleport]("id"->2)(Teleport.apply(_))
         implicit val unknownCodec = caseCodecIdx[Unknown.type]
         sealedTraitCodecNums[Vehicle]("Car"->10, "Bus"->22, "Teleport"->23, "Unknown"->51)
-      }
       implicit val parkingCodec: MessageCodec[Parking] = caseCodecIdx[Parking]
       implicit val shoppingMallCodec: MessageCodec[ShoppingMall] = caseCodecIdx[ShoppingMall]
-    }
-  }
 
-  object collections {
-    object autocodec {
-      import messages.autocodec._
+  object collections:
+    object autocodec:
+      import messages.autocodec.*
       implicit val tuple2IntInt: MessageCodec[Tuple2[Int, Int]] = caseCodecIdx[Tuple2[Int, Int]]
       implicit def tuple2StringA[A:MessageCodec]: MessageCodec[Tuple2[String, A]] = caseCodecIdx[Tuple2[String, A]]
       implicit def tuple2AString[A:MessageCodec]: MessageCodec[Tuple2[A, String]] = caseCodecIdx[Tuple2[A, String]]
       implicit def tuple2AB[A:MessageCodec, B:MessageCodec]: MessageCodec[Tuple2[A, B]] = caseCodecIdx[Tuple2[A, B]]
       implicit val collectionCodec: MessageCodec[Collections] = caseCodecAuto[Collections]
-    }
-    object numscodec {
-      import messages.numscodec._
+    object numscodec:
+      import messages.numscodec.*
       implicit val tuple2IntInt: MessageCodec[Tuple2[Int, Int]] = caseCodecNums[Tuple2[Int, Int]]("_1"->1, "_2"->2)
       implicit def tuple2StringA[A:MessageCodec]: MessageCodec[Tuple2[String, A]] = caseCodecNums[Tuple2[String, A]]("_1"->1, "_2"->2)
       implicit def tuple2AString[A:MessageCodec]: MessageCodec[Tuple2[A, String]] = caseCodecNums[Tuple2[A, String]]("_1"->1, "_2"->2)
@@ -286,19 +271,16 @@ class testing extends AnyFreeSpec {
       , "setBasic"->19
       , "setMessage"->20
       )
-    }
-    object idxcodec {
-      import messages.idxcodec._
+    object idxcodec:
+      import messages.idxcodec.*
       implicit val tuple2IntInt: MessageCodec[Tuple2[Int, Int]] = caseCodecIdx[Tuple2[Int, Int]]
       implicit def tuple2StringA[A:MessageCodec]: MessageCodec[Tuple2[String, A]] = caseCodecIdx[Tuple2[String, A]]
       implicit def tuple2AString[A:MessageCodec]: MessageCodec[Tuple2[A, String]] = caseCodecIdx[Tuple2[A, String]]
       implicit def tuple2AB[A:MessageCodec, B:MessageCodec]: MessageCodec[Tuple2[A, B]] = caseCodecIdx[Tuple2[A, B]]
       implicit val collectionCodec: MessageCodec[Collections] = caseCodecIdx[Collections]
-    }
-  }
 
   "collections" - {
-    def test(implicit codec: MessageCodec[Collections]): Unit = {
+    def test(implicit codec: MessageCodec[Collections]): Unit =
       val int = List(Int.MinValue, -2, -1, 0, 1, 2, Int.MaxValue)
       val long = List(Long.MinValue, -2L, -1L, 0L, 1L, 2L, Long.MaxValue)
       val bool = List(false, true)
@@ -338,29 +320,27 @@ class testing extends AnyFreeSpec {
       assert(decoded.float === data.float)
       assert(decoded.str === data.str)
       val _ = assert(decoded.bytes.zip(data.bytes).forall{ case (decodedBytes, dataBytes) => decodedBytes === dataBytes })
-    }
     "encode <-> decode" - {
-      "auto codec" in { import collections.autocodec._; test }
-      "nums codec" in { import collections.numscodec._; test }
-      "idx codec" in { import collections.idxcodec._; test }
+      "auto codec" in { import collections.autocodec.*; test }
+      "nums codec" in { import collections.numscodec.*; test }
+      "idx codec" in { import collections.idxcodec.*; test }
     }
   }
 
   "message" - {
     "encode <-> decode" - {
-      def test(implicit codec: MessageCodec[ShoppingMall]): Unit = {
+      def test(implicit codec: MessageCodec[ShoppingMall]): Unit =
         val parking = Parking(place1=None, place2=Some(Car(id="123")), other=List(Car(id="456"), Bus(id="789"), Unknown), reserved=Car(id="0"))
         val data = ShoppingMall(parking1=None, parking2=Some(parking))
         val decoded = decode[ShoppingMall](encode(data))
         val _ = assert(decoded === data)
-      }
-      "auto codec" in { import messages.autocodec._; test }
-      "nums codec" in { import messages.numscodec._; test }
-      "idx codec" in { import messages.idxcodec._; test }
+      "auto codec" in { import messages.autocodec.*; test }
+      "nums codec" in { import messages.numscodec.*; test }
+      "idx codec" in { import messages.idxcodec.*; test }
     }
   }
 
-  object custom {
+  object custom:
     val codecSynthetic1 = classCodecNums[SimpleClass[String]]("id"->1)(SimpleClass.init(_))
     val codecSynthetic2 = classCodecNums[SimpleClass[String]]("id"->1, "id2"->2)(SimpleClass.init2(_, _))
     def codecSynthetic3[A:MessageCodec] = classCodecNums[SimpleClass[A]]("id"->1, "id2"->2)(SimpleClass.init3[A](_, _))
@@ -368,7 +348,6 @@ class testing extends AnyFreeSpec {
     val codecAnonymous1 = classCodecNums[SimpleClass[String]]("id"->1)((id: Int) => SimpleClass.init(id))
     val codecAnonymous2 = classCodecNums[SimpleClass[String]]("id"->1, "id2"->2)((id: Int, id2: List[String]) => SimpleClass.init2(id, id2))
     def codecAnonymous3[A:MessageCodec] = classCodecNums[SimpleClass[A]]("id"->1, "id2"->2)((id: Int, id2: List[A]) => SimpleClass.init3(id, id2))
-  }
 
   "custom class" - {
     "synthetic function 1 arg" in {
@@ -388,7 +367,7 @@ class testing extends AnyFreeSpec {
     }
 
     "synthetic function 2 with generic" in {
-      import messages.numscodec._
+      import messages.numscodec.*
       implicit def codec[A:MessageCodec]: MessageCodec[SimpleClass[A]] = custom.codecSynthetic3[A]
       val data: SimpleClass[Vehicle] = SimpleClass.init3(987654321, List(Bus(id="123"), Unknown))
       val decoded: SimpleClass[Vehicle] = decode[SimpleClass[Vehicle]](encode(data))
@@ -413,7 +392,7 @@ class testing extends AnyFreeSpec {
     }
 
     "anonymous function 2 with generic" in {
-      import messages.numscodec._
+      import messages.numscodec.*
       implicit def codec[A:MessageCodec]: MessageCodec[SimpleClass[A]] = custom.codecAnonymous3[A]
       val data: SimpleClass[Vehicle] = SimpleClass.init3(987654321, List(Bus(id="123"), Unknown))
       val decoded: SimpleClass[Vehicle] = decode[SimpleClass[Vehicle]](encode(data))
@@ -422,25 +401,21 @@ class testing extends AnyFreeSpec {
     }
   }
 
-  object defaultValues {
-    object autocodec {
+  object defaultValues:
+    object autocodec:
       import messages.autocodec.vehicleCodec
       implicit val DefaultValuesClassCodec: MessageCodec[DefaultValuesClass] = caseCodecAuto
       implicit val DefaultValuesClass1Codec: MessageCodec[DefaultValuesClass1] = caseCodecAuto
-    }
-    object numscodec {
+    object numscodec:
       import messages.numscodec.vehicleCodec
       implicit val DefaultValuesClassCodec: MessageCodec[DefaultValuesClass] = caseCodecNums("int"->2,"bool"->3,"float"->4,"str"->5,"vehicle"->6)
-    }
-    object idxcodec {
+    object idxcodec:
       import messages.idxcodec.vehicleCodec
       implicit val DefaultValuesClassCodec: MessageCodec[DefaultValuesClass] = caseCodecIdx
-    }
-  }
 
   "default values" - {
     "encode <-> decode" - {
-      def testAllParamsPassed(implicit codec: MessageCodec[DefaultValuesClass]): Unit = {
+      def testAllParamsPassed(implicit codec: MessageCodec[DefaultValuesClass]): Unit =
         val data = DefaultValuesClass(
             int=23
           , bool=false
@@ -450,23 +425,21 @@ class testing extends AnyFreeSpec {
         )
         val decoded = decode[DefaultValuesClass](encode(data))
         val _ = assert(decoded === data)
-      }
-       def testNoneParamsPassed(implicit codec: MessageCodec[DefaultValuesClass]): Unit = {
+       def testNoneParamsPassed(implicit codec: MessageCodec[DefaultValuesClass]): Unit =
         val data = DefaultValuesClass(
             float=33
         )
         val decoded = decode[DefaultValuesClass](encode(data))
         val _ = assert(decoded === data)
-      }
-      "auto codec (all params passed)" in { import defaultValues.autocodec._; testAllParamsPassed }
-      "auto codec (none params passed)" in { import defaultValues.autocodec._; testNoneParamsPassed }
-      "numscodec (all params passed)" in { import defaultValues.numscodec._; testAllParamsPassed }
-      "numscodec (none params passed)" in { import defaultValues.numscodec._; testNoneParamsPassed }
-      "idxcodec (all params passed)" in { import defaultValues.idxcodec._; testAllParamsPassed }
-      "idxcodec (none params passed)" in { import defaultValues.idxcodec._; testNoneParamsPassed }
+      "auto codec (all params passed)" in { import defaultValues.autocodec.*; testAllParamsPassed }
+      "auto codec (none params passed)" in { import defaultValues.autocodec.*; testNoneParamsPassed }
+      "numscodec (all params passed)" in { import defaultValues.numscodec.*; testAllParamsPassed }
+      "numscodec (none params passed)" in { import defaultValues.numscodec.*; testNoneParamsPassed }
+      "idxcodec (all params passed)" in { import defaultValues.idxcodec.*; testAllParamsPassed }
+      "idxcodec (none params passed)" in { import defaultValues.idxcodec.*; testNoneParamsPassed }
     }
     "new fields with default values" in {
-      import defaultValues.autocodec._
+      import defaultValues.autocodec.*
       val data = DefaultValuesClass1(float=123)
       val expected = DefaultValuesClass(float=123)
       val decoded: DefaultValuesClass = decode[DefaultValuesClass](encode[DefaultValuesClass1](data))
@@ -474,52 +447,44 @@ class testing extends AnyFreeSpec {
     }
   }
 
-  object classWithTypeParams {
-    object autocodec {
+  object classWithTypeParams:
+    object autocodec:
       implicit val c1: MessageCodec[ClassWithTypeParams[String, Int, Float]] = caseCodecAuto
       implicit val c2: MessageCodec[ClassWithTypeParams[String, Int, List[Int]]] = caseCodecAuto
-    }
-    object numscodec {
+    object numscodec:
       implicit val c1: MessageCodec[ClassWithTypeParams[String, Int, Float]] = caseCodecNums("a"->1,"b"->2,"c"->3)
       implicit val c2: MessageCodec[ClassWithTypeParams[String, Int, List[Int]]] = caseCodecNums("a"->1,"b"->2,"c"->3)
-    }
-    object idxcodec {
+    object idxcodec:
       implicit val c1: MessageCodec[ClassWithTypeParams[String, Int, Float]] = caseCodecIdx
       implicit val c2: MessageCodec[ClassWithTypeParams[String, Int, List[Int]]] = caseCodecIdx
-    }
-  }
 
   "class with type params" - {
-    def test1(implicit codec: MessageCodec[ClassWithTypeParams[String, Int, Float]]): Unit = {
+    def test1(implicit codec: MessageCodec[ClassWithTypeParams[String, Int, Float]]): Unit =
       val data = ClassWithTypeParams[String, Int, Float]("test", 111, 3.14f)
       val decoded = decode[ClassWithTypeParams[String, Int, Float]](encode(data))
       val _ = assert(decoded === data)
-    }
 
-    def test2(implicit codec: MessageCodec[ClassWithTypeParams[String, Int, List[Int]]]): Unit = {
+    def test2(implicit codec: MessageCodec[ClassWithTypeParams[String, Int, List[Int]]]): Unit =
       val data = ClassWithTypeParams[String, Int, List[Int]]("test", 111, List(1,2,3,4,5))
       val decoded = decode[ClassWithTypeParams[String, Int, List[Int]]](encode(data))
       val _ = assert(decoded === data)
-    }
 
-    "autocodec (test1)" in { import classWithTypeParams.autocodec._; test1 }
-    "numscodec (test1)" in { import classWithTypeParams.numscodec._; test1 }
-    "idxcodec (test1)" in { import classWithTypeParams.idxcodec._; test1 }
+    "autocodec (test1)" in { import classWithTypeParams.autocodec.*; test1 }
+    "numscodec (test1)" in { import classWithTypeParams.numscodec.*; test1 }
+    "idxcodec (test1)" in { import classWithTypeParams.idxcodec.*; test1 }
 
-    "autocodec (test2)" in { import classWithTypeParams.autocodec._; test2 }
-    "numscodec (test2)" in { import classWithTypeParams.numscodec._; test2 }
-    "idxcodec (test2)" in { import classWithTypeParams.idxcodec._; test2 }
+    "autocodec (test2)" in { import classWithTypeParams.autocodec.*; test2 }
+    "numscodec (test2)" in { import classWithTypeParams.numscodec.*; test2 }
+    "idxcodec (test2)" in { import classWithTypeParams.idxcodec.*; test2 }
   }
 
   "enum by name" - {
     implicit val enumCodec1: MessageCodec[Push.Msg] = caseCodecAuto
     implicit val enumCodec: MessageCodec[Push] = enumByN
-    def test[A:MessageCodec](data: A) = {
+    def test[A:MessageCodec](data: A) =
       val bytes = encode[A](data)
       val decoded: A = decode(bytes)
       val _ = assert(decoded === data)
-    }
-    "object" in test(data=Push.Pong)
-    "case class" in test(data=Push.Msg(txt="binary message", id=1001))
+    "object" `in` test(data=Push.Pong)
+    "case class" `in` test(data=Push.Msg(txt="binary message", id=1001))
   }
-}

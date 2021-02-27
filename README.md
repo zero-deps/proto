@@ -1,5 +1,7 @@
 # proto
 
+[![test](https://github.com/zero-deps/proto/actions/workflows/test.yml/badge.svg)](https://github.com/zero-deps/proto/actions/workflows/test.yml)
+
 Lightweight and fast serialization library for Scala 2/3 based on Protocol Buffers with macros magic.
 
 # Motivation
@@ -12,7 +14,7 @@ With easy to migrate possibility.
 - Protocol Buffers compatible
 - No .proto files
 - No model convertation
-- Typesafe
+- Type safe
 - Serialization/deserialization without changes in models
 - Possibility to use specific types in model
 
@@ -49,14 +51,14 @@ msg  | encode | jsoniter-scala | ` 6372602.760`
 msg  | encode | proto          | ` 6487748.959`
 msg  | encode | scalapb        | ` 9202135.451`
 
-## Environment
+## environment
 
 2.8 GHz Quadro-Core Intel Core i7\
 16 GB 2133 MHz LPDDR3\
 Java 15.0.1\
 Scala 2.13.5
 
-## Run Benchmark
+## run benchmark
 
 ```bash
 sbt

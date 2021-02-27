@@ -3,14 +3,14 @@ package proto
 
 import proto.api.{MessageCodec, Prepare, N, RestrictedN}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
-import scala.quoted._
+import scala.quoted.*
 import scala.collection.immutable.ArraySeq
 
-trait Common {
+trait Common:
   implicit val qctx: Quotes
-  import qctx.reflect.{_, given}
-  import qctx.reflect.defn._
-  import report._
+  import qctx.reflect.{*, given}
+  import qctx.reflect.defn.*
+  import report.*
 
   private[proto] case class FieldInfo(
     name: String
@@ -24,9 +24,8 @@ trait Common {
   , prepareArraySym: Symbol = Symbol.noSymbol
   , defaultValue: Option[Term]
   , isCaseObject: Boolean = false
-  ) {
+  ):
     def tag: Int = num << 3 | wireType(tpe)
-  }
 
   def wireType(t: TypeRepr): Int =
     if      t.isInt || t.isLong || t.isBoolean then 0
@@ -84,7 +83,7 @@ trait Common {
   val BytesType: TypeRepr = TypeRepr.of[IArray[Byte]]
   val NTpe: TypeRepr = TypeRepr.of[N]
   val RestrictedNType: TypeRepr = TypeRepr.of[RestrictedN]
-  val ItetableType: TypeRepr = TypeRepr.of[scala.collection.Iterable[_]]
+  val ItetableType: TypeRepr = TypeRepr.of[scala.collection.Iterable[?]]
   val PrepareType: TypeRepr = TypeRepr.of[Prepare]
   val CodedInputStreamType: TypeRepr = TypeRepr.of[CodedInputStream]
   
@@ -171,7 +170,7 @@ trait Common {
             case Literal(IntConstant(n)) => n
             case x => throwError(s"wrong annotation ${aName} for `${tName}` $x")
           }
-          if (nums.size != nums.distinct.size) throwError(s"nums not unique in annotation ${aName} for `${tName}`")
+          if nums.size != nums.distinct.size then throwError(s"nums not unique in annotation ${aName} for `${tName}`")
           nums
         case Nil => Nil
         case _ => throwError(s"multiple ${aName} annotations applied for `${tName}`")
@@ -181,4 +180,3 @@ trait Common {
       case (cond, thenp) :: xs =>
         If(cond, thenp, mkIfStatement(xs, elseBranch))
       case Nil => elseBranch
-}

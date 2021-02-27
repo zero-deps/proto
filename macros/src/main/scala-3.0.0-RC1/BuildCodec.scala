@@ -3,14 +3,14 @@ package proto
 
 import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
-import scala.quoted._
+import scala.quoted.*
 import scala.collection.immutable.ArraySeq
 
-trait BuildCodec extends Common {
+trait BuildCodec extends Common:
   implicit val qctx: Quotes
-  import qctx.reflect.{_, given}
-  import qctx.reflect.defn._
-  import report._
+  import qctx.reflect.{*, given}
+  import qctx.reflect.defn.*
+  import report.*
 
   def prepareTrait[A: Type](a: Expr[A], params: List[FieldInfo]): Expr[Prepare] =
     val a_term = a.asTerm
@@ -124,7 +124,7 @@ trait BuildCodec extends Common {
       List(
         '{
           var counter = 0
-          while (counter < ${prepareArrayRef}.length) {
+          while counter < ${prepareArrayRef}.length do {
             val p = ${prepareArrayRef}(counter)
             ${os}.writeUInt32NoTag(${Expr(field.tag)})
             ${os}.writeUInt32NoTag(p.size)
@@ -171,7 +171,7 @@ trait BuildCodec extends Common {
       List(If(isDefined, incrementSize, unitLiteral))
     else
       val prepareOptionRhs = '{
-        if (${Select.unique(getter, "isDefined").asExprOf[Boolean]}) {
+        if ${Select.unique(getter, "isDefined").asExprOf[Boolean]} then
           val p: Prepare = ${Select.unique(findCodec(tpe), "prepare").appliedTo(getterOption).asExprOf[Prepare]}
           ${
             increment(
@@ -180,7 +180,7 @@ trait BuildCodec extends Common {
             ).asExpr
           }
           Some(p)
-        } else None
+        else None
       }
       List(
         ValDef(field.prepareOptionSym, Some(prepareOptionRhs.asTerm))
@@ -281,7 +281,7 @@ trait BuildCodec extends Common {
     }
     List(increment(sizeAcc, sum))
 
-  def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream], isTrait: Boolean=false, constructor: Option[Term]=None): Expr[Any] = {
+  def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream], isTrait: Boolean=false, constructor: Option[Term]=None): Expr[Any] =
 
     val (initStatements, readRefs, resExp): (List[Statement], List[Term], Term) =
       if isTrait then
@@ -307,7 +307,7 @@ trait BuildCodec extends Common {
 
     val tagMatch: Statement = '{
       var done = false
-      while (done == false) {
+      while done == false do
         val tag: Int = ${is}.readTag
         ${
           val ifBranches: List[(Term, Term)] =
@@ -319,7 +319,6 @@ trait BuildCodec extends Common {
           val elseBranch: Term = '{ ${is}.skipField(tag) }.asTerm
           mkIfStatement(ifBranches, elseBranch).asExprOf[Any]
         }
-      }
     }.asTerm
 
     val statements =
@@ -330,7 +329,6 @@ trait BuildCodec extends Common {
       statements
     , resExp
     ).asExpr
-  }
 
   def readContentImpl(p: FieldInfo, readRef: Term, is: Expr[CodedInputStream]): Expr[Any] =
     if p.isCaseObject then
@@ -374,7 +372,7 @@ trait BuildCodec extends Common {
       else
         putLimit(
           is
-        , '{ while (${is}.getBytesUntilLimit > 0) ${addOneApply} }
+        , '{ while ${is}.getBytesUntilLimit > 0 do ${addOneApply} }
         )
     else if p.tpe.isIterable then
       val tpe1 = p.tpe.iterableArgument
@@ -463,4 +461,3 @@ trait BuildCodec extends Common {
               .appliedToArgs(params)
 
   def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.asExprOf[Int]} + ${y} }.asTerm)
-}

@@ -3,7 +3,7 @@ package proto
 
 import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
-import scala.quoted._
+import scala.quoted.*
 import scala.collection.immutable.ArraySeq
 
 //todo; optimisation for case object (don't create prepare)
@@ -11,8 +11,7 @@ import scala.collection.immutable.ArraySeq
 //todo; optimisation for string (write custom .size/.write for string to prevent double time .size computation)
 //todo; remove .read exception and rewrite all the protobuf methods that throws exceptions
 
-object macrosapi {
-
+object macrosapi:
   inline def caseCodecAuto[A]: MessageCodec[A] = ${Macro.caseCodecAuto[A]}
   inline def caseCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.caseCodecNums[A]('nums)}
   inline def caseCodecIdx[A]: MessageCodec[A] = ${Macro.caseCodecIdx[A]}
@@ -21,9 +20,8 @@ object macrosapi {
   inline def sealedTraitCodecAuto[A]: MessageCodec[A] = ${Macro.sealedTraitCodecAuto[A]}
   inline def sealedTraitCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.sealedTraitCodecNums[A]('nums)}
   inline def enumByN[A]: MessageCodec[A] = ${Macro.enumByN[A]}
-}
 
-object Macro {
+object Macro:
   def caseCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
 
   def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecNums[A](numsExpr)
@@ -39,14 +37,13 @@ object Macro {
   def sealedTraitCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecAuto[A]
 
   def sealedTraitCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecNums[A](numsExpr)
-}
 
-private class Impl(using val qctx: Quotes) extends BuildCodec {
-  import qctx.reflect.{_, given}
-  import qctx.reflect.defn._
-  import report._
+private class Impl(using val qctx: Quotes) extends BuildCodec:
+  import qctx.reflect.{*, given}
+  import qctx.reflect.defn.*
+  import report.*
 
-  def caseCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
+  def caseCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] =
     val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
@@ -58,25 +55,22 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     )
     messageCodec(a_tpe, nums, params, restrictDefaults=true)
-  }
 
-  def caseCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] = {
+  def caseCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] =
     val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val params: List[Symbol] = aTypeSymbol.constructorParams
     messageCodec(a_tpe, nums, params, restrictDefaults=false)
-  }
 
-  def caseCodecIdx[A: quoted.Type]: Expr[MessageCodec[A]] = {
+  def caseCodecIdx[A: quoted.Type]: Expr[MessageCodec[A]] =
     val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val params: List[Symbol] = aTypeSymbol.constructorParams
     val nums: List[(String, Int)] = params.zipWithIndex.map{case (p, idx) => (p.name, idx + 1) }
     messageCodec(a_tpe, nums, params, restrictDefaults=false)
-  }
 
-  def classCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
+  def classCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] =
     val a_tpe = TypeRepr.of[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
@@ -88,9 +82,8 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     )
     messageCodec(a_tpe, nums, params, restrictDefaults=true)
-  }
 
-  def classCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]])(constructor: Expr[Any]): Expr[MessageCodec[A]] = {
+  def classCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]])(constructor: Expr[Any]): Expr[MessageCodec[A]] =
     val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = TypeRepr.of[A]
     val aTypeSymbol = a_tpe.typeSymbol
@@ -103,16 +96,15 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
         case None => throwError(s"`${typeName}` has no field `${name}`")
     }.toList
     messageCodec(a_tpe, nums, params, restrictDefaults=false, constructor=Some(constructor.asTerm))
-  }
 
-  def messageCodec[A: quoted.Type](a_tpe: TypeRepr, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean, constructor: Option[Term] = None): Expr[MessageCodec[A]] = {
+  def messageCodec[A: quoted.Type](a_tpe: TypeRepr, nums: Seq[(String, Int)], cParams: List[Symbol], restrictDefaults: Boolean, constructor: Option[Term] = None): Expr[MessageCodec[A]] =
     val aTypeSym = a_tpe.typeSymbol
     val aTypeCompanionSym = aTypeSym.companionModule
     val typeName = aTypeSym.fullName
     
-    if (nums.exists(_._2 < 1)) throwError(s"nums ${nums} should be > 0")
-    if (nums.size != cParams.size) throwError(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
-    if (nums.groupBy(_._2).exists(_._2.size != 1)) throwError(s"nums ${nums} should be unique")
+    if nums.exists(_._2 < 1) then throwError(s"nums ${nums} should be > 0")
+    if nums.size != cParams.size then throwError(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
+    if nums.groupBy(_._2).exists(_._2.size != 1) then throwError(s"nums ${nums} should be unique")
     val restrictedNums = a_tpe.restrictedNums
     val typeArgsToReplace: Map[String, TypeRepr] = a_tpe.typeArgsToReplace
 
@@ -165,9 +157,8 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
         val aType: String = $aType_xpr
       }
     }
-  }
 
-  def enumByN[A: Type]: Expr[MessageCodec[A]] = {
+  def enumByN[A: Type]: Expr[MessageCodec[A]] =
     val a_tpe = TypeRepr.of[A]
     val a_typeSym = a_tpe.typeSymbol
     val typeName = a_typeSym.fullName
@@ -179,9 +170,8 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     }
     sealedTraitCodec(a_tpe, nums)
-  }
 
-  def sealedTraitCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] = {
+  def sealedTraitCodecAuto[A: quoted.Type]: Expr[MessageCodec[A]] =
     val a_tpe = getSealedTrait[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
@@ -193,9 +183,8 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
         case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     }
     sealedTraitCodec(a_tpe, nums)
-  }
 
-  def sealedTraitCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] = {
+  def sealedTraitCodecNums[A: quoted.Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] =
     val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = getSealedTrait[A]
     val aTypeSymbol = a_tpe.typeSymbol
@@ -206,23 +195,22 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
       x.tpe -> nums.collectFirst{case (n, num) if n == name => num}.getOrElse(throwError(s"missing num for `${name}: ${x.fullName}`"))
     }
     sealedTraitCodec(a_tpe, nums1)
-  }
 
-  def sealedTraitCodec[A: quoted.Type](a_tpe: TypeRepr, nums: Seq[(TypeRepr, Int)]): Expr[MessageCodec[A]] = {
+  def sealedTraitCodec[A: quoted.Type](a_tpe: TypeRepr, nums: Seq[(TypeRepr, Int)]): Expr[MessageCodec[A]] =
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
     val subclasses = aTypeSymbol.children
 
-    if (subclasses.size <= 0) throwError(s"required at least 1 subclass for `${typeName}`")
-    if (nums.size != subclasses.size) throwError(s"`${typeName}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
-    if (nums.exists(_._2 < 1)) throwError(s"nums for ${typeName} should be > 0")
-    if (nums.groupBy(_._2).exists(_._2.size != 1)) throwError(s"nums for ${typeName} should be unique")
+    if subclasses.size <= 0 then throwError(s"required at least 1 subclass for `${typeName}`")
+    if nums.size != subclasses.size then throwError(s"`${typeName}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
+    if nums.exists(_._2 < 1) then throwError(s"nums for ${typeName} should be > 0")
+    if nums.groupBy(_._2).exists(_._2.size != 1) then throwError(s"nums for ${typeName} should be unique")
     val restrictedNums = a_tpe.restrictedNums
 
     val fields: List[FieldInfo] = subclasses.map{ s =>
       val tpe = s.tpe
       val num: Int = nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(throwError(s"missing num for class `${tpe}` of trait `${a_tpe}`"))
-      if (restrictedNums.contains(num)) throwError(s"num ${num} is restricted for class `${tpe}` of trait `${a_tpe}`")
+      if restrictedNums.contains(num) then throwError(s"num ${num} is restricted for class `${tpe}` of trait `${a_tpe}`")
     
       FieldInfo(
         name = s.fullName
@@ -248,7 +236,6 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
         val aType: String = $aType_expr
       }
     }
-  }
 
   private def getSealedTrait[A: Type]: TypeRepr =
     val tpe = TypeRepr.of[A]
@@ -257,4 +244,3 @@ private class Impl(using val qctx: Quotes) extends BuildCodec {
   private def getCaseClassType[A: Type]: TypeRepr =
     val tpe = TypeRepr.of[A]
     if tpe.isCaseType then tpe else throwError(s"`${tpe.typeSymbol.fullName}` is not a case class")
-}
