@@ -5,7 +5,6 @@ import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted._
 import scala.collection.immutable.ArraySeq
-import zd.proto.Bytes
 
 trait BuildCodec extends Common {
   implicit val qctx: Quotes

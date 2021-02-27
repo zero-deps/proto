@@ -1,10 +1,9 @@
 package zd.proto.test
 
 import org.scalatest.freespec.AnyFreeSpec
-import zd.proto.api.{MessageCodec, encode, decode, N}
-import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto, sealedTraitCodecAuto, sealedTraitCodecNums, classCodecNums, classCodecAuto, enumByN}
 import scala.collection.immutable.ArraySeq
-import zd.proto.Bytes
+import scala.language.adhocExtensions
+import zd.proto.*, api.*, macrosapi.*
 
 object models {
   case class Basic(
@@ -82,7 +81,7 @@ object models {
 
   final case class ClassWithArray(@N(1) x: Array[Byte])
   final case class ClassWithArraySeq(@N(1) y: ArraySeq[Byte])
-  final case class ClassWithBytes(@N(1) z: Bytes)
+  final case class ClassWithBytes(@N(1) z: IArray[Byte])
 
   final case class DefaultValuesClass(
     @N(1) int: Int = 10
@@ -113,12 +112,12 @@ class testing extends AnyFreeSpec {
     assert(Arrays.equals(decode[ClassWithArray](encode[ClassWithArraySeq](ClassWithArraySeq(y=ArraySeq.unsafeWrapArray[Byte](Array[Byte](1,2,3))))).x, Array[Byte](1,2,3)))
   }
 
-  "Bytes is compatible with Array[Byte]" in {
+  "IArray[Byte] is compatible with Array[Byte]" in {
     import java.util.Arrays
     implicit val ac: MessageCodec[ClassWithArray] = caseCodecAuto[ClassWithArray]
     implicit val bc: MessageCodec[ClassWithBytes] = caseCodecAuto[ClassWithBytes]
     assert(Arrays.equals(decode[ClassWithBytes](encode[ClassWithArray](ClassWithArray(x=Array[Byte](1,2,3)))).z.unsafeArray, Array[Byte](1,2,3)))
-    assert(Arrays.equals(decode[ClassWithArray](encode[ClassWithBytes](ClassWithBytes(z=Bytes.unsafeWrap(Array[Byte](1,2,3))))).x, Array[Byte](1,2,3)))
+    assert(Arrays.equals(decode[ClassWithArray](encode[ClassWithBytes](ClassWithBytes(z=IArray.unsafeFromArray(Array[Byte](1,2,3))))).x, Array[Byte](1,2,3)))
   }
 
   "array byte wrapper" - {

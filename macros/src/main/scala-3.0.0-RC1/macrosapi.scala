@@ -5,7 +5,6 @@ import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted._
 import scala.collection.immutable.ArraySeq
-import zd.proto.Bytes
 
 //todo; optimisation for case object (don't create prepare)
 //todo; optimisation for MessageCodec (add .size/.write and use these in proto.api.encode instead of .prepare)

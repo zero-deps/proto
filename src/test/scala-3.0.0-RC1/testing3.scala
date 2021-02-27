@@ -1,14 +1,11 @@
 package zd.proto.test3
 
-import org.junit.Test
-import org.junit.Assert._
-import java.util.Arrays
-
-import zd.proto.macrosapi.{caseCodecAuto, caseCodecNums, caseCodecIdx, classCodecAuto, classCodecNums, sealedTraitCodecAuto, enumByN}
-import zd.proto.api.{MessageCodec, N, RestrictedN, decode, encode, Prepare}
-import zd.proto.Bytes
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
+import java.util.Arrays
+import org.junit.Assert.*
+import org.junit.Test
 import scala.collection.immutable.ArraySeq
+import zd.proto.*, api.*, macrosapi.*
 
 object models {
   final case class Basic(
@@ -33,7 +30,7 @@ object models {
 
   final case class ClassWithArray(@N(1) x: Array[Byte])
   final case class ClassWithArraySeq(@N(1) y: ArraySeq[Byte])
-  final case class ClassWithBytes(@N(1) z: Bytes)
+  final case class ClassWithBytes(@N(1) z: IArray[Byte])
 
   final case class Collections(
     @N(21) int: List[Int]
@@ -176,7 +173,7 @@ class Testing {
   @Test def test2(): Unit = {
     import java.util.Arrays
     assert(Arrays.equals(decode[ClassWithBytes](encode[ClassWithArray](ClassWithArray(x=Array[Byte](1,2,3)))).z.unsafeArray, Array[Byte](1,2,3)))
-    assert(Arrays.equals(decode[ClassWithArray](encode[ClassWithBytes](ClassWithBytes(z=Bytes.unsafeWrap(Array[Byte](1,2,3))))).x, Array[Byte](1,2,3)))
+    assert(Arrays.equals(decode[ClassWithArray](encode[ClassWithBytes](ClassWithBytes(z=IArray.unsafeFromArray(Array[Byte](1,2,3))))).x, Array[Byte](1,2,3)))
   }
 
   //array byte wrapper encode

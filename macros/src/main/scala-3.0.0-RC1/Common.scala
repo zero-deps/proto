@@ -5,7 +5,6 @@ import proto.api.{MessageCodec, Prepare, N, RestrictedN}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted._
 import scala.collection.immutable.ArraySeq
-import zd.proto.Bytes
 
 trait Common {
   implicit val qctx: Quotes
@@ -52,7 +51,7 @@ trait Common {
     else if t.isString then '{ ${os}.writeStringNoTag(${getterTerm.asExprOf[String]}) }
     else if t.isArrayByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
     else if t.isArraySeqByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
-    else if t.isBytesType then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[Bytes]}.unsafeArray) }
+    else if t.isBytesType then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def sizeFun(t: TypeRepr, getterTerm: Term): Expr[Int] =
@@ -65,7 +64,7 @@ trait Common {
     else if t.isString then '{ CodedOutputStream.computeStringSizeNoTag(${getterTerm.asExprOf[String]}) }
     else if t.isArrayByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
     else if t.isArraySeqByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
-    else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[Bytes]}.unsafeArray) }
+    else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def readFun(t: TypeRepr, is: Expr[CodedInputStream]): Term =
@@ -77,12 +76,12 @@ trait Common {
     else if t.isString then '{ ${is}.readString.nn }.asTerm
     else if t.isArrayByte then '{ ${is}.readByteArray.nn }.asTerm
     else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray) }.asTerm
-    else if t.isBytesType then '{ Bytes.unsafeWrap(${is}.readByteArray) }.asTerm
+    else if t.isBytesType then '{ IArray.unsafeFromArray(${is}.readByteArray) }.asTerm
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
   val ArraySeqByteType: TypeRepr = TypeRepr.of[ArraySeq[Byte]]
-  val BytesType: TypeRepr = TypeRepr.of[Bytes]
+  val BytesType: TypeRepr = TypeRepr.of[IArray[Byte]]
   val NTpe: TypeRepr = TypeRepr.of[N]
   val RestrictedNType: TypeRepr = TypeRepr.of[RestrictedN]
   val ItetableType: TypeRepr = TypeRepr.of[scala.collection.Iterable[_]]
