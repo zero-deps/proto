@@ -1,10 +1,8 @@
-package zd.proto.test
-
 import scala.language.adhocExtensions
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.ArraySeq
 import scala.language.adhocExtensions
-import zd.proto.*, api.*, macrosapi.*
+import proto.api.*, proto.macros.*
 
 object models:
   case class Basic(

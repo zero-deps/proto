@@ -1,11 +1,11 @@
-package zd.proto.test3
+package test3
 
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import java.util.Arrays
 import org.junit.Assert.*
 import org.junit.Test
 import scala.collection.immutable.ArraySeq
-import zd.proto.*, api.*, macrosapi.*
+import proto.api.*, proto.macros.*
 
 object models {
   final case class Basic(

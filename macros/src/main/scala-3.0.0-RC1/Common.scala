@@ -1,5 +1,5 @@
-package zd
 package proto
+package macros
 
 import proto.api.{MessageCodec, Prepare, N, RestrictedN}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
@@ -180,3 +180,5 @@ trait Common:
       case (cond, thenp) :: xs =>
         If(cond, thenp, mkIfStatement(xs, elseBranch))
       case Nil => elseBranch
+
+end Common

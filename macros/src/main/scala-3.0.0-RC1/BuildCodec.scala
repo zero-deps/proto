@@ -1,5 +1,5 @@
-package zd
 package proto
+package macros
 
 import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
@@ -461,3 +461,5 @@ trait BuildCodec extends Common:
               .appliedToArgs(params)
 
   def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.asExprOf[Int]} + ${y} }.asTerm)
+
+end BuildCodec

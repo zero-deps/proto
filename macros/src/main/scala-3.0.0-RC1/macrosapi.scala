@@ -1,5 +1,5 @@
-package zd
 package proto
+package macros
 
 import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
@@ -11,15 +11,14 @@ import scala.collection.immutable.ArraySeq
 //todo; optimisation for string (write custom .size/.write for string to prevent double time .size computation)
 //todo; remove .read exception and rewrite all the protobuf methods that throws exceptions
 
-object macrosapi:
-  inline def caseCodecAuto[A]: MessageCodec[A] = ${Macro.caseCodecAuto[A]}
-  inline def caseCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.caseCodecNums[A]('nums)}
-  inline def caseCodecIdx[A]: MessageCodec[A] = ${Macro.caseCodecIdx[A]}
-  inline def classCodecAuto[A]: MessageCodec[A] = ${Macro.classCodecAuto[A]}
-  inline def classCodecNums[A](inline nums: (String, Int)*)(inline constructor: Any): MessageCodec[A] = ${Macro.classCodecNums[A]('nums)('constructor)}
-  inline def sealedTraitCodecAuto[A]: MessageCodec[A] = ${Macro.sealedTraitCodecAuto[A]}
-  inline def sealedTraitCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.sealedTraitCodecNums[A]('nums)}
-  inline def enumByN[A]: MessageCodec[A] = ${Macro.enumByN[A]}
+inline def caseCodecAuto[A]: MessageCodec[A] = ${Macro.caseCodecAuto[A]}
+inline def caseCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.caseCodecNums[A]('nums)}
+inline def caseCodecIdx[A]: MessageCodec[A] = ${Macro.caseCodecIdx[A]}
+inline def classCodecAuto[A]: MessageCodec[A] = ${Macro.classCodecAuto[A]}
+inline def classCodecNums[A](inline nums: (String, Int)*)(inline constructor: Any): MessageCodec[A] = ${Macro.classCodecNums[A]('nums)('constructor)}
+inline def sealedTraitCodecAuto[A]: MessageCodec[A] = ${Macro.sealedTraitCodecAuto[A]}
+inline def sealedTraitCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.sealedTraitCodecNums[A]('nums)}
+inline def enumByN[A]: MessageCodec[A] = ${Macro.enumByN[A]}
 
 object Macro:
   def caseCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
@@ -37,6 +36,7 @@ object Macro:
   def sealedTraitCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecAuto[A]
 
   def sealedTraitCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecNums[A](numsExpr)
+end Macro
 
 private class Impl(using val qctx: Quotes) extends BuildCodec:
   import qctx.reflect.{*, given}
@@ -244,3 +244,5 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
   private def getCaseClassType[A: Type]: TypeRepr =
     val tpe = TypeRepr.of[A]
     if tpe.isCaseType then tpe else throwError(s"`${tpe.typeSymbol.fullName}` is not a case class")
+
+end Impl
