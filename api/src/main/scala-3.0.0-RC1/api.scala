@@ -2,6 +2,8 @@ package zd
 package proto
 package api
 
+import java.io.{OutputStream, InputStream}
+import scala.annotation.*
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 
 trait Prepare:
@@ -24,14 +26,17 @@ def encode[A](a: A)(implicit c: MessageCodec[A]): Array[Byte] =
 def encodeI[A](a: A)(implicit c: MessageCodec[A]): IArray[Byte] =
   IArray.unsafeFromArray[Byte](encode[A](a))
 
+def encodeS[A](a: A, s: OutputStream)(implicit c: MessageCodec[A]): OutputStream =
+  val p = c.prepare(a)
+  val os = CodedOutputStream.newInstance(s)
+  p.write(os)
+  s
+
 def decode[A](xs: Array[Byte])(implicit c: MessageCodec[A]): A =
-  decode[A](xs, offset=0)
+  c.read(CodedInputStream.newInstance(xs))
 
 def decode[A](xs: Array[Byte], offset: Int)(implicit c: MessageCodec[A]): A =
-  val is =
-    if offset > 0 then CodedInputStream.newInstance(xs, offset, xs.length-offset)
-    else CodedInputStream.newInstance(xs)
-  c.read(is)
+  c.read(CodedInputStream.newInstance(xs, offset, xs.length-offset))
 
 def decodeI[A](bs: IArray[Byte])(implicit c: MessageCodec[A]): A =
   decode[A](bs.toArray)
@@ -39,5 +44,8 @@ def decodeI[A](bs: IArray[Byte])(implicit c: MessageCodec[A]): A =
 def decodeI[A](bs: IArray[Byte], offset: Int)(implicit c: MessageCodec[A]): A =
   decode[A](bs.toArray, offset)
 
-final case class N(n: Int) extends annotation.StaticAnnotation
-final case class RestrictedN(nums: Int*) extends annotation.StaticAnnotation
+def decodeS[A](s: InputStream)(implicit c: MessageCodec[A]): A =
+  c.read(CodedInputStream.newInstance(s))
+
+final class N(n: Int) extends StaticAnnotation
+final class RestrictedN(nums: Int*) extends StaticAnnotation

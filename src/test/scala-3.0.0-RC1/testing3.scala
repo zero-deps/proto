@@ -119,7 +119,7 @@ object models {
 }
 
 class Testing {
-  import models._
+  import models.*
   
   @Test def encodeDecodeCaseCodecAuto(): Unit = {
     val c: MessageCodec[Basic] = caseCodecAuto
