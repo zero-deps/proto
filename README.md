@@ -1,6 +1,9 @@
 # proto
 
-[![test](https://github.com/zero-deps/proto/actions/workflows/test.yml/badge.svg)](https://github.com/zero-deps/proto/actions/workflows/test.yml)
+[![version](https://img.shields.io/maven-central/v/io.github.zero-deps/proto-macros_3.0.0-RC1?label=version)](https://repo1.maven.org/maven2/io/github/zero-deps/)
+[![chat](https://img.shields.io/discord/786606353820942366)](https://discord.gg/ns7ZYssxZS)
+[![test](https://img.shields.io/github/workflow/status/zero-deps/proto/test?label=tests)](https://github.com/zero-deps/proto/actions/workflows/test.yml)
+![cloc](https://img.shields.io/badge/cloc-833-blue)
 
 Lightweight and fast serialization library for Scala 2/3 based on Protocol Buffers with macros magic.
 
