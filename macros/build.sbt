@@ -12,19 +12,14 @@ lazy val macros = project.in(file(".")).settings(
         , "-deprecation"
         , "-rewrite"
         , "release", "15"
-          //   "-language:postfixOps"
-          // , "-Yexplicit-nulls"
-          // , "-language:strictEquality"
+        , "-Yexplicit-nulls"
         )
     }
   },
   version := zero.git.version(),
   libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 13)) =>
-        Seq(
-          "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-        )
+      case Some((2, 13)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
       case _ => Nil
     }
   },
@@ -56,9 +51,8 @@ lazy val api = project.in(file("../api")).settings(
         , "-deprecation"
         , "-rewrite"
         , "release", "15"
-          //   "-language:postfixOps"
-          // , "-Yexplicit-nulls"
-          // , "-language:strictEquality"
+        , "-Yexplicit-nulls"
+        , "-language:strictEquality"
         )
     }
   },

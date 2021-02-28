@@ -5,7 +5,7 @@ lazy val proto = project.in(file(".")).settings(
   scalaVersion := "3.0.0-RC1",
   crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,
   resolvers += Resolver.JCenterRepository,
-  scalacOptions ++= {
+  Test / scalacOptions ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 13)) => Nil
       case _ =>
@@ -13,10 +13,6 @@ lazy val proto = project.in(file(".")).settings(
           "-source", "future-migration"
         , "-deprecation"
         , "-rewrite"
-        , "release", "15"
-          //   "-language:postfixOps"
-          // , "-Yexplicit-nulls"
-          // , "-language:strictEquality"
         )
     }
   },

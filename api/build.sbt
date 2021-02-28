@@ -13,9 +13,8 @@ lazy val api = project.in(file("../api")).settings(
         , "-deprecation"
         , "-rewrite"
         , "release", "15"
-          //   "-language:postfixOps"
-          // , "-Yexplicit-nulls"
-          // , "-language:strictEquality"
+        , "-Yexplicit-nulls"
+        , "-language:strictEquality"
         )
     }
   },

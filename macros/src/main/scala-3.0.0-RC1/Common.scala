@@ -74,8 +74,8 @@ trait Common:
     else if t.isFloat then '{ ${is}.readFloat }.asTerm
     else if t.isString then '{ ${is}.readString.nn }.asTerm
     else if t.isArrayByte then '{ ${is}.readByteArray.nn }.asTerm
-    else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray) }.asTerm
-    else if t.isBytesType then '{ IArray.unsafeFromArray(${is}.readByteArray) }.asTerm
+    else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray.nn) }.asTerm
+    else if t.isBytesType then '{ IArray.unsafeFromArray(${is}.readByteArray.nn) }.asTerm
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
