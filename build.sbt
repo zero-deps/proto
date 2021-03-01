@@ -1,6 +1,5 @@
 lazy val proto = project.in(file(".")).settings(
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.5" % Test,
-  libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
   publish / skip := true,
   scalaVersion := "3.0.0-RC1",
   crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,
