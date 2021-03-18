@@ -11,7 +11,7 @@ lazy val macros = project.in(file(".")).settings(
           "-source", "future-migration"
         , "-deprecation"
         , "-rewrite"
-        , "release", "15"
+        , "release", "11"
         , "-Yexplicit-nulls"
         )
     }
@@ -50,7 +50,7 @@ lazy val protoapi = project.in(file("../protoapi")).settings(
           "-source", "future-migration"
         , "-deprecation"
         , "-rewrite"
-        , "release", "15"
+        , "release", "11"
         , "-Yexplicit-nulls"
         , "-language:strictEquality"
         )
