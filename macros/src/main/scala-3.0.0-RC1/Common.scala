@@ -12,11 +12,14 @@ trait Common:
   import qctx.reflect.defn.*
   import report.*
 
-  private[proto] case class FieldInfo(
+  extension (x: TypeRepr)
+    private[macros] def matchable: TypeRepr & Matchable = x.asInstanceOf[TypeRepr & Matchable]
+
+  private[macros] case class FieldInfo(
     name: String
   , num: Int
   , sym: Symbol
-  , tpe: TypeRepr
+  , tpe: TypeRepr & Matchable
   , getter: Term => Term
   , sizeSym: Symbol
   , prepareSym: Symbol
@@ -27,11 +30,11 @@ trait Common:
   ):
     def tag: Int = num << 3 | wireType(tpe)
 
-  def wireType(t: TypeRepr): Int =
+  def wireType(t: TypeRepr & Matchable): Int =
     if      t.isInt || t.isLong || t.isBoolean then 0
     else if t.isDouble then 1
     else if t.isFloat then 5
-    else if t.isOption then wireType(t.optionArgument)
+    else if t.isOption then wireType(t.optionArgument.matchable)
     else if t.isString || 
             t.isArrayByte || 
             t.isArraySeqByte || 
@@ -41,7 +44,7 @@ trait Common:
             t.isIterable then 2
     else 2
 
-  def writeFun(os: Expr[CodedOutputStream], t: TypeRepr, getterTerm: Term): Expr[Unit] =
+  def writeFun(os: Expr[CodedOutputStream], t: TypeRepr & Matchable, getterTerm: Term): Expr[Unit] =
     if      t.isInt then '{ ${os}.writeInt32NoTag(${getterTerm.asExprOf[Int]}) }
     else if t.isLong then '{ ${os}.writeInt64NoTag(${getterTerm.asExprOf[Long]}) }
     else if t.isBoolean then '{ ${os}.writeBoolNoTag(${getterTerm.asExprOf[Boolean]}) }
@@ -53,7 +56,7 @@ trait Common:
     else if t.isBytesType then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
-  def sizeFun(t: TypeRepr, getterTerm: Term): Expr[Int] =
+  def sizeFun(t: TypeRepr & Matchable, getterTerm: Term): Expr[Int] =
     val CodedOutputStreamRef = Ref(TypeRepr.of[CodedOutputStream].typeSymbol.companionModule)
     if      t.isInt then '{ CodedOutputStream.computeInt32SizeNoTag(${getterTerm.asExprOf[Int]}) }
     else if t.isLong then '{ CodedOutputStream.computeInt64SizeNoTag(${getterTerm.asExprOf[Long]}) }
@@ -66,7 +69,7 @@ trait Common:
     else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
-  def readFun(t: TypeRepr, is: Expr[CodedInputStream]): Term =
+  def readFun(t: TypeRepr & Matchable, is: Expr[CodedInputStream]): Term =
     if      t.isInt then '{ ${is}.readInt32 }.asTerm
     else if t.isLong then '{ ${is}.readInt64 }.asTerm
     else if t.isBoolean then '{ ${is}.readBool }.asTerm
@@ -112,7 +115,7 @@ trait Common:
   val commonTypes: List[TypeRepr] =
     TypeRepr.of[String] :: TypeRepr.of[Int] :: TypeRepr.of[Long] :: TypeRepr.of[Boolean] :: TypeRepr.of[Double] :: TypeRepr.of[Float] :: ArrayByteType :: ArraySeqByteType :: BytesType :: Nil 
 
-  extension (t: TypeRepr)
+  extension (t: TypeRepr & Matchable)
     def isNType: Boolean = t =:= NTpe
     def isCaseClass: Boolean = t.typeSymbol.flags.is(Flags.Case)
     def isCaseObject: Boolean = t.termSymbol.flags.is(Flags.Case)
@@ -137,7 +140,7 @@ trait Common:
       .toMap
 
     def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t match
-      case AppliedType(t1, args)  => t1.appliedTo(args.map(_.replaceTypeArgs(map)))
+      case AppliedType(t1, args)  => t1.appliedTo(args.map(_.matchable.replaceTypeArgs(map)))
       case _ => map.getOrElse(t.typeSymbol.name, t)
 
     def isOption: Boolean = t match
@@ -152,7 +155,7 @@ trait Common:
       case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head
       case _ => throwError(s"It isn't Option type: ${t.typeSymbol.name}")
 
-    def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol) match
+    def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol).matchable match
       case AppliedType(_, args) if t.isIterable => args.head
       case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 

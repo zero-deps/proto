@@ -60,7 +60,7 @@ trait BuildCodec extends Common:
     )
   
   def writeOption[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
-    val tpe = field.tpe.optionArgument
+    val tpe = field.tpe.optionArgument.matchable
     val getter = field.getter(a.asTerm)
     val getterOption = Select.unique(getter, "get")
     if tpe.isCommonType then
@@ -86,7 +86,7 @@ trait BuildCodec extends Common:
       )
 
   def writeCollection[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
-    val tpe1 = field.tpe.iterableArgument
+    val tpe1 = field.tpe.iterableArgument.matchable
     val getter = field.getter(a.asTerm)
     val pType = tpe1.asType
     val sizeRef = Ref(field.sizeSym)
@@ -160,7 +160,7 @@ trait BuildCodec extends Common:
     List(increment(sizeAcc, sum))
   
   def sizeOption[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
-    val tpe = field.tpe.optionArgument
+    val tpe = field.tpe.optionArgument.matchable
     val getter: Term = field.getter(a.asTerm)
     val getterOption: Term = Select.unique(getter, "get")//getterOptionTerm(a, field)
     if (tpe.isCommonType) then
@@ -187,7 +187,7 @@ trait BuildCodec extends Common:
       )
 
   def sizeCollection[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] = 
-    val tpe1 = field.tpe.iterableArgument
+    val tpe1 = field.tpe.iterableArgument.matchable
     val getter = field.getter(a.asTerm)
     val pType = tpe1.asType
     pType match
@@ -346,8 +346,8 @@ trait BuildCodec extends Common:
         readRef
       , Some_Apply(tpe=p.tpe, value=fun)
       ).asExpr
-    else if p.tpe.isOption && p.tpe.optionArgument.isCommonType then
-      val tpe1 = p.tpe.optionArgument
+    else if p.tpe.isOption && p.tpe.optionArgument.matchable.isCommonType then
+      val tpe1 = p.tpe.optionArgument.matchable
       val fun: Term = readFun(tpe1, is)
       Assign(
         readRef
@@ -363,8 +363,8 @@ trait BuildCodec extends Common:
         , Some_Apply(tpe=tpe1, value=fun)
         ).asExpr      
       )
-    else if p.tpe.isIterable && p.tpe.iterableArgument.isCommonType then
-      val tpe1 = p.tpe.iterableArgument
+    else if p.tpe.isIterable && p.tpe.iterableArgument.matchable.isCommonType then
+      val tpe1 = p.tpe.iterableArgument.matchable
       val fun: Term = readFun(tpe1, is)
       val addOneApply = Select.unique(readRef, "addOne").appliedTo(fun).asExpr
       if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || tpe1.isBytesType then 
@@ -457,7 +457,7 @@ trait BuildCodec extends Common:
           case x: AppliedType =>
             val companion = x.typeSymbol.companionModule
             Select.unique(Ref(companion) , "apply")
-              .appliedToTypes(x.typeArgs)
+              .appliedToTypes(x.matchable.typeArgs)
               .appliedToArgs(params)
 
   def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.asExprOf[Int]} + ${y} }.asTerm)
