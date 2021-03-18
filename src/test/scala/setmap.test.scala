@@ -4,21 +4,10 @@ package setmap
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 import zd.proto.api.N
-import zd.proto.macrosapi.{caseCodecIdx, caseCodecAuto, sealedTraitCodecAuto}
 import scala.collection.immutable.ListSet
 
 class SetMapSpec extends AnyFreeSpec with Matchers {
-  val codecs = List({
-    implicit val x = {
-      implicit val y1 = caseCodecAuto[Dev.type]
-      implicit val y2 = caseCodecAuto[Prod.type]
-      sealedTraitCodecAuto[StepId]
-    }
-    caseCodecIdx[(StepId,ListSet[StepId])]
-  }, {
-    caseCodecIdx[(String,ListSet[String])]
-  })
-  val res = Purescript.generate[Push, Pull](moduleEncode="SetMap.Pull", moduleDecode="SetMap.Push", moduleCommon="SetMap.Common", category=_=>"", ask="", ok="", err="", codecs)
+  val res = Purescript.generate[Push, Pull](moduleEncode="SetMap.Pull", moduleDecode="SetMap.Push", moduleCommon="SetMap.Common", category=_=>"", ask="", ok="", err="")
   "set/map" - {
     "print" in {
       res.purs.foreach{ case (filename, content) =>

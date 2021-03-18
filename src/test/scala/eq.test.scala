@@ -7,7 +7,7 @@ import zd.proto.api.N
 import zd.proto.Bytes
 
 class EqSpec extends AnyFreeSpec with Matchers {
-  val res = Purescript.generate[Push, Pull](moduleEncode="EqSpec.Pull", moduleDecode="EqSpec.Push", moduleCommon="EqSpec.Common", codecs=Nil, category=_=>"", ask="", ok="", err="")
+  val res = Purescript.generate[Push, Pull](moduleEncode="EqSpec.Pull", moduleDecode="EqSpec.Push", moduleCommon="EqSpec.Common", category=_=>"", ask="", ok="", err="")
   "eq" - {
     "out" in {
       res.purs.foreach{ case (filename, content) =>

@@ -3,12 +3,10 @@ package doc
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import zd.proto.api.{N, MessageCodec}
-import zd.proto.macrosapi.caseCodecIdx
+import zd.proto.api.N
 
 class DocTest extends AnyFreeSpec with Matchers {
-  val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
-  val res = Purescript.generate[Push, Pull](moduleEncode="DocTest.Pull", moduleDecode="DocTest.Push", moduleCommon="DocTest.Common", codecs=tc::Nil, category=_=>"All", ask="", ok="", err="")
+  val res = Purescript.generate[Push, Pull](moduleEncode="DocTest.Pull", moduleDecode="DocTest.Push", moduleCommon="DocTest.Common", category=_=>"All", ask="", ok="", err="")
   "log" in {
     res.doc._2 shouldBe List(
       "1.1.0" -> List("Translated" -> "rename 'values' to 'xs'")

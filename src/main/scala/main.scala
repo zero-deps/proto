@@ -1,7 +1,6 @@
 package zero.protopurs
 
 import scala.reflect.runtime.universe._
-import zd.proto.api.MessageCodec
 import zero.ext._, option._
 
 object Purescript {
@@ -17,13 +16,12 @@ object Purescript {
     , moduleCommon: ModuleName
     , category: Int => String
     , ask: String, ok: String, err: String
-    , codecs: List[MessageCodec[_]]
   )(implicit dtag: TypeTag[D], etag: TypeTag[E]): GenRes = {
     val decodeTpes = collectTpes(typeOf[D])
-    val decoders = Decoders.from(decodeTpes, codecs)
+    val decoders = Decoders.from(decodeTpes)
 
     val encodeTpes = collectTpes(typeOf[E])
-    val encoders = Encoders.from(encodeTpes, codecs)
+    val encoders = Encoders.from(encodeTpes)
 
     val commonTpes = encodeTpes intersect decodeTpes
     val commonPursTypes = makePursTypes(commonTpes, genMaybe=false)

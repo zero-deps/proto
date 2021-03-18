@@ -4,11 +4,10 @@ import scala.annotation.unused
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 import zero.ext._, option._
-import zd.proto.api.MessageCodec
 import zd.proto.Bytes
 
 object Encoders {
-  def from(types: Seq[Tpe], codecs: List[MessageCodec[_]]): Seq[Coder] = {
+  def from(types: Seq[Tpe]): Seq[Coder] = {
     types.map{
       case TraitType(tpe, name, children, true) =>
         val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
@@ -45,14 +44,13 @@ object Encoders {
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
         Coder(tmpl, None)
       case TupleType(tpe, tupleName, tpe_1, tpe_2) =>
-        val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
         val fun = "encode" + tupleName
         val tmpl =
           s"""|$fun :: Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1} -> Uint8Array
               |$fun (Tuple _1 _2) = do
               |  let msg = { _1, _2 }
               |  let xs = concatAll
-              |  ${List(("_1", tpe_1, xs("_1"), NoDef), ("_2", tpe_2, xs("_2"), NoDef)).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
+              |  ${List(("_1", tpe_1, 1, NoDef), ("_2", tpe_2, 2, NoDef)).flatMap((encodeField _).tupled).mkString("      [ ",            "\n        , ", "\n        ]")}
               |  concatAll [ Encode.unsignedVarint32 $$ length xs, xs ]""".stripMargin
         Coder(tmpl, None)
       case NoargsType(tpe, name) =>

@@ -2,25 +2,24 @@ package zero.protopurs
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import zd.proto.api.{N, MessageCodec, encode}
+import zd.proto.api.{N, encode}
 import zd.proto.macrosapi.{caseCodecIdx, caseCodecAuto, sealedTraitCodecAuto}
 
 class PurescriptSpec extends AnyFreeSpec with Matchers {
   "generate" - {
     "src" in {
-      val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
-      val res = Purescript.generate[Push, Pull](moduleEncode="Pull", moduleDecode="Push", moduleCommon="Common", codecs=tc::Nil, category=_=>"", ask="", ok="", err="")
+      val res = Purescript.generate[Push, Pull](moduleEncode="Pull", moduleDecode="Push", moduleCommon="Common", category=_=>"", ask="", ok="", err="")
       res.purs.foreach{ case (filename, content) =>
         io.writeToFile(s"test/src/$filename.purs", content)
       }
     }
     "test" in {
-      implicit val tc: MessageCodec[(String,String)] = caseCodecIdx[(String,String)]
-      val res = Purescript.generate[TestSchema, TestSchema](moduleEncode="SchemaPull", moduleDecode="SchemaPush", moduleCommon="SchemaCommon", codecs=tc::Nil, category=_=>"", ask="", ok="", err="")
+      val res = Purescript.generate[TestSchema, TestSchema](moduleEncode="SchemaPull", moduleDecode="SchemaPush", moduleCommon="SchemaCommon", category=_=>"", ask="", ok="", err="")
       res.purs.foreach{ case (filename, content) =>
         io.writeToFile(s"test/test/$filename.purs", content)
       }
 
+      implicit val tc = caseCodecIdx[(String,String)]
       implicit val ac = caseCodecAuto[ClassWithMap]
       implicit val ac2 = caseCodecAuto[ClassWithLong]
       implicit val ac3 = caseCodecAuto[ClassWithInt]

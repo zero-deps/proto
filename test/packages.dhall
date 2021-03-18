@@ -31,28 +31,24 @@ Purpose:
     the package set's repo
 
 Syntax:
-Replace the overrides' "{=}" (an empty record) with the following idea
-The "//" or "⫽" means "merge these two records and
-  when they have the same value, use the one on the right:"
+where `entityName` is one of the following:
+- dependencies
+- repo
+- version
 -------------------------------
-let overrides =
-  { packageName =
-      upstream.packageName // { updateEntity1 = "new value", updateEntity2 = "new value" }
-  , packageName =
-      upstream.packageName // { version = "v4.0.0" }
-  , packageName =
-      upstream.packageName // { repo = "https://www.example.com/path/to/new/repo.git" }
-  }
+let upstream = --
+in  upstream
+  with packageName.entityName = "new value"
 -------------------------------
 
 Example:
 -------------------------------
-let overrides =
-  { halogen =
-      upstream.halogen // { version = "master" }
-  , halogen-vdom =
-      upstream.halogen-vdom // { version = "v4.0.0" }
-  }
+let upstream = --
+in  upstream
+  with halogen.version = "master"
+  with halogen.repo = "https://example.com/path/to/git/repo.git"
+
+  with halogen-vdom.version = "v4.0.0"
 -------------------------------
 
 ### Additions
@@ -61,37 +57,30 @@ Purpose:
 - Add packages that aren't already included in the default package set
 
 Syntax:
-Replace the additions' "{=}" (an empty record) with the following idea:
+where `<version>` is:
+- a tag (i.e. "v4.0.0")
+- a branch (i.e. "master")
+- commit hash (i.e. "701f3e44aafb1a6459281714858fadf2c4c2a977")
 -------------------------------
-let additions =
-  { package-name =
-       { dependencies =
-           [ "dependency1"
-           , "dependency2"
-           ]
-       , repo =
-           "https://example.com/path/to/git/repo.git"
-       , version =
-           "tag ('v4.0.0') or branch ('master')"
-       }
-  , package-name =
-       { dependencies =
-           [ "dependency1"
-           , "dependency2"
-           ]
-       , repo =
-           "https://example.com/path/to/git/repo.git"
-       , version =
-           "tag ('v4.0.0') or branch ('master')"
-       }
-  , etc.
-  }
+let upstream = --
+in  upstream
+  with new-package-name =
+    { dependencies =
+       [ "dependency1"
+       , "dependency2"
+       ]
+    , repo =
+       "https://example.com/path/to/git/repo.git"
+    , version =
+        "<version>"
+    }
 -------------------------------
 
 Example:
 -------------------------------
-let additions =
-  { benchotron =
+let upstream = --
+in  upstream
+  with benchotron =
       { dependencies =
           [ "arrays"
           , "exists"
@@ -113,22 +102,14 @@ let additions =
       , version =
           "v7.0.0"
       }
-  }
 -------------------------------
 -}
-
-
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.13.6-20200507/packages.dhall sha256:9c1e8951e721b79de1de551f31ecb5a339e82bbd43300eb5ccfb1bf8cf7bbd62
+      https://github.com/purescript/package-sets/releases/download/psc-0.14.0-20210317/packages.dhall sha256:e2e744972f9b60188dcf07f41418661b505c9ee2e9f91e57e67daefad3a5ae09
 
-let overrides = {=}
-
-let additions =
-      { protobuf =
-        { dependencies = [ "integers", "arrays" ]
-        , repo = "https://github.com/zero-deps/purescript-protobuf.git"
-        , version = "1.2.0"
-        }
-      }
-
-in  upstream // overrides // additions
+in  upstream
+  with protobuf =
+    { dependencies = [ "integers", "arrays" ]
+    , repo = "https://github.com/zero-deps/purescript-protobuf.git"
+    , version = "1.2.0"
+    }

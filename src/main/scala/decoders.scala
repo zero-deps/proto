@@ -3,11 +3,10 @@ package zero.protopurs
 import scala.annotation.unused
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
-import zd.proto.api.MessageCodec
 import zero.ext._, option._
 
 object Decoders {
-  def from(types: Seq[Tpe], codecs: List[MessageCodec[_]]): Seq[Coder] = {
+  def from(types: Seq[Tpe]): Seq[Coder] = {
     types.map{
       case TraitType(tpe, name, children, true) =>
         val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
@@ -46,9 +45,8 @@ object Decoders {
               |    decode end acc@Nothing pos1 = Left $$ Decode.MissingFields "$name"""".stripMargin
         Coder(tmpl, None)
       case TupleType(tpe, tupleName, tpe_1, tpe_2) =>
-        val xs = codecs.find(_.aType == tpe.toString).map(_.nums).getOrElse(throw new Exception(s"codec is missing for ${tpe.toString}"))
         val fun = "decode" + tupleName
-        val cases = List(("first", tpe_1, xs("_1"), NoDef), ("second", tpe_2, xs("_2"), NoDef)).flatMap((decodeFieldLoop _).tupled)
+        val cases = List(("first", tpe_1, 1, NoDef), ("second", tpe_2, 2, NoDef)).flatMap((decodeFieldLoop _).tupled)
         val tmpl =
           s"""|$fun :: Uint8Array -> Int -> Decode.Result (Tuple ${pursTypePars(tpe_1)._1} ${pursTypePars(tpe_2)._1})
               |$fun _xs_ pos0 = do
