@@ -1,34 +1,39 @@
 lazy val protopurs = project.in(file(".")).settings(
-  libraryDependencies ++= deps
-, resolvers += Resolver.jcenterRepo
-, resolvers += Resolver.githubPackages("zero-deps")
-, scalacOptions ++= opts
-, scalaVersion := "2.13.5"
-, turbo := true
-, useCoursier := true
-, Global / onChangedBuildSource := ReloadOnSourceChanges
+  scalaVersion := scalav
+, crossScalaVersions := scalav :: "2.13.5" :: Nil
+, scalacOptions ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, 13)) => Nil
+      case _ => opts
+    }
+  }
+, libraryDependencies ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, 13)) => Seq(
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value
+      , "org.scalatest" %% "scalatest" % "3.1.1" % Test
+      )
+      case _ => Nil
+    }
+  }
 )
 
-val deps = Seq(
-  "org.scala-lang" % "scala-reflect" % "2.13.5"
-, "io.github.zero-deps" %% "proto-runtime" % "1.8"
-, "io.github.zero-deps" %% "proto-macros"  % "1.8" % Test
-, "io.github.zero-deps" %% "ext" % "2.3.1.g6719341"
-, "org.scalatest" %% "scalatest" % "3.1.1" % Test
-)
+lazy val protoapi = project.in(file("deps/proto/protoapi"))
+lazy val macros = project.in(file("deps/proto/macros"))
+lazy val ext = project.in(file("deps/ext"))
+
+dependsOn(protoapi, macros % Test, ext)
+
+val scalav = "3.0.0-RC1"
 
 val opts = Seq(
-  "-Ywarn-extra-implicit"
-, "-Xfatal-warnings"
+  "-Yexplicit-nulls"
+, "-source", "future-migration"
 , "-deprecation"
-, "-feature"
-, "-unchecked"
-, "-Ywarn-unused:implicits"
-, "-Ywarn-unused:imports"
-, "-Yno-completion"
-, "-Ywarn-numeric-widen"
-, "-Ywarn-value-discard"
-, "-Xmaxerrs", "1"
-, "-Xmaxwarns", "3"
-, "-Wconf:cat=deprecation&msg=Auto-application:silent"
+, "-rewrite"
+, "release", "15"
 )
+
+turbo := true
+useCoursier := true
+Global / onChangedBuildSource := ReloadOnSourceChanges

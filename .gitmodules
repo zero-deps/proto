@@ -1,0 +1,6 @@
+[submodule "ext"]
+	path = deps/ext
+	url = https://github.com/zero-deps/ext
+[submodule "proto"]
+	path = deps/proto
+	url = https://github.com/zero-deps/proto
