@@ -147,14 +147,12 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
       , defaultValue = defaultValue
       )
     }
-    val nums_expr = Expr(nums.toMap)
-    val aType_xpr = Expr(typeName)
     '{ 
       new MessageCodec[A] {
-        def prepare(a: A): Prepare = ${ prepareImpl('a, fields) }
-        def read(is: CodedInputStream): A = ${ readImpl(a_tpe, fields, 'is, constructor=constructor).asExprOf[A] }
-        val nums: Map[String, Int] = $nums_expr
-        val aType: String = $aType_xpr
+        def prepare(a: A): Prepare =
+          ${ prepareImpl('a, fields) }
+        def read(is: CodedInputStream): A =
+          ${ readImpl(a_tpe, fields, 'is, constructor=constructor).asExprOf[A] }
       }
     }
 
@@ -226,14 +224,12 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
       , isCaseObject = s.isTerm
       )
     }
-    val nums_expr = Expr(fields.map(x => x.name -> x.num).toMap)
-    val aType_expr = Expr(typeName)
     '{
       new MessageCodec[A] {
-        def prepare(a: A): Prepare = ${ prepareTrait('a, fields) }
-        def read(is: CodedInputStream): A = ${ readImpl(a_tpe, fields, 'is, isTrait=true).asExprOf[A] }
-        val nums: Map[String, Int] = $nums_expr
-        val aType: String = $aType_expr
+        def prepare(a: A): Prepare =
+          ${ prepareTrait('a, fields) }
+        def read(is: CodedInputStream): A =
+          ${ readImpl(a_tpe, fields, 'is, isTrait=true).asExprOf[A] }
       }
     }
 

@@ -12,8 +12,6 @@ object api {
   trait MessageCodec[A] {
     def prepare(a: A): Prepare
     def read(is: CodedInputStream): A
-    val nums: Map[String, Int]
-    val aType: String
   }
 
   def encode[A](a: A)(implicit c: MessageCodec[A]) = {
