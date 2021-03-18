@@ -13,12 +13,15 @@ private class Impl(using qctx: Quotes):
   import qctx.reflect.{*, given}
   import qctx.reflect.defn.*
   import report.*
+  
+  extension (x: TypeRepr)
+    private def matchable: TypeRepr & Matchable = x.asInstanceOf[TypeRepr & Matchable]
 
   def enumByN[A: Type, B: Type]: Expr[String] =
     val a_tpe = TypeRepr.of[A]
     val b_tpe = TypeRepr.of[B]
-    val a_fields = fieldsOf(a_tpe)
-    val b_fields = fieldsOf(b_tpe)
+    val a_fields = fieldsOf(a_tpe.matchable)
+    val b_fields = fieldsOf(b_tpe.matchable)
     val pushTypes =
       a_fields
       .map(_.name)
@@ -94,7 +97,7 @@ private class Impl(using qctx: Quotes):
     )
 
   private def fieldsOf(
-    _tpe: TypeRepr
+    _tpe: TypeRepr & Matchable
   ): List[FieldInfo] =
     val _typeSymbol = _tpe.typeSymbol
     val _typeName = _typeSymbol.fullName
@@ -103,8 +106,9 @@ private class Impl(using qctx: Quotes):
     val _nums =
       _subclasses.map{ x =>
         x.annotations.collect{
-          case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType =>
-            x.tpe -> num
+          case Apply(Select(New(tpt),_), List(Literal(IntConstant(num))))
+            if tpt.tpe.matchable.isNType =>
+              x.tpe -> num
         } match
           case List(x) => x
           case Nil =>
@@ -123,7 +127,7 @@ private class Impl(using qctx: Quotes):
       then throwError(s"_nums for ${_typeName} should be unique")
 
     _subclasses.map{ s =>
-      val tpe = s.tpe
+      val tpe = s.tpe.matchable
       val num: Int = _nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(throwError(s"missing num for class `${tpe}` of trait `${_tpe}`"))
       if _tpe.restrictedNums.contains(num)
         then throwError(s"num ${num} is restricted for class `${tpe}` of trait `${_tpe}`")
@@ -143,7 +147,7 @@ private class Impl(using qctx: Quotes):
       )
     }
 
-  def prepareTrait[A: Type](a: Expr[A], params: List[FieldInfo]): Expr[Prepare] =
+  private def prepareTrait[A: Type](a: Expr[A], params: List[FieldInfo]): Expr[Prepare] =
     val a_term = a.asTerm
     val a_tpe = TypeRepr.of[A]
     val ifBranches: List[(Term, Term)] = params.map { p =>
@@ -157,7 +161,7 @@ private class Impl(using qctx: Quotes):
     val elseBranch: Term = '{ throw new RuntimeException(${Expr(error)}) }.asTerm
     mkIfStatement(ifBranches, elseBranch).asExprOf[Prepare]
 
-  def prepareImpl[A: Type](a: Expr[A], params: List[FieldInfo]): Expr[Prepare] =
+  private def prepareImpl[A: Type](a: Expr[A], params: List[FieldInfo]): Expr[Prepare] =
     val sizeAccSym = Symbol.newVal(Symbol.spliceOwner, "sizeAcc", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
     val sizeAccRef = Ref(sizeAccSym)
     val sizeAccValDef = ValDef(sizeAccSym, Some(Literal(IntConstant(0))))
@@ -173,7 +177,7 @@ private class Impl(using qctx: Quotes):
     , newPrepare
     ).asExprOf[Prepare]
 
-  def writeImpl[A: Type](a: Expr[A], params: List[FieldInfo], os: Expr[CodedOutputStream]): Expr[Unit] =
+  private def writeImpl[A: Type](a: Expr[A], params: List[FieldInfo], os: Expr[CodedOutputStream]): Expr[Unit] =
     Expr.block(
       params.flatMap(p =>
         if      p.isCaseObject then writeCaseObject(os, p)
@@ -184,14 +188,14 @@ private class Impl(using qctx: Quotes):
       )
     , unitExpr)
 
-  def writeCommon[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+  private def writeCommon[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     List(
       '{ ${os}.writeUInt32NoTag(${Expr(field.tag)}) }
     , writeFun(os, field.tpe, field.getter(a.asTerm))
     )
   
-  def writeOption[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
-    val tpe = field.tpe.optionArgument
+  private def writeOption[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+    val tpe = field.tpe.optionArgument.matchable
     val getter = field.getter(a.asTerm)
     val getterOption = Select.unique(getter, "get")
     if tpe.isCommonType then
@@ -216,8 +220,8 @@ private class Impl(using qctx: Quotes):
         }
       )
 
-  def writeCollection[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
-    val tpe1 = field.tpe.iterableArgument
+  private def writeCollection[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+    val tpe1 = field.tpe.iterableArgument.matchable
     val getter = field.getter(a.asTerm)
     val pType = tpe1.asType
     val sizeRef = Ref(field.sizeSym)
@@ -265,33 +269,33 @@ private class Impl(using qctx: Quotes):
         }
       )
 
-  def writeMessage[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+  private def writeMessage[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     val prepareRef = Ref(field.prepareSym).asExprOf[Prepare]
     List(
       '{ ${os}.writeUInt32NoTag(${Expr(field.tag)}) }
     , '{ ${os}.writeUInt32NoTag(${prepareRef}.size) }
     , '{ ${prepareRef}.write(${os}) }
     )
-  def writeCaseObject(os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
+  private def writeCaseObject(os: Expr[CodedOutputStream], field: FieldInfo): List[Expr[Unit]] =
     List(
       '{ ${os}.writeUInt32NoTag(${Expr(field.tag)}) }
     , '{ ${os}.writeUInt32NoTag(0) }
     )
 
-  def size[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
+  private def size[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
     if      field.isCaseObject     then sizeCaseObject(field, sizeAcc)
     else if field.tpe.isCommonType then sizeCommon(a, field, sizeAcc)
     else if field.tpe.isOption     then sizeOption(a, field, sizeAcc)
     else if field.tpe.isIterable   then sizeCollection(a, field, sizeAcc)
     else sizeMessage(a, field, sizeAcc)
 
-  def sizeCommon[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
+  private def sizeCommon[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
     val fun = sizeFun(field.tpe, field.getter(a.asTerm))
     val sum = '{ ${Expr(CodedOutputStream.computeTagSize(field.num))} + ${fun} }
     List(increment(sizeAcc, sum))
   
-  def sizeOption[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
-    val tpe = field.tpe.optionArgument
+  private def sizeOption[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
+    val tpe = field.tpe.optionArgument.matchable
     val getter: Term = field.getter(a.asTerm)
     val getterOption: Term = Select.unique(getter, "get")//getterOptionTerm(a, field)
     if (tpe.isCommonType) then
@@ -317,8 +321,8 @@ private class Impl(using qctx: Quotes):
         ValDef(field.prepareOptionSym, Some(prepareOptionRhs.asTerm))
       )
 
-  def sizeCollection[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] = 
-    val tpe1 = field.tpe.iterableArgument
+  private def sizeCollection[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] = 
+    val tpe1 = field.tpe.iterableArgument.matchable
     val getter = field.getter(a.asTerm)
     val pType = tpe1.asType
     pType match
@@ -392,7 +396,7 @@ private class Impl(using qctx: Quotes):
           , sizeExpr.asTerm
           )
 
-  def sizeMessage[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
+  private def sizeMessage[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] =
     val getter = field.getter(a.asTerm)
     val prepare = Select.unique(findCodec(field.tpe), "prepare").appliedTo(getter)
     val prepareValDef = ValDef(field.prepareSym, Some(prepare))
@@ -405,14 +409,14 @@ private class Impl(using qctx: Quotes):
     val incrementAcc = increment(sizeAcc, sum)
     List(prepareValDef, incrementAcc)
   
-  def sizeCaseObject(field: FieldInfo, sizeAcc: Ref): List[Statement] =
+  private def sizeCaseObject(field: FieldInfo, sizeAcc: Ref): List[Statement] =
     val sum = '{ 
       ${ Expr(CodedOutputStream.computeTagSize(field.num)) } + 
       ${ Expr(CodedOutputStream.computeUInt32SizeNoTag(0)) }
     }
     List(increment(sizeAcc, sum))
 
-  def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream], isTrait: Boolean=false, constructor: Option[Term]=None): Expr[Any] =
+  private def readImpl(t: TypeRepr, params: List[FieldInfo], is: Expr[CodedInputStream], isTrait: Boolean=false, constructor: Option[Term]=None): Expr[Any] =
 
     val (initStatements, readRefs, resExp): (List[Statement], List[Term], Term) =
       if isTrait then
@@ -461,7 +465,7 @@ private class Impl(using qctx: Quotes):
     , resExp
     ).asExpr
 
-  def readContentImpl(p: FieldInfo, readRef: Term, is: Expr[CodedInputStream]): Expr[Any] =
+  private def readContentImpl(p: FieldInfo, readRef: Term, is: Expr[CodedInputStream]): Expr[Any] =
     if p.isCaseObject then
       val fun: Term = Ref(p.sym)
       putLimit(
@@ -477,9 +481,9 @@ private class Impl(using qctx: Quotes):
         readRef
       , Some_Apply(tpe=p.tpe, value=fun)
       ).asExpr
-    else if p.tpe.isOption && p.tpe.optionArgument.isCommonType then
+    else if p.tpe.isOption && p.tpe.optionArgument.matchable.isCommonType then
       val tpe1 = p.tpe.optionArgument
-      val fun: Term = readFun(tpe1, is)
+      val fun: Term = readFun(tpe1.matchable, is)
       Assign(
         readRef
       , Some_Apply(tpe=tpe1, value=fun)
@@ -494,8 +498,8 @@ private class Impl(using qctx: Quotes):
         , Some_Apply(tpe=tpe1, value=fun)
         ).asExpr      
       )
-    else if p.tpe.isIterable && p.tpe.iterableArgument.isCommonType then
-      val tpe1 = p.tpe.iterableArgument
+    else if p.tpe.isIterable && p.tpe.iterableArgument.matchable.isCommonType then
+      val tpe1 = p.tpe.iterableArgument.matchable
       val fun: Term = readFun(tpe1, is)
       val addOneApply = Select.unique(readRef, "addOne").appliedTo(fun).asExpr
       if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || tpe1.isBytesType then 
@@ -523,7 +527,7 @@ private class Impl(using qctx: Quotes):
         ).asExpr 
       )
 
-  def putLimit(is: Expr[CodedInputStream], read: Expr[Any]): Expr[Unit] =
+  private def putLimit(is: Expr[CodedInputStream], read: Expr[Any]): Expr[Unit] =
     '{
       val readSize: Int = ${is}.readRawVarint32
       val limit = ${is}.pushLimit(readSize)
@@ -531,7 +535,7 @@ private class Impl(using qctx: Quotes):
       ${is}.popLimit(limit)
     }
 
-  def initValDef(field: FieldInfo): (ValDef, Ref) =
+  private def initValDef(field: FieldInfo): (ValDef, Ref) =
     if field.tpe.isOption then
       val _none = Ref(NoneModule)
       val sym = Symbol.newVal(Symbol.spliceOwner, s"${field.name}Read", field.tpe, Flags.Mutable, Symbol.noSymbol)
@@ -555,7 +559,7 @@ private class Impl(using qctx: Quotes):
       val ref = Ref(sym)
       init -> ref
 
-  def resTerm(ref: Ref, field: FieldInfo): Term =
+  private def resTerm(ref: Ref, field: FieldInfo): Term =
     if field.tpe.isOption then ref
     else if field.tpe.isIterable then
       Select.unique(ref, "result")
@@ -567,13 +571,13 @@ private class Impl(using qctx: Quotes):
         .appliedToType(field.tpe)
         .appliedTo(orElse) // ref.getOrElse[feld.tpe](orElse)
   
-  def findCodec(t: TypeRepr): Term = 
+  private def findCodec(t: TypeRepr): Term = 
     val tpe = TypeRepr.of[MessageCodec].appliedTo(t)
     Implicits.search(tpe) match
       case x: ImplicitSearchSuccess => x.tree
       case _: ImplicitSearchFailure => throwError(s"could not find implicit codec for `${t.typeSymbol.fullName}`")
 
-  def classApply(t: TypeRepr, params: List[Term], constructor: Option[Term]): Term =
+  private def classApply(t: TypeRepr, params: List[Term], constructor: Option[Term]): Term =
     constructor match
       case Some(fun) =>
         Select.unique(fun, "apply")
@@ -588,16 +592,16 @@ private class Impl(using qctx: Quotes):
           case x: AppliedType =>
             val companion = x.typeSymbol.companionModule
             Select.unique(Ref(companion) , "apply")
-              .appliedToTypes(x.typeArgs)
+              .appliedToTypes(x.matchable.typeArgs)
               .appliedToArgs(params)
 
-  def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.asExprOf[Int]} + ${y} }.asTerm)
+  private def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.asExprOf[Int]} + ${y} }.asTerm)
 
-  case class FieldInfo(
+  private case class FieldInfo(
     name: String
   , num: Int
   , sym: Symbol
-  , tpe: TypeRepr
+  , tpe: TypeRepr & Matchable
   , getter: Term => Term
   , sizeSym: Symbol
   , prepareSym: Symbol
@@ -608,11 +612,11 @@ private class Impl(using qctx: Quotes):
   ):
     def tag: Int = num << 3 | wireType(tpe)
 
-  def wireType(t: TypeRepr): Int =
+  private def wireType(t: TypeRepr & Matchable): Int =
     if      t.isInt || t.isLong || t.isBoolean then 0
     else if t.isDouble then 1
     else if t.isFloat then 5
-    else if t.isOption then wireType(t.optionArgument)
+    else if t.isOption then wireType(t.optionArgument.matchable)
     else if t.isString || 
             t.isArrayByte || 
             t.isArraySeqByte || 
@@ -622,7 +626,7 @@ private class Impl(using qctx: Quotes):
             t.isIterable then 2
     else 2
 
-  def writeFun(os: Expr[CodedOutputStream], t: TypeRepr, getterTerm: Term): Expr[Unit] =
+  private def writeFun(os: Expr[CodedOutputStream], t: TypeRepr & Matchable, getterTerm: Term): Expr[Unit] =
     if      t.isInt then '{ ${os}.writeInt32NoTag(${getterTerm.asExprOf[Int]}) }
     else if t.isLong then '{ ${os}.writeInt64NoTag(${getterTerm.asExprOf[Long]}) }
     else if t.isBoolean then '{ ${os}.writeBoolNoTag(${getterTerm.asExprOf[Boolean]}) }
@@ -634,7 +638,7 @@ private class Impl(using qctx: Quotes):
     else if t.isBytesType then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
-  def sizeFun(t: TypeRepr, getterTerm: Term): Expr[Int] =
+  private def sizeFun(t: TypeRepr & Matchable, getterTerm: Term): Expr[Int] =
     val CodedOutputStreamRef = Ref(TypeRepr.of[CodedOutputStream].typeSymbol.companionModule)
     if      t.isInt then '{ CodedOutputStream.computeInt32SizeNoTag(${getterTerm.asExprOf[Int]}) }
     else if t.isLong then '{ CodedOutputStream.computeInt64SizeNoTag(${getterTerm.asExprOf[Long]}) }
@@ -647,7 +651,7 @@ private class Impl(using qctx: Quotes):
     else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
-  def readFun(t: TypeRepr, is: Expr[CodedInputStream]): Term =
+  private def readFun(t: TypeRepr & Matchable, is: Expr[CodedInputStream]): Term =
     if      t.isInt then '{ ${is}.readInt32 }.asTerm
     else if t.isLong then '{ ${is}.readInt64 }.asTerm
     else if t.isBoolean then '{ ${is}.readBool }.asTerm
@@ -659,89 +663,91 @@ private class Impl(using qctx: Quotes):
     else if t.isBytesType then '{ IArray.unsafeFromArray(${is}.readByteArray.nn) }.asTerm
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
-  val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
-  val ArraySeqByteType: TypeRepr = TypeRepr.of[ArraySeq[Byte]]
-  val BytesType: TypeRepr = TypeRepr.of[IArray[Byte]]
-  val NTpe: TypeRepr = TypeRepr.of[N]
-  val RestrictedNType: TypeRepr = TypeRepr.of[RestrictedN]
-  val ItetableType: TypeRepr = TypeRepr.of[scala.collection.Iterable[?]]
-  val PrepareType: TypeRepr = TypeRepr.of[Prepare]
-  val CodedInputStreamType: TypeRepr = TypeRepr.of[CodedInputStream]
+  private val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
+  private val ArraySeqByteType: TypeRepr = TypeRepr.of[ArraySeq[Byte]]
+  private val BytesType: TypeRepr = TypeRepr.of[IArray[Byte]]
+  private val NTpe: TypeRepr = TypeRepr.of[N]
+  private val RestrictedNType: TypeRepr = TypeRepr.of[RestrictedN]
+  private val ItetableType: TypeRepr = TypeRepr.of[scala.collection.Iterable[?]]
+  private val PrepareType: TypeRepr = TypeRepr.of[Prepare]
+  private val CodedInputStreamType: TypeRepr = TypeRepr.of[CodedInputStream]
   
   extension (s: Symbol)
-    def constructorParams: List[Symbol] = s.primaryConstructor.paramSymss.find(_.headOption.fold(false)( _.isTerm)).getOrElse(Nil)
-    def tpe: TypeRepr =
+    private def constructorParams: List[Symbol] = s.primaryConstructor.paramSymss.find(_.headOption.fold(false)( _.isTerm)).getOrElse(Nil)
+    private def tpe: TypeRepr =
       s.tree match
         case x: ClassDef => x.constructor.returnTpt.tpe
         case ValDef(_,tpt,_) => tpt.tpe
         case Bind(_, pattern: Term) => pattern.tpe
 
-  def unitLiteral: Literal = Literal(UnitConstant())
-  def defaultMethodName(i: Int): String = s"$$lessinit$$greater$$default$$${i+1}"
+  private def unitLiteral: Literal = Literal(UnitConstant())
+  private def defaultMethodName(i: Int): String = s"$$lessinit$$greater$$default$$${i+1}"
 
-  def unitExpr: Expr[Unit] = unitLiteral.asExprOf[Unit]
+  private def unitExpr: Expr[Unit] = unitLiteral.asExprOf[Unit]
 
-  def builderType: TypeRepr = TypeRepr.of[scala.collection.mutable.Builder]
+  private def builderType: TypeRepr = TypeRepr.of[scala.collection.mutable.Builder]
     
-  def OptionType: TypeRepr = TypeRepr.of[Option]
+  private def OptionType: TypeRepr = TypeRepr.of[Option]
 
-  def Some_Apply(tpe: TypeRepr, value: Term): Term =
+  private def Some_Apply(tpe: TypeRepr, value: Term): Term =
     Select.unique(Ref(SomeModule.companionModule), "apply")
       .appliedToType(tpe)
       .appliedTo(value)
 
-  val commonTypes: List[TypeRepr] =
+  private val commonTypes: List[TypeRepr] =
     TypeRepr.of[String] :: TypeRepr.of[Int] :: TypeRepr.of[Long] :: TypeRepr.of[Boolean] :: TypeRepr.of[Double] :: TypeRepr.of[Float] :: ArrayByteType :: ArraySeqByteType :: BytesType :: Nil 
 
-  extension (t: TypeRepr)
-    def isNType: Boolean = t =:= NTpe
-    def isCaseClass: Boolean = t.typeSymbol.flags.is(Flags.Case)
-    def isCaseObject: Boolean = t.termSymbol.flags.is(Flags.Case)
-    def isCaseType: Boolean = t.isCaseClass || t.isCaseObject
-    def isSealedTrait: Boolean = t.typeSymbol.flags.is(Flags.Sealed) && t.typeSymbol.flags.is(Flags.Trait)
-    def isIterable: Boolean = t <:< ItetableType && !t.isArraySeqByte
-    def isString: Boolean = t =:= TypeRepr.of[String]
-    def isInt: Boolean = t =:= TypeRepr.of[Int]
-    def isLong: Boolean = t =:= TypeRepr.of[Long]
-    def isBoolean: Boolean = t =:= TypeRepr.of[Boolean]
-    def isDouble: Boolean = t =:= TypeRepr.of[Double]
-    def isFloat: Boolean = t =:= TypeRepr.of[Float]
-    def isArrayByte: Boolean = t =:= ArrayByteType
-    def isArraySeqByte: Boolean = t =:= ArraySeqByteType
-    def isBytesType: Boolean = t =:= BytesType
-    def isCommonType: Boolean = commonTypes.exists(_ =:= t)
+  extension (t: TypeRepr & Matchable)
+    private def isNType: Boolean = t =:= NTpe
+    private def isCaseClass: Boolean = t.typeSymbol.flags.is(Flags.Case)
+    private def isCaseObject: Boolean = t.termSymbol.flags.is(Flags.Case)
+    private def isCaseType: Boolean = t.isCaseClass || t.isCaseObject
+    private def isSealedTrait: Boolean = t.typeSymbol.flags.is(Flags.Sealed) && t.typeSymbol.flags.is(Flags.Trait)
+    private def isIterable: Boolean = t <:< ItetableType && !t.isArraySeqByte
+    private def isString: Boolean = t =:= TypeRepr.of[String]
+    private def isInt: Boolean = t =:= TypeRepr.of[Int]
+    private def isLong: Boolean = t =:= TypeRepr.of[Long]
+    private def isBoolean: Boolean = t =:= TypeRepr.of[Boolean]
+    private def isDouble: Boolean = t =:= TypeRepr.of[Double]
+    private def isFloat: Boolean = t =:= TypeRepr.of[Float]
+    private def isArrayByte: Boolean = t =:= ArrayByteType
+    private def isArraySeqByte: Boolean = t =:= ArraySeqByteType
+    private def isBytesType: Boolean = t =:= BytesType
+    private def isCommonType: Boolean = commonTypes.exists(_ =:= t)
 
-    def typeArgsToReplace: Map[String, TypeRepr] =
+    private def typeArgsToReplace: Map[String, TypeRepr] =
       t.typeSymbol.primaryConstructor.paramSymss
       .find(_.headOption.fold(false)( _.isType))
       .map(_.map(_.name).zip(t.typeArgs)).getOrElse(Nil)
       .toMap
 
-    def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t match
-      case AppliedType(t1, args)  => t1.appliedTo(args.map(_.replaceTypeArgs(map)))
-      case _ => map.getOrElse(t.typeSymbol.name, t)
+    private def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t match
+      case AppliedType(t1, args) =>
+        t1.appliedTo(args.map(_.matchable.replaceTypeArgs(map)))
+      case _ =>
+        map.getOrElse(t.typeSymbol.name, t)
 
-    def isOption: Boolean = t match
+    private def isOption: Boolean = t match
       case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
       case _ => false
 
-    def typeArgs: List[TypeRepr] = t match
+    private def typeArgs: List[TypeRepr] = t match
       case AppliedType(t1, args)  => args
       case _ => Nil
 
-    def optionArgument: TypeRepr = t match
+    private def optionArgument: TypeRepr = t match
       case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head
       case _ => throwError(s"It isn't Option type: ${t.typeSymbol.name}")
 
-    def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol) match
+    private def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol).matchable match
       case AppliedType(_, args) if t.isIterable => args.head
       case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
-    def iterableBaseType: TypeRepr = t match
+    private def iterableBaseType: TypeRepr = t match
       case AppliedType(t1, _) if t.isIterable => t1
       case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
-    def restrictedNums: List[Int] =
+    private def restrictedNums: List[Int] =
       val aName = RestrictedNType.typeSymbol.name
       val tName = t.typeSymbol.fullName
       t.typeSymbol.annotations.collect{ case Apply(Select(New(tpt),_), List(Typed(Repeated(args,_),_))) if tpt.tpe =:= RestrictedNType => args } match
@@ -756,7 +762,7 @@ private class Impl(using qctx: Quotes):
         case Nil => Nil
         case _ => throwError(s"multiple ${aName} annotations applied for `${tName}`")
 
-  def mkIfStatement(branches: List[(Term, Term)], elseBranch: Term): Term =
+  private def mkIfStatement(branches: List[(Term, Term)], elseBranch: Term): Term =
     branches match
       case (cond, thenp) :: xs =>
         If(cond, thenp, mkIfStatement(xs, elseBranch))
