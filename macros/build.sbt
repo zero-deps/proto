@@ -34,9 +34,9 @@ lazy val macros = project.in(file(".")).settings(
   publishTo := Some(Opts.resolver.sonatypeStaging),
   usePgpKeyHex("F68F0EADDB81EF533C4E8E3228C90422E5A0DB21"),
   /* publishing */
-).dependsOn(api)
+).dependsOn(protoapi)
 
-lazy val api = project.in(file("../api")).settings(
+lazy val protoapi = project.in(file("../protoapi")).settings(
   name := "proto-api",
   libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.15.2",
   scalaVersion := "3.0.0-RC1",

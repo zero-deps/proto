@@ -1,4 +1,4 @@
-lazy val api = project.in(file("../api")).settings(
+lazy val protoapi = project.in(file("../protoapi")).settings(
   name := "proto-api",
   libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.15.2",
   scalaVersion := "3.0.0-RC1",
