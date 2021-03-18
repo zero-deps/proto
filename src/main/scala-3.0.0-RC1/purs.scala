@@ -1,15 +1,147 @@
 package purs
 
-import proto.api.{MessageCodec, Prepare, N}
-import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted.*
+import proto.api.*
+import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.collection.immutable.ArraySeq
 
-trait BuildCodec extends Common:
-  implicit val qctx: Quotes
+inline def enumByN[A, B]: String = ${enumByN[A, B]}
+
+def enumByN[A: Type, B: Type](using qctx: Quotes): Expr[String] = Impl().enumByN[A, B]
+
+private class Impl(using qctx: Quotes):
   import qctx.reflect.{*, given}
   import qctx.reflect.defn.*
   import report.*
+
+  def enumByN[A: Type, B: Type]: Expr[String] =
+    val a_tpe = TypeRepr.of[A]
+    val b_tpe = TypeRepr.of[B]
+    val a_fields = fieldsOf(a_tpe)
+    val b_fields = fieldsOf(b_tpe)
+    val pushTypes =
+      a_fields
+      .map(_.name)
+      .mkString(" | ")
+    val pullTypes =
+      b_fields
+      .map(_.name)
+      .mkString(" | ")
+    val pushCases =
+      a_fields
+      .map(x => s"${x.num} -> decode (decode${x.name} _xs_ pos1) \\_ -> ${x.name}")
+      .mkString("\n    ")
+    val pullCases =
+      b_fields
+      .map(x => s"encodePull ${x.name} = concatAll [ Encode.unsignedVarint32 ${(x.num << 3) + 2}, encode${x.name} ]")
+      .mkString("\n")
+    val pushFuns =
+      a_fields
+      .map(x => s"""
+        |decode${x.name} :: Uint8Array -> Int -> Decode.Result Unit
+        |decode${x.name} _xs_ pos0 = do
+        |  { pos, val: msglen } <- Decode.unsignedVarint32 _xs_ pos0
+        |  pure { pos: pos + msglen, val: unit }
+        |""".stripMargin)
+      .mkString
+    val pullFuns =
+      b_fields
+      .map(x => s"""
+        |encode${x.name} :: Uint8Array
+        |encode${x.name} = Encode.unsignedVarint32 0
+        |""".stripMargin)
+      .mkString
+    Expr(
+      s"""module API
+        |  ( Push(..)
+        |  , decodePush
+        |  , Pull(..)
+        |  , encodePull
+        |  ) where
+        |
+        |import Control.Monad.Rec.Class (Step(Loop, Done))
+        |import Data.Either (Either(Left))
+        |import Data.Eq (class Eq)
+        |import Data.Int.Bits (zshr)
+        |import Data.Unit (Unit, unit)
+        |import Prelude (map, bind, pure, ($$), (+))
+        |import Proto.Decode as Decode
+        |import Proto.Encode as Encode
+        |import Proto.Uint8Array (Uint8Array, concatAll)
+        |
+        |decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
+        |decodeFieldLoop end res f = map (\\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
+        |
+        |data Push = $pushTypes
+        |derive instance eqPush :: Eq Push
+        |
+        |decodePush :: Uint8Array -> Decode.Result Push
+        |decodePush _xs_ = do
+        |  { pos: pos1, val: tag } <- Decode.unsignedVarint32 _xs_ 0
+        |  case tag `zshr` 3 of
+        |    $pushCases
+        |    i -> Left $$ Decode.BadType i
+        |  where
+        |  decode :: forall a. Decode.Result a -> (a -> Push) -> Decode.Result Push
+        |  decode res f = map (\\{ pos, val } -> { pos, val: f val }) res
+        |$pushFuns
+        |data Pull = $pullTypes
+        |derive instance eqPull :: Eq Pull
+        |
+        |encodePull :: Pull -> Uint8Array
+        |$pullCases
+        |$pullFuns""".stripMargin
+    )
+
+  private def fieldsOf(
+    _tpe: TypeRepr
+  ): List[FieldInfo] =
+    val _typeSymbol = _tpe.typeSymbol
+    val _typeName = _typeSymbol.fullName
+    val _subclasses = _typeSymbol.children
+
+    val _nums =
+      _subclasses.map{ x =>
+        x.annotations.collect{
+          case Apply(Select(New(tpt),_), List(Literal(IntConstant(num)))) if tpt.tpe.isNType =>
+            x.tpe -> num
+        } match
+          case List(x) => x
+          case Nil =>
+            throwError(s"missing ${NTpe.typeSymbol.name} annotation for `$_typeName`")
+          case _ =>
+            throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `$_typeName`")
+      }
+
+    if _subclasses.size <= 0
+      then throwError(s"required at least 1 subclass for `${_typeName}`")
+    if _nums.size != _subclasses.size
+      then throwError(s"`${_typeName}` _subclasses ${_subclasses.size} count != _nums definition ${_nums.size}")
+    if _nums.exists(_._2 < 1)
+      then throwError(s"_nums for ${_typeName} should be > 0")
+    if _nums.groupBy(_._2).exists(_._2.size != 1)
+      then throwError(s"_nums for ${_typeName} should be unique")
+
+    _subclasses.map{ s =>
+      val tpe = s.tpe
+      val num: Int = _nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(throwError(s"missing num for class `${tpe}` of trait `${_tpe}`"))
+      if _tpe.restrictedNums.contains(num)
+        then throwError(s"num ${num} is restricted for class `${tpe}` of trait `${_tpe}`")
+    
+      FieldInfo(
+        name = s.name
+      , num = num
+      , sym = s
+      , tpe = tpe
+      , getter = 
+          if s.isTerm then (a: Term) => Ref(s)
+          else (a: Term) => Select.unique(a, "asInstanceOf").appliedToType(tpe)
+      , sizeSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
+      , prepareSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
+      , defaultValue = None
+      , isCaseObject = s.isTerm
+      )
+    }
 
   def prepareTrait[A: Type](a: Expr[A], params: List[FieldInfo]): Expr[Prepare] =
     val a_term = a.asTerm
@@ -461,4 +593,173 @@ trait BuildCodec extends Common:
 
   def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.asExprOf[Int]} + ${y} }.asTerm)
 
-end BuildCodec
+  case class FieldInfo(
+    name: String
+  , num: Int
+  , sym: Symbol
+  , tpe: TypeRepr
+  , getter: Term => Term
+  , sizeSym: Symbol
+  , prepareSym: Symbol
+  , prepareOptionSym: Symbol = Symbol.noSymbol
+  , prepareArraySym: Symbol = Symbol.noSymbol
+  , defaultValue: Option[Term]
+  , isCaseObject: Boolean = false
+  ):
+    def tag: Int = num << 3 | wireType(tpe)
+
+  def wireType(t: TypeRepr): Int =
+    if      t.isInt || t.isLong || t.isBoolean then 0
+    else if t.isDouble then 1
+    else if t.isFloat then 5
+    else if t.isOption then wireType(t.optionArgument)
+    else if t.isString || 
+            t.isArrayByte || 
+            t.isArraySeqByte || 
+            t.isBytesType || 
+            t.isCaseType ||
+            t.isSealedTrait ||
+            t.isIterable then 2
+    else 2
+
+  def writeFun(os: Expr[CodedOutputStream], t: TypeRepr, getterTerm: Term): Expr[Unit] =
+    if      t.isInt then '{ ${os}.writeInt32NoTag(${getterTerm.asExprOf[Int]}) }
+    else if t.isLong then '{ ${os}.writeInt64NoTag(${getterTerm.asExprOf[Long]}) }
+    else if t.isBoolean then '{ ${os}.writeBoolNoTag(${getterTerm.asExprOf[Boolean]}) }
+    else if t.isDouble then '{ ${os}.writeDoubleNoTag(${getterTerm.asExprOf[Double]}) }
+    else if t.isFloat then '{ ${os}.writeFloatNoTag(${getterTerm.asExprOf[Float]}) }
+    else if t.isString then '{ ${os}.writeStringNoTag(${getterTerm.asExprOf[String]}) }
+    else if t.isArrayByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
+    else if t.isArraySeqByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
+    else if t.isBytesType then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
+    else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
+
+  def sizeFun(t: TypeRepr, getterTerm: Term): Expr[Int] =
+    val CodedOutputStreamRef = Ref(TypeRepr.of[CodedOutputStream].typeSymbol.companionModule)
+    if      t.isInt then '{ CodedOutputStream.computeInt32SizeNoTag(${getterTerm.asExprOf[Int]}) }
+    else if t.isLong then '{ CodedOutputStream.computeInt64SizeNoTag(${getterTerm.asExprOf[Long]}) }
+    else if t.isBoolean then Expr(1)
+    else if t.isDouble then Expr(8)
+    else if t.isFloat then Expr(4)
+    else if t.isString then '{ CodedOutputStream.computeStringSizeNoTag(${getterTerm.asExprOf[String]}) }
+    else if t.isArrayByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
+    else if t.isArraySeqByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
+    else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
+    else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
+
+  def readFun(t: TypeRepr, is: Expr[CodedInputStream]): Term =
+    if      t.isInt then '{ ${is}.readInt32 }.asTerm
+    else if t.isLong then '{ ${is}.readInt64 }.asTerm
+    else if t.isBoolean then '{ ${is}.readBool }.asTerm
+    else if t.isDouble then '{ ${is}.readDouble }.asTerm
+    else if t.isFloat then '{ ${is}.readFloat }.asTerm
+    else if t.isString then '{ ${is}.readString.nn }.asTerm
+    else if t.isArrayByte then '{ ${is}.readByteArray.nn }.asTerm
+    else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray.nn) }.asTerm
+    else if t.isBytesType then '{ IArray.unsafeFromArray(${is}.readByteArray.nn) }.asTerm
+    else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
+
+  val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
+  val ArraySeqByteType: TypeRepr = TypeRepr.of[ArraySeq[Byte]]
+  val BytesType: TypeRepr = TypeRepr.of[IArray[Byte]]
+  val NTpe: TypeRepr = TypeRepr.of[N]
+  val RestrictedNType: TypeRepr = TypeRepr.of[RestrictedN]
+  val ItetableType: TypeRepr = TypeRepr.of[scala.collection.Iterable[?]]
+  val PrepareType: TypeRepr = TypeRepr.of[Prepare]
+  val CodedInputStreamType: TypeRepr = TypeRepr.of[CodedInputStream]
+  
+  extension (s: Symbol)
+    def constructorParams: List[Symbol] = s.primaryConstructor.paramSymss.find(_.headOption.fold(false)( _.isTerm)).getOrElse(Nil)
+    def tpe: TypeRepr =
+      s.tree match
+        case x: ClassDef => x.constructor.returnTpt.tpe
+        case ValDef(_,tpt,_) => tpt.tpe
+        case Bind(_, pattern: Term) => pattern.tpe
+
+  def unitLiteral: Literal = Literal(UnitConstant())
+  def defaultMethodName(i: Int): String = s"$$lessinit$$greater$$default$$${i+1}"
+
+  def unitExpr: Expr[Unit] = unitLiteral.asExprOf[Unit]
+
+  def builderType: TypeRepr = TypeRepr.of[scala.collection.mutable.Builder]
+    
+  def OptionType: TypeRepr = TypeRepr.of[Option]
+
+  def Some_Apply(tpe: TypeRepr, value: Term): Term =
+    Select.unique(Ref(SomeModule.companionModule), "apply")
+      .appliedToType(tpe)
+      .appliedTo(value)
+
+  val commonTypes: List[TypeRepr] =
+    TypeRepr.of[String] :: TypeRepr.of[Int] :: TypeRepr.of[Long] :: TypeRepr.of[Boolean] :: TypeRepr.of[Double] :: TypeRepr.of[Float] :: ArrayByteType :: ArraySeqByteType :: BytesType :: Nil 
+
+  extension (t: TypeRepr)
+    def isNType: Boolean = t =:= NTpe
+    def isCaseClass: Boolean = t.typeSymbol.flags.is(Flags.Case)
+    def isCaseObject: Boolean = t.termSymbol.flags.is(Flags.Case)
+    def isCaseType: Boolean = t.isCaseClass || t.isCaseObject
+    def isSealedTrait: Boolean = t.typeSymbol.flags.is(Flags.Sealed) && t.typeSymbol.flags.is(Flags.Trait)
+    def isIterable: Boolean = t <:< ItetableType && !t.isArraySeqByte
+    def isString: Boolean = t =:= TypeRepr.of[String]
+    def isInt: Boolean = t =:= TypeRepr.of[Int]
+    def isLong: Boolean = t =:= TypeRepr.of[Long]
+    def isBoolean: Boolean = t =:= TypeRepr.of[Boolean]
+    def isDouble: Boolean = t =:= TypeRepr.of[Double]
+    def isFloat: Boolean = t =:= TypeRepr.of[Float]
+    def isArrayByte: Boolean = t =:= ArrayByteType
+    def isArraySeqByte: Boolean = t =:= ArraySeqByteType
+    def isBytesType: Boolean = t =:= BytesType
+    def isCommonType: Boolean = commonTypes.exists(_ =:= t)
+
+    def typeArgsToReplace: Map[String, TypeRepr] =
+      t.typeSymbol.primaryConstructor.paramSymss
+      .find(_.headOption.fold(false)( _.isType))
+      .map(_.map(_.name).zip(t.typeArgs)).getOrElse(Nil)
+      .toMap
+
+    def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t match
+      case AppliedType(t1, args)  => t1.appliedTo(args.map(_.replaceTypeArgs(map)))
+      case _ => map.getOrElse(t.typeSymbol.name, t)
+
+    def isOption: Boolean = t match
+      case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
+      case _ => false
+
+    def typeArgs: List[TypeRepr] = t match
+      case AppliedType(t1, args)  => args
+      case _ => Nil
+
+    def optionArgument: TypeRepr = t match
+      case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head
+      case _ => throwError(s"It isn't Option type: ${t.typeSymbol.name}")
+
+    def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol) match
+      case AppliedType(_, args) if t.isIterable => args.head
+      case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
+
+    def iterableBaseType: TypeRepr = t match
+      case AppliedType(t1, _) if t.isIterable => t1
+      case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
+
+    def restrictedNums: List[Int] =
+      val aName = RestrictedNType.typeSymbol.name
+      val tName = t.typeSymbol.fullName
+      t.typeSymbol.annotations.collect{ case Apply(Select(New(tpt),_), List(Typed(Repeated(args,_),_))) if tpt.tpe =:= RestrictedNType => args } match
+        case List(Nil) => throwError(s"empty annotation ${aName} for `${tName}`")
+        case List(xs) =>
+          val nums = xs.collect{
+            case Literal(IntConstant(n)) => n
+            case x => throwError(s"wrong annotation ${aName} for `${tName}` $x")
+          }
+          if nums.size != nums.distinct.size then throwError(s"nums not unique in annotation ${aName} for `${tName}`")
+          nums
+        case Nil => Nil
+        case _ => throwError(s"multiple ${aName} annotations applied for `${tName}`")
+
+  def mkIfStatement(branches: List[(Term, Term)], elseBranch: Term): Term =
+    branches match
+      case (cond, thenp) :: xs =>
+        If(cond, thenp, mkIfStatement(xs, elseBranch))
+      case Nil => elseBranch
+
+end Impl
