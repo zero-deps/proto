@@ -20,4 +20,4 @@ sealed trait Push
 @N(1) case object Pong extends Push
 
 sealed trait Pull
-@N(2) case object Ping extends Pull
+@N(1) case object Ping extends Pull

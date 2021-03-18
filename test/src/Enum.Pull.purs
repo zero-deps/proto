@@ -11,7 +11,7 @@ data Pull = Ping
 derive instance eqPull :: Eq Pull
 
 encodePull :: Pull -> Uint8Array
-encodePull Ping = concatAll [ Encode.unsignedVarint32 18, encodePing ]
+encodePull Ping = concatAll [ Encode.unsignedVarint32 10, encodePing ]
 
 encodePing :: Uint8Array
 encodePing = Encode.unsignedVarint32 0
