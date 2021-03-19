@@ -23,8 +23,6 @@ lazy val protoapi = project.in(file("protoapi"))
 
 lazy val benchmark = project.in(file("benchmark"))
 
-ThisBuild / organization := "io.github.zero-deps"
-
 turbo := true
 useCoursier := true
 Global / onChangedBuildSource := ReloadOnSourceChanges
