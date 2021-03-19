@@ -1,7 +1,5 @@
 package proto
-package macros
 
-import proto.api.{MessageCodec, Prepare, N}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted.*
 import scala.collection.immutable.ArraySeq

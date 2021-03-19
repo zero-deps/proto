@@ -1,5 +1,4 @@
 package proto
-package api
 
 import java.io.{OutputStream, InputStream}
 import scala.annotation.*

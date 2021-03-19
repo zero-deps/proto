@@ -1,7 +1,5 @@
 package proto
-package macros
 
-import proto.api.{MessageCodec, Prepare, N, RestrictedN}
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted.*
 import scala.collection.immutable.ArraySeq
@@ -13,9 +11,9 @@ trait Common:
   import report.*
 
   extension (x: TypeRepr)
-    private[macros] def matchable: TypeRepr & Matchable = x.asInstanceOf[TypeRepr & Matchable]
+    private[proto] def matchable: TypeRepr & Matchable = x.asInstanceOf[TypeRepr & Matchable]
 
-  private[macros] case class FieldInfo(
+  private[proto] case class FieldInfo(
     name: String
   , num: Int
   , sym: Symbol
