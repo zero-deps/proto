@@ -1,7 +1,7 @@
 package purs
 
 import scala.quoted.*
-import proto.api.*
+import proto.*
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.collection.immutable.ArraySeq
 
