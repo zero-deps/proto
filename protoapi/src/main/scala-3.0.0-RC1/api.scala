@@ -4,6 +4,9 @@ import java.io.{OutputStream, InputStream}
 import scala.annotation.*
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 
+final class N(n: Int) extends StaticAnnotation
+final class RestrictedN(nums: Int*) extends StaticAnnotation
+
 trait Prepare:
   val size: Int
   def write(os: CodedOutputStream): Unit
@@ -42,6 +45,3 @@ def decodeI[A](bs: IArray[Byte], offset: Int)(implicit c: MessageCodec[A]): A =
 
 def decodeS[A](s: InputStream)(implicit c: MessageCodec[A]): A =
   c.read(CodedInputStream.newInstance(s).nn)
-
-final class N(n: Int) extends StaticAnnotation
-final class RestrictedN(nums: Int*) extends StaticAnnotation

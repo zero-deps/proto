@@ -4,10 +4,8 @@ import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted.*
 import scala.collection.immutable.ArraySeq
 
-//todo; optimisation for case object (don't create prepare)
 //todo; optimisation for MessageCodec (add .size/.write and use these in proto.api.encode instead of .prepare)
 //todo; optimisation for string (write custom .size/.write for string to prevent double time .size computation)
-//todo; remove .read exception and rewrite all the protobuf methods that throws exceptions
 
 inline def caseCodecAuto[A]: MessageCodec[A] = ${Macro.caseCodecAuto[A]}
 inline def caseCodecNums[A](inline nums: (String, Int)*): MessageCodec[A] = ${Macro.caseCodecNums[A]('nums)}
