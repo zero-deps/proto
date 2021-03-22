@@ -16,12 +16,14 @@ lazy val proto = project.in(file(".")).settings(
     }
   },
   version := zero.git.version(),
-).dependsOn(macros).aggregate(macros, protoapi)
+).dependsOn(macros).aggregate(macros, protoapi, benchmark, protopurs)
 
 lazy val macros = project.in(file("macros"))
 lazy val protoapi = project.in(file("protoapi"))
 
 lazy val benchmark = project.in(file("benchmark"))
+
+lazy val protopurs = project.in(file("purs"))
 
 turbo := true
 useCoursier := true

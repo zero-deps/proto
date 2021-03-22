@@ -1,28 +1,35 @@
-lazy val benchmark = project.in(file(".")).settings(
-  libraryDependencies ++= {
+lazy val protopurs = project.in(file(".")).settings(
+  scalaVersion := "3.0.0-RC1"
+, crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil
+, scalacOptions ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, 13)) => Nil
+      case _ => opts
+    }
+  }
+, libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 13)) => Seq(
-        "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.12.1",
-        "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.6.4",
-        "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.6.4" % "compile-internal",
-        "io.suzaku" %% "boopickle" % "1.3.3",
-        "com.evolutiongaming" %% "kryo-macros" % "1.3.0",
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value
+      , "org.scalatest" %% "scalatest" % "3.1.1" % Test
       )
-      case _ => Seq(
-        "com.fasterxml.jackson.module" % "jackson-module-scala_2.13" % "2.12.1",
-      )
+      case _ => Nil
     }
   },
-  resolvers += Resolver.bintrayRepo("evolutiongaming", "maven"),
-  Compile / PB.targets := Seq(
-    scalapb.gen() -> (Compile / sourceManaged).value
-  ),
-  scalaVersion := "3.0.0-RC1",
-  crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,
-  version := zero.git.version(),
-  publish / skip := true,
-).dependsOn(macros)
- .enablePlugins(JmhPlugin)
+  /* publishing */
+  organization := "io.github.zero-deps",
+  homepage := Some(url("https://github.com/zero-deps/proto")),
+  scmInfo := Some(ScmInfo(url("https://github.com/zero-deps/proto"), "git@github.com:zero-deps/proto.git")),
+  developers := List(Developer("Zero", "Deps", "zerodeps.org@gmail.com", url("https://github.com/zero-deps"))),
+  licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
+  publishMavenStyle := true,
+  versionScheme := Some("pvp"),
+  publishTo := Some(Opts.resolver.sonatypeStaging),
+  usePgpKeyHex("F68F0EADDB81EF533C4E8E3228C90422E5A0DB21"),
+  /* publishing */
+)
+
+lazy val ext = project.in(file("../deps/ext"))
 
 lazy val macros = project.in(file("../macros")).settings(
   name := "proto-macros",
@@ -95,3 +102,17 @@ lazy val protoapi = project.in(file("../protoapi")).settings(
   usePgpKeyHex("F68F0EADDB81EF533C4E8E3228C90422E5A0DB21"),
   /* publishing */
 )
+
+dependsOn(protoapi, macros % Test, ext)
+
+val opts = Seq(
+  "-Yexplicit-nulls"
+, "-source", "future-migration"
+, "-deprecation"
+, "-rewrite"
+, "release", "11"
+)
+
+turbo := true
+useCoursier := true
+Global / onChangedBuildSource := ReloadOnSourceChanges

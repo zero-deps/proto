@@ -1,4 +1,4 @@
 target/
 *.swp
-.bsp/
 .DS_Store
+/.bsp/

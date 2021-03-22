@@ -1,0 +1,3 @@
+[submodule "ext"]
+	path = deps/ext
+	url = https://github.com/zero-deps/ext.git

@@ -69,4 +69,3 @@ lazy val protoapi = project.in(file("../protoapi")).settings(
   usePgpKeyHex("F68F0EADDB81EF533C4E8E3228C90422E5A0DB21"),
   /* publishing */
 )
-
