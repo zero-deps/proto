@@ -7,7 +7,7 @@
 
 Lightweight and fast serialization library for Scala 2/3 based on Protocol Buffers with macros magic.
 
-# Motivation
+## Motivation
 
 Serialization library for Scala that can be used either for long term store models and short term models.
 With easy to migrate possibility.
@@ -21,7 +21,17 @@ With easy to migrate possibility.
 - Serialization/deserialization without changes in models
 - Possibility to use specific types in model
 
-# Benchmark
+## Install
+
+Add dependency:
+```
+libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "latest.integration" % Provided
+libraryDependencies += "io.github.zero-deps" %% "proto-api" % "latest.integration"
+```
+
+Dependency as a git-submodule is also supported.
+
+## Benchmark
 
 data |        | library        | score
 ---- | ------ |:-------------- | -------------:
@@ -54,14 +64,14 @@ msg  | encode | jsoniter-scala | ` 6372602.760`
 msg  | encode | proto          | ` 6487748.959`
 msg  | encode | scalapb        | ` 9202135.451`
 
-## environment
+### environment
 
 2.8 GHz Quadro-Core Intel Core i7\
 16 GB 2133 MHz LPDDR3\
 Java 15.0.1\
 Scala 2.13.5
 
-## run benchmark
+### run benchmark
 
 ```bash
 sbt
@@ -69,21 +79,11 @@ project benchmark
 jmh:run -i 2 -wi 1 -f1 -t1
 ```
 
-# Install
-
-Add dependency:
-```
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "latest.integration" % Provided
-libraryDependencies += "io.github.zero-deps" %% "proto-runtime" % "latest.integration"
-```
-
-Dependency as a git-submodule is also supported.
-
-# Usage
+## Usage
 
 You can pick one of the way how to define field number:
 - with annotation `@zd.proto.api.N` and use `caseCodecAuto`
-- explicitly specify nums `caseCodecNums('field1->1, 'field2->2)`
+- explicitly specify nums `caseCodecNums(Symbol("field1")->1, Symbol("field2")->2)`
 - field numbers by index `caseCodecIdx`
 
 You can use annotation `@zd.proto.api.RestrictedN` to restrict usage of specified field numbers. Can be used with classes or traits.
@@ -115,7 +115,7 @@ val car2: Car = decode[Car](bytes)
 
 More examples in [testing.scala](src/test/scala/testing.scala)
 
-# Publishing
+## Publishing
 
 ```
 sbt +publishSigned

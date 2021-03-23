@@ -1,5 +1,6 @@
 lazy val protopurs = project.in(file(".")).settings(
-  scalaVersion := "3.0.0-RC1"
+  name := "proto-purs"
+, scalaVersion := "3.0.0-RC1"
 , crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil
 , scalacOptions ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
