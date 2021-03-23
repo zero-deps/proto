@@ -68,10 +68,10 @@ lazy val macros = project.in(file("../macros")).settings(
   publishTo := Some(Opts.resolver.sonatypeStaging),
   usePgpKeyHex("F68F0EADDB81EF533C4E8E3228C90422E5A0DB21"),
   /* publishing */
-).dependsOn(protoapi)
+).dependsOn(syntax)
 
-lazy val protoapi = project.in(file("../protoapi")).settings(
-  name := "proto-api",
+lazy val syntax = project.in(file("../syntax")).settings(
+  name := "proto-syntax",
   libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.15.2",
   scalaVersion := "3.0.0-RC1",
   crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,
@@ -104,7 +104,7 @@ lazy val protoapi = project.in(file("../protoapi")).settings(
   /* publishing */
 )
 
-dependsOn(protoapi, macros % Test, ext)
+dependsOn(syntax, macros % Test, ext)
 
 val opts = Seq(
   "-Yexplicit-nulls"

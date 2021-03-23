@@ -1,7 +1,5 @@
-package zd
 package proto
 
-import proto.api.MessageCodec
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
@@ -11,7 +9,6 @@ import scala.reflect.macros.blackbox.Context
 //todo; remove .read exception and rewrite all the protobuf methods that throws exceptions
 
 object macrosapi {
-
   def caseCodecAuto[A]: MessageCodec[A] = macro Impl.caseCodecAuto[A]
   def caseCodecNums[A](nums: (String, Int)*): MessageCodec[A] = macro Impl.caseCodecString[A]
   def caseCodecIdx[A]: MessageCodec[A] = macro Impl.caseCodecIdx[A]

@@ -1,19 +1,7 @@
 package proto
 
 import java.io.{OutputStream, InputStream}
-import scala.annotation.*
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
-
-final class N(n: Int) extends StaticAnnotation
-final class RestrictedN(nums: Int*) extends StaticAnnotation
-
-trait Prepare:
-  val size: Int
-  def write(os: CodedOutputStream): Unit
-
-trait MessageCodec[A]:
-  def prepare(a: A): Prepare
-  def read(is: CodedInputStream): A
 
 def encode[A](a: A)(implicit c: MessageCodec[A]): Array[Byte] =
   val p = c.prepare(a)

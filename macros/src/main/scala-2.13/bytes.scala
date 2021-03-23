@@ -1,4 +1,3 @@
-package zd
 package proto
 
 final class Bytes private (a: Array[Byte]) {

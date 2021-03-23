@@ -16,10 +16,10 @@ lazy val proto = project.in(file(".")).settings(
     }
   },
   version := zero.git.version(),
-).dependsOn(macros).aggregate(macros, protoapi, benchmark, protopurs)
+).dependsOn(macros).aggregate(macros, syntax, benchmark, protopurs)
 
 lazy val macros = project.in(file("macros"))
-lazy val protoapi = project.in(file("protoapi"))
+lazy val syntax = project.in(file("syntax"))
 
 lazy val benchmark = project.in(file("benchmark"))
 

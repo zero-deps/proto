@@ -25,8 +25,7 @@ With easy to migrate possibility.
 
 Add dependency:
 ```
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "latest.integration" % Provided
-libraryDependencies += "io.github.zero-deps" %% "proto-api" % "latest.integration"
+libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "latest.integration"
 ```
 
 Dependency as a git-submodule is also supported.

@@ -1,10 +1,9 @@
-package zd.proto.test
+package proto
 
 import org.scalatest.freespec.AnyFreeSpec
-import zd.proto.api.{MessageCodec, encode, decode, N}
-import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto, sealedTraitCodecAuto, sealedTraitCodecNums, classCodecNums, classCodecAuto}
+import proto.api.{MessageCodec, encode, decode, N}
+import proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto, sealedTraitCodecAuto, sealedTraitCodecNums, classCodecNums, classCodecAuto}
 import scala.collection.immutable.ArraySeq
-import zd.proto.Bytes
 
 object models {
   case class Basic(

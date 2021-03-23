@@ -1,19 +1,6 @@
-package zd
-package proto
-
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 
-object api {
-  trait Prepare {
-    val size: Int
-    def write(os: CodedOutputStream): Unit
-  }
-
-  trait MessageCodec[A] {
-    def prepare(a: A): Prepare
-    def read(is: CodedInputStream): A
-  }
-
+package object proto {
   def encode[A](a: A)(implicit c: MessageCodec[A]) = {
     val p = c.prepare(a)
     val bytes = new Array[Byte](p.size)
@@ -40,7 +27,4 @@ object api {
 
   def decode[A](bs: Bytes, offset: Int)(implicit c: MessageCodec[A]): A =
     decode[A](bs.unsafeArray, offset)
-
-  final case class N(n: Int) extends annotation.StaticAnnotation
-  final case class RestrictedN(nums: Int*) extends annotation.StaticAnnotation
 }

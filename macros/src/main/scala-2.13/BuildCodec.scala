@@ -1,4 +1,3 @@
-package zd
 package proto
 
 import com.google.protobuf.CodedOutputStream
