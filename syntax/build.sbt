@@ -1,4 +1,4 @@
-lazy val syntax = project.in(file("../syntax")).settings(
+lazy val protosyntax = project.in(file("../syntax")).settings(
   name := "proto-syntax",
   libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.15.2",
   scalaVersion := "3.0.0-RC1",

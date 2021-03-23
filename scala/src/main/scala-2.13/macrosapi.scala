@@ -3,11 +3,6 @@ package proto
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
-//todo; optimisation for case object (don't create prepare)
-//todo; optimisation for MessageCodec (add .size/.write and use these in proto.api.encode instead of .prepare)
-//todo; optimisation for string (write custom .size/.write for string to prevent double time .size computation)
-//todo; remove .read exception and rewrite all the protobuf methods that throws exceptions
-
 object macrosapi {
   def caseCodecAuto[A]: MessageCodec[A] = macro Impl.caseCodecAuto[A]
   def caseCodecNums[A](nums: (String, Int)*): MessageCodec[A] = macro Impl.caseCodecString[A]

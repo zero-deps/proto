@@ -1,9 +1,9 @@
 # proto
 
-[![version](https://img.shields.io/maven-central/v/io.github.zero-deps/proto-macros_3.0.0-RC1?label=version)](https://repo1.maven.org/maven2/io/github/zero-deps/)
+[![version](https://img.shields.io/maven-central/v/io.github.zero-deps/proto_3.0.0-RC1?label=version)](https://repo1.maven.org/maven2/io/github/zero-deps/)
 [![chat](https://img.shields.io/discord/786606353820942366)](https://discord.gg/ns7ZYssxZS)
 [![test](https://img.shields.io/github/workflow/status/zero-deps/proto/test?label=tests)](https://github.com/zero-deps/proto/actions/workflows/test.yml)
-[![cloc](https://img.shields.io/badge/cloc-833-blue)](https://github.com/zero-deps/proto/tree/main/macros/src/main/scala-3.0.0-RC1)
+[![cloc](https://img.shields.io/badge/cloc-866-blue)](https://github.com/zero-deps/proto/tree/main/scala/src/main/scala-3.0.0-RC1)
 
 Lightweight and fast serialization library for Scala 2/3 based on Protocol Buffers with macros magic.
 
@@ -25,7 +25,7 @@ With easy to migrate possibility.
 
 Add dependency:
 ```
-libraryDependencies += "io.github.zero-deps" %% "proto-macros" % "latest.integration"
+libraryDependencies += "io.github.zero-deps" %% "proto" % "latest.integration"
 ```
 
 Dependency as a git-submodule is also supported.
@@ -81,16 +81,16 @@ jmh:run -i 2 -wi 1 -f1 -t1
 ## Usage
 
 You can pick one of the way how to define field number:
-- with annotation `@zd.proto.api.N` and use `caseCodecAuto`
+- with annotation `@proto.N` and use `caseCodecAuto`
 - explicitly specify nums `caseCodecNums(Symbol("field1")->1, Symbol("field2")->2)`
 - field numbers by index `caseCodecIdx`
 
-You can use annotation `@zd.proto.api.RestrictedN` to restrict usage of specified field numbers. Can be used with classes or traits.
+You can use annotation `@proto.RestrictedN` to restrict usage of specified field numbers. Can be used with classes or traits.
 
 ```scala
 import scala.collection.immutable.TreeMap
-import zd.proto.api.{encode, decode, N}
-import zd.proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto}
+import proto.{encode, decode, N}
+import proto.{caseCodecIdx, caseCodecNums, caseCodecAuto}
 
 final case class VectorClock(versions: TreeMap[String, Long])
 @RestrictedN(3,4)

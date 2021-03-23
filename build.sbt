@@ -1,4 +1,4 @@
-lazy val proto = project.in(file(".")).settings(
+lazy val root = project.in(file(".")).settings(
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.5" % Test,
   publish / skip := true,
   scalaVersion := "3.0.0-RC1",
@@ -16,13 +16,11 @@ lazy val proto = project.in(file(".")).settings(
     }
   },
   version := zero.git.version(),
-).dependsOn(macros).aggregate(macros, syntax, benchmark, protopurs)
+).dependsOn(protoscala).aggregate(protoscala, protosyntax, benchmark, protopurs)
 
-lazy val macros = project.in(file("macros"))
-lazy val syntax = project.in(file("syntax"))
-
+lazy val protoscala = project.in(file("scala"))
+lazy val protosyntax = project.in(file("syntax"))
 lazy val benchmark = project.in(file("benchmark"))
-
 lazy val protopurs = project.in(file("purs"))
 
 turbo := true
