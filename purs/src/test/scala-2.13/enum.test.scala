@@ -1,3 +1,4 @@
+package proto
 package purs
 package enum
 
@@ -6,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import proto.N
 
 class EnumSpec extends AnyFreeSpec with Matchers {
-  val res = Purescript.generate[Push, Pull](moduleEncode="Enum.Pull", moduleDecode="Enum.Push", moduleCommon="Enum.Common", category=_=>"", ask="", ok="", err="")
+  val res = Purescript.generate[Push, Pull](moduleEncode="Enum.Pull", moduleDecode="Enum.Push", moduleCommon="Enum.Common")
   "enum" - {
     "print" in {
       res.purs.foreach{ case (filename, content) =>

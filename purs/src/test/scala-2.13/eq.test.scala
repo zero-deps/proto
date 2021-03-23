@@ -1,3 +1,4 @@
+package proto
 package purs
 package eq
 
@@ -7,7 +8,7 @@ import proto.N
 import proto.Bytes
 
 class EqSpec extends AnyFreeSpec with Matchers {
-  val res = Purescript.generate[Push, Pull](moduleEncode="EqSpec.Pull", moduleDecode="EqSpec.Push", moduleCommon="EqSpec.Common", category=_=>"", ask="", ok="", err="")
+  val res = Purescript.generate[Push, Pull](moduleEncode="EqSpec.Pull", moduleDecode="EqSpec.Push", moduleCommon="EqSpec.Common")
   "eq" - {
     "out" in {
       res.purs.foreach{ case (filename, content) =>

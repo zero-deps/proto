@@ -16,12 +16,14 @@ lazy val root = project.in(file(".")).settings(
     }
   },
   version := zero.git.version(),
-).dependsOn(protoscala).aggregate(protoscala, protosyntax, benchmark, protopurs)
+).dependsOn(protoscala).aggregate(protoscala, protosyntax, benchmark, protopurs, prototex)
 
 lazy val protoscala = project.in(file("scala"))
 lazy val protosyntax = project.in(file("syntax"))
 lazy val benchmark = project.in(file("benchmark"))
 lazy val protopurs = project.in(file("purs"))
+lazy val prototex = project.in(file("tex"))
+lazy val protoops = project.in(file("ops"))
 
 turbo := true
 useCoursier := true

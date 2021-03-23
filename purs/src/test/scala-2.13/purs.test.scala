@@ -1,3 +1,4 @@
+package proto
 package purs
 
 import org.scalatest.freespec.AnyFreeSpec
@@ -8,13 +9,13 @@ import proto.macrosapi.{caseCodecIdx, caseCodecAuto, sealedTraitCodecAuto}
 class PurescriptSpec extends AnyFreeSpec with Matchers {
   "generate" - {
     "src" in {
-      val res = Purescript.generate[Push, Pull](moduleEncode="Pull", moduleDecode="Push", moduleCommon="Common", category=_=>"", ask="", ok="", err="")
+      val res = Purescript.generate[Push, Pull](moduleEncode="Pull", moduleDecode="Push", moduleCommon="Common")
       res.purs.foreach{ case (filename, content) =>
         io.writeToFile(s"purs/test/src/$filename.purs", content)
       }
     }
     "test" in {
-      val res = Purescript.generate[TestSchema, TestSchema](moduleEncode="SchemaPull", moduleDecode="SchemaPush", moduleCommon="SchemaCommon", category=_=>"", ask="", ok="", err="")
+      val res = Purescript.generate[TestSchema, TestSchema](moduleEncode="SchemaPull", moduleDecode="SchemaPush", moduleCommon="SchemaCommon")
       res.purs.foreach{ case (filename, content) =>
         io.writeToFile(s"purs/test/test/$filename.purs", content)
       }

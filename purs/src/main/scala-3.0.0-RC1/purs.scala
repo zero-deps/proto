@@ -1,3 +1,4 @@
+package proto
 package purs
 
 import scala.quoted.*

@@ -1,7 +1,12 @@
-package purs
+package proto
+package tex
 
+import scala.reflect.runtime.currentMirror
 import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.definitions._
 import zero.ext._, option._
+
+import Ops._
 
 object Doc {
   type Version = String
@@ -93,5 +98,50 @@ object Doc {
         case _ => throw new Exception("bad args in N")
       }
     }.to(List)
+  }
+  
+  private def pursTypeParsTex(tpe: Type): String = {
+    if (tpe =:= StringClass.selfType) {
+      "String"
+    } else if (tpe =:= IntClass.selfType) {
+      "Int"
+    } else if (tpe =:= LongClass.selfType) {
+      "Number"
+    } else if (tpe =:= BooleanClass.selfType) {
+      "Boolean"
+    } else if (tpe =:= DoubleClass.selfType) {
+      "Number"
+    } else if (tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]) {
+      "Uint8Array"
+    } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+      val typeArg = tpe.typeArgs.head
+      if (typeArg =:= LongClass.selfType) {
+        "(Maybe Number)"
+      } else if (typeArg =:= DoubleClass.selfType) {
+        "(Maybe Number)"
+      } else {
+        val name = typeArg.typeSymbol.name.encodedName.toString
+        if (complexType(typeArg)) s"(Maybe \\hyperlink{$name}{$name})"
+        else s"(Maybe $name)"
+      }
+    } else if (isIterable(tpe)) {
+      iterablePurs(tpe) match {
+        case ArrayPurs(tpe) =>
+          val name = tpe.typeSymbol.asClass.name.encodedName.toString
+          if (complexType(tpe)) s"[\\hyperlink{$name}{$name}]"
+          else s"[$name]"
+        case ArrayTuplePurs(tpe1, tpe2) =>
+          val name1 = pursTypeParsTex(tpe1)
+          val name2 = pursTypeParsTex(tpe2)
+          s"[Tuple $name1 $name2]"
+      }
+    } else {
+      val name = tpe.typeSymbol.name.encodedName.toString
+      s"\\hyperlink{$name}{$name}"
+    }
+  }
+  
+  private def pursTypeTex(tpe: Type): String = {
+    pursTypeParsTex(tpe).stripPrefix("(").stripSuffix(")")
   }
 }

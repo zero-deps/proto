@@ -1,3 +1,4 @@
+package proto
 package purs
 package default
 
@@ -8,7 +9,7 @@ import proto.N
 class DefaultSpec extends AnyFreeSpec with Matchers {
   "generate" - {
     "src" in {
-      val res = Purescript.generate[Push, Pull](moduleEncode="DefaultSpec.Pull", moduleDecode="DefaultSpec.Push", moduleCommon="DefaultSpec.Common", category=_=>"", ask="", ok="", err="")
+      val res = Purescript.generate[Push, Pull](moduleEncode="DefaultSpec.Pull", moduleDecode="DefaultSpec.Push", moduleCommon="DefaultSpec.Common")
       res.purs.foreach{ case (filename, content) =>
         io.writeToFile(s"purs/test/src/$filename.purs", content)
       }

@@ -1,3 +1,4 @@
+package proto
 package purs
 package setmap
 
@@ -7,7 +8,7 @@ import proto.N
 import scala.collection.immutable.ListSet
 
 class SetMapSpec extends AnyFreeSpec with Matchers {
-  val res = Purescript.generate[Push, Pull](moduleEncode="SetMap.Pull", moduleDecode="SetMap.Push", moduleCommon="SetMap.Common", category=_=>"", ask="", ok="", err="")
+  val res = Purescript.generate[Push, Pull](moduleEncode="SetMap.Pull", moduleDecode="SetMap.Push", moduleCommon="SetMap.Common")
   "set/map" - {
     "print" in {
       res.purs.foreach{ case (filename, content) =>

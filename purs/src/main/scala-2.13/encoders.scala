@@ -1,3 +1,4 @@
+package proto
 package purs
 
 import scala.annotation.unused
@@ -5,6 +6,8 @@ import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 import zero.ext._, option._
 import proto.Bytes
+
+import Ops._
 
 object Encoders {
   def from(types: Seq[Tpe]): Seq[Coder] = {
