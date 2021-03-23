@@ -1,13 +1,11 @@
-package zero
-
 import scala.annotation.tailrec
 import scala.reflect.runtime.currentMirror
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 import zero.ext._, option._
-import zd.proto.Bytes
+import proto.Bytes
 
-package object protopurs {
+package object purs {
   def pursTypePars(tpe: Type): (String, String) = {
     if (tpe =:= StringClass.selfType) {
       "String" -> "(Maybe String)"
@@ -215,7 +213,7 @@ package object protopurs {
   }
 
   def findN(x: Symbol): Option[Int] = {
-    x.annotations.filter(_.tree.tpe =:= typeOf[zd.proto.api.N]) match {
+    x.annotations.filter(_.tree.tpe =:= typeOf[proto.N]) match {
       case List(x1) => x1.tree.children.tail match {
         case List(Literal(Constant(n: Int))) => Some(n)
         case _ => throw new Exception("bad args in N")

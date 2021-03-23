@@ -1,9 +1,9 @@
-package zero.protopurs
+package purs
 package default
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import zd.proto.api.N
+import proto.N
 
 class DefaultSpec extends AnyFreeSpec with Matchers {
   "generate" - {

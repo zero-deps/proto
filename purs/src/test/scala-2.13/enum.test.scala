@@ -1,9 +1,9 @@
-package zero.protopurs
+package purs
 package enum
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import zd.proto.api.N
+import proto.N
 
 class EnumSpec extends AnyFreeSpec with Matchers {
   val res = Purescript.generate[Push, Pull](moduleEncode="Enum.Pull", moduleDecode="Enum.Push", moduleCommon="Enum.Common", category=_=>"", ask="", ok="", err="")

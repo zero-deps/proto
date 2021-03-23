@@ -1,4 +1,4 @@
-package zero.protopurs
+package purs
 
 sealed trait DefVal
 sealed trait HasDefFun { val value: String }

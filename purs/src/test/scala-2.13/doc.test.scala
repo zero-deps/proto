@@ -1,9 +1,9 @@
-package zero.protopurs
+package purs
 package doc
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import zd.proto.api.N
+import proto.N
 
 class DocTest extends AnyFreeSpec with Matchers {
   val res = Purescript.generate[Push, Pull](moduleEncode="DocTest.Pull", moduleDecode="DocTest.Push", moduleCommon="DocTest.Common", category=_=>"All", ask="", ok="", err="")

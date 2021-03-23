@@ -1,4 +1,4 @@
-package zero.protopurs
+package purs
 
 import scala.reflect.runtime.universe._
 import zero.ext._, option._

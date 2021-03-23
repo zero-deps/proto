@@ -1,4 +1,4 @@
-package zero.protopurs
+package purs
 
 object io {
   def writeToFile(path: String, res: String): Unit = {

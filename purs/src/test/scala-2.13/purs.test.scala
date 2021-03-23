@@ -1,9 +1,9 @@
-package zero.protopurs
+package purs
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import zd.proto.api.{N, encode}
-import zd.proto.macrosapi.{caseCodecIdx, caseCodecAuto, sealedTraitCodecAuto}
+import proto.{N, encode}
+import proto.macrosapi.{caseCodecIdx, caseCodecAuto, sealedTraitCodecAuto}
 
 class PurescriptSpec extends AnyFreeSpec with Matchers {
   "generate" - {

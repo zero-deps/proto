@@ -1,4 +1,4 @@
-package zero.protopurs
+package purs
 
 import scala.annotation.unused
 import scala.reflect.runtime.universe._

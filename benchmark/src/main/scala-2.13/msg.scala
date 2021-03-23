@@ -1,10 +1,7 @@
-package zd
 package proto
 package msg
 
-import org.openjdk.jmh.annotations.Benchmark
-import org.openjdk.jmh.annotations.Scope
-import org.openjdk.jmh.annotations.State
+import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 final case class Msg(stat: Stat, meta: StatMeta)
@@ -30,8 +27,7 @@ object States {
   @State(Scope.Benchmark)
   class MacrosState {
     val msg = Msg(Stat("cpu", "0.45"), StatMeta("1571067208996", "127.0.0.1:8080"))
-    import zd.proto.api.encode
-    import zd.proto.macrosapi.caseCodecIdx
+    import proto.macrosapi.caseCodecIdx
     implicit val sCodec = caseCodecIdx[Stat]
     implicit val smCodec = caseCodecIdx[StatMeta]
     val codec = caseCodecIdx[Msg]
@@ -53,7 +49,7 @@ class Encode {
 
   @Benchmark
   def protobuf_scala_macros(state: States.MacrosState, bh: Blackhole): Unit = {
-    bh.consume(proto.api.encode(state.msg)(state.codec))
+    bh.consume(proto.encode(state.msg)(state.codec))
   }
 }
 
@@ -71,6 +67,6 @@ class Decode {
 
   @Benchmark
   def protobuf_scala_macros(state: States.MacrosState, bh: Blackhole): Unit = {
-    bh.consume(proto.api.decode(state.bytes)(state.codec))
+    bh.consume(proto.decode(state.bytes)(state.codec))
   }
 }

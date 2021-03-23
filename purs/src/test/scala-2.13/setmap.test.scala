@@ -1,9 +1,9 @@
-package zero.protopurs
+package purs
 package setmap
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import zd.proto.api.N
+import proto.N
 import scala.collection.immutable.ListSet
 
 class SetMapSpec extends AnyFreeSpec with Matchers {

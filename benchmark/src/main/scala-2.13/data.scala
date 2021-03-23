@@ -1,10 +1,7 @@
-package zd
 package proto
 package data
 
-import org.openjdk.jmh.annotations.Benchmark
-import org.openjdk.jmh.annotations.Scope
-import org.openjdk.jmh.annotations.State
+import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
 final case class Data(lastModified: Long, vc: VectorClock, value: Array[Byte])
@@ -81,8 +78,8 @@ object States {
     val vc = VectorClock(Vector.fill(2)(Version(node="169.0.0.1:4400", timestamp=2000L)))
 
     val data = Data(value=value, lastModified=lastModified, vc=vc)
-    import zd.proto.api.encode
-    import zd.proto.macrosapi.caseCodecIdx
+    import proto.encode
+    import proto.macrosapi.caseCodecIdx
     implicit val vCodec = caseCodecIdx[Version]
     implicit val vcCodec = caseCodecIdx[VectorClock]
     val codec = caseCodecIdx[Data]
@@ -148,8 +145,8 @@ class Encode {
   }
 
   @Benchmark
-  def protobuf_scala_macros(state: States.MacrosState, bh: Blackhole): Unit = {
-    bh.consume(proto.api.encode(state.data)(state.codec))
+  def proto(state: States.MacrosState, bh: Blackhole): Unit = {
+    bh.consume(encode(state.data)(state.codec))
   }
 
   @Benchmark
@@ -197,8 +194,8 @@ class Decode {
   }
 
   @Benchmark
-  def protobuf_scala_macros(state: States.MacrosState, bh: Blackhole): Unit = {
-    bh.consume(proto.api.decode(state.bytes)(state.codec))
+  def proto(state: States.MacrosState, bh: Blackhole): Unit = {
+    bh.consume(decode(state.bytes)(state.codec))
   }
 
   @Benchmark

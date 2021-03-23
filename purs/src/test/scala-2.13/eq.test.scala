@@ -1,10 +1,10 @@
-package zero.protopurs
+package purs
 package eq
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import zd.proto.api.N
-import zd.proto.Bytes
+import proto.N
+import proto.Bytes
 
 class EqSpec extends AnyFreeSpec with Matchers {
   val res = Purescript.generate[Push, Pull](moduleEncode="EqSpec.Pull", moduleDecode="EqSpec.Push", moduleCommon="EqSpec.Common", category=_=>"", ask="", ok="", err="")
