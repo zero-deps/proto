@@ -24,7 +24,7 @@ lazy val benchmark = project.in(file(".")).settings(
 ).dependsOn(protoscala)
  .enablePlugins(JmhPlugin)
 
-lazy val protoscala = project.in(file("../scala")).settings(
+lazy val protoscala = project.in(file("../protoscala")).settings(
   name := "proto",
   scalaVersion := "3.0.0-RC1",
   crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,

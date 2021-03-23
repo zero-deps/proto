@@ -1,5 +1,5 @@
 lazy val protoscala = project.in(file(".")).settings(
-  name := "proto",
+  name := "proto-scala",
   scalaVersion := "3.0.0-RC1",
   crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,
   resolvers += Resolver.JCenterRepository,

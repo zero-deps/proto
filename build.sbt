@@ -18,7 +18,7 @@ lazy val root = project.in(file(".")).settings(
   version := zero.git.version(),
 ).dependsOn(protoscala).aggregate(protoscala, protosyntax, benchmark, protopurs, prototex)
 
-lazy val protoscala = project.in(file("scala"))
+lazy val protoscala = project.in(file("protoscala"))
 lazy val protosyntax = project.in(file("syntax"))
 lazy val benchmark = project.in(file("benchmark"))
 lazy val protopurs = project.in(file("purs"))

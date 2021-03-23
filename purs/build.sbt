@@ -33,8 +33,8 @@ lazy val protopurs = project.in(file(".")).settings(
 
 lazy val ext = project.in(file("../deps/ext"))
 
-lazy val protoscala = project.in(file("../scala")).settings(
-  name := "proto",
+lazy val protoscala = project.in(file("../protoscala")).settings(
+  name := "proto-scala",
   scalaVersion := "3.0.0-RC1",
   crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,
   resolvers += Resolver.JCenterRepository,
