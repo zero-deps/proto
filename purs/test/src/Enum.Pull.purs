@@ -7,6 +7,7 @@ import Data.Eq (class Eq)
 import Proto.Encode as Encode
 import Proto.Uint8Array (Uint8Array, concatAll)
 
+
 data Pull = Ping
 derive instance eqPull :: Eq Pull
 

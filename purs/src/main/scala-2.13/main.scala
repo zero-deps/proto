@@ -31,19 +31,21 @@ object Purescript {
     GenRes(
       Map(
         moduleCommon -> {
-          val code = commonPursTypes.flatMap(_.tmpl).mkString("\n")
-          val is = List(
-            if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
-          , if (code contains "Nothing") ("Data.Maybe" -> "Maybe(Nothing)").some else None
-          , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple").some else None
-          ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + " (" + x._2 + ")").to(List).sorted.mkString("\n")
-          s"""|module $moduleCommon
-              |  ( ${commonPursTypes.flatMap(_.export).mkString("\n  , ")} 
-              |  ) where
-              |
-              |$is
-              |
-              |$code""".stripMargin
+          if (commonPursTypes.nonEmpty) {
+            val code = commonPursTypes.flatMap(_.tmpl).mkString("\n")
+            val is = List(
+              if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
+            , if (code contains "Nothing") ("Data.Maybe" -> "Maybe(Nothing)").some else None
+            , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple").some else None
+            ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + " (" + x._2 + ")").to(List).sorted.mkString("\n")
+            s"""|module $moduleCommon
+                |  ( ${commonPursTypes.flatMap(_.export).mkString("\n  , ")} 
+                |  ) where
+                |
+                |$is
+                |
+                |$code""".stripMargin
+          } else ""
         }
       , moduleEncode -> {
           val code = encodePursTypes.flatMap(_.tmpl).mkString("\n") + "\n\n" + encoders.map(_.tmpl).mkString("\n\n")
@@ -67,7 +69,7 @@ object Purescript {
               |  ) where
               |
               |$is
-              |import $moduleCommon
+              |${if (commonPursTypes.nonEmpty) s"import $moduleCommon" else ""}
               |
               |$code""".stripMargin
         }
@@ -103,7 +105,7 @@ object Purescript {
               |  ) where
               |
               |$is
-              |import $moduleCommon
+              |${if (commonPursTypes.nonEmpty) s"import $moduleCommon" else ""}
               |
               |$code""".stripMargin
         }

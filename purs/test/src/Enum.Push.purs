@@ -12,6 +12,7 @@ import Prelude (map, bind, pure, ($), (+))
 import Proto.Decode as Decode
 import Proto.Uint8Array (Uint8Array)
 
+
 decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
 decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
