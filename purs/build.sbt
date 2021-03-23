@@ -3,12 +3,6 @@ lazy val protopurs = project.in(file(".")).settings(
 , version := zero.git.version()
 , scalaVersion := "3.0.0-RC1"
 , crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil
-, scalacOptions ++= {
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 13)) => Nil
-      case _ => opts
-    }
-  }
 , libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 13)) => Seq(
@@ -33,31 +27,19 @@ lazy val protopurs = project.in(file(".")).settings(
 
 lazy val ext = project.in(file("../deps/ext"))
 
-lazy val protoscala = project.in(file("../protoscala")).settings(
+lazy val protoscala = project.in(file("..")).settings(
   name := "proto-scala",
+  version := zero.git.version(),
   scalaVersion := "3.0.0-RC1",
   crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,
   resolvers += Resolver.JCenterRepository,
-  Compile / scalacOptions ++= {
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 13)) => Nil
-      case _ =>
-        Seq(
-          "-source", "future-migration"
-        , "-deprecation"
-        , "-rewrite"
-        , "release", "11"
-        , "-Yexplicit-nulls"
-        )
-    }
-  },
-  version := zero.git.version(),
   libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 13)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
       case _ => Nil
     }
   },
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.5" % Test,
   /* publishing */
   organization := "io.github.zero-deps",
   homepage := Some(url("https://github.com/zero-deps/proto")),
@@ -77,20 +59,6 @@ lazy val protosyntax = project.in(file("../syntax")).settings(
   scalaVersion := "3.0.0-RC1",
   crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,
   resolvers += Resolver.JCenterRepository,
-  Compile / scalacOptions ++= {
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 13)) => Nil
-      case _ =>
-        Seq(
-          "-source", "future-migration"
-        , "-deprecation"
-        , "-rewrite"
-        , "release", "11"
-        , "-Yexplicit-nulls"
-        , "-language:strictEquality"
-        )
-    }
-  },
   version := zero.git.version(),
   /* publishing */
   organization := "io.github.zero-deps",
@@ -111,25 +79,9 @@ lazy val protoops = project.in(file("../ops")).settings(
   scalaVersion := "3.0.0-RC1",
   crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil,
   resolvers += Resolver.JCenterRepository,
-  Compile / scalacOptions ++= {
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 13)) => Nil
-      case _ =>
-        Seq(
-          "-source", "future-migration"
-        , "-deprecation"
-        , "-rewrite"
-        , "release", "11"
-        , "-Yexplicit-nulls"
-        , "-language:strictEquality"
-        )
-    }
-  },
   libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 13)) => Seq(
-        "org.scala-lang" % "scala-reflect" % scalaVersion.value
-      )
+      case Some((2, 13)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
       case _ => Nil
     }
   },
@@ -148,11 +100,3 @@ lazy val protoops = project.in(file("../ops")).settings(
 ).dependsOn(protosyntax)
 
 dependsOn(protoops, protoscala % Test, ext)
-
-val opts = Seq(
-  "-Yexplicit-nulls"
-, "-source", "future-migration"
-, "-deprecation"
-, "-rewrite"
-, "release", "11"
-)
