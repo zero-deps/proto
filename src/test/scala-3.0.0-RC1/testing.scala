@@ -3,6 +3,7 @@ package proto
 import scala.language.adhocExtensions
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.ArraySeq
+import scala.language.adhocExtensions
 
 object models:
   case class Basic(

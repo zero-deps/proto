@@ -1,7 +1,7 @@
 package proto
 
 import org.scalatest.freespec.AnyFreeSpec
-import proto.macrosapi._
+import proto.macrosapi.{caseCodecIdx, caseCodecNums, caseCodecAuto, sealedTraitCodecAuto, sealedTraitCodecNums, classCodecNums, classCodecAuto}
 import scala.collection.immutable.ArraySeq
 
 object models {
