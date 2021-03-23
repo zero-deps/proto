@@ -18,6 +18,8 @@ class EnumSpec extends AnyFreeSpec with Matchers {
 
 sealed trait Push
 @N(1) case object Pong extends Push
+@N(2) case class Saved(@N(1) x: String) extends Push
 
 sealed trait Pull
 @N(1) case object Ping extends Pull
+@N(2) case class Save(@N(1) x: String) extends Pull
