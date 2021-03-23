@@ -176,91 +176,51 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
       }
     }
 
-  def enumByN[A: Type]: Expr[MessageCodec[A]] =
-    val a_tpe = TypeRepr.of[A].matchable
+  private def collectNs(a_tpe: TypeRepr): List[(TypeRepr, Int)] =
     val a_typeSym = a_tpe.typeSymbol
     val typeName = a_typeSym.fullName
-    val xs = a_typeSym.children
-    val nums: List[(TypeRepr, Int)] =
-      xs.map(x =>
-        x.annotations.collect{
-          case Apply(Select(New(tpt), _), List(Literal(IntConstant(num))))
-            if tpt.tpe.matchable.isNType =>
-              x.tpe -> num
-        } match
-          case List(x) => x
-          case Nil =>
-            throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
-          case _ =>
-            throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
-      )
+    a_typeSym.children.map(x =>
+      x.annotations.collect{
+        case Apply(Select(New(tpt), _), List(Literal(IntConstant(num))))
+          if tpt.tpe.matchable.isNType =>
+            x.tpe -> num
+      } match
+        case List(x) => x
+        case Nil =>
+          throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+        case _ =>
+          throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
+    )
+
+  def enumByN[A: Type]: Expr[MessageCodec[A]] =
+    val a_tpe = TypeRepr.of[A].matchable
+    val nums = collectNs(a_tpe)
     sealedTraitCodec(a_tpe, nums)
 
   def sealedTraitCodecAuto[A: Type]: Expr[MessageCodec[A]] =
     val a_tpe = getSealedTrait[A].matchable
-    val aTypeSymbol = a_tpe.typeSymbol
-    val typeName = aTypeSymbol.fullName
-    val xs = aTypeSymbol.children
-    val nums: List[(TypeRepr, Int)] =
-      xs.map(x =>
-        x.annotations.collect{
-          case Apply(Select(New(tpt), _), List(Literal(IntConstant(num))))
-            if tpt.tpe.matchable.isNType =>
-              x.tpe -> num
-        } match
-          case List(x) => x
-          case Nil =>
-            throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
-          case _ =>
-            throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
-      )
+    val nums = collectNs(a_tpe)
     sealedTraitCodec(a_tpe, nums)
 
   def sealedTraitCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] =
     val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = getSealedTrait[A].matchable
-    val aTypeSymbol = a_tpe.typeSymbol
-    val typeName = aTypeSymbol.fullName
-    val xs = aTypeSymbol.children
-    val nums1: List[(TypeRepr, Int)] = xs.map{ x =>
-      val name = x.name
-      x.tpe -> nums.collectFirst{case (n, num) if n == name => num}.getOrElse(throwError(s"missing num for `${name}: ${x.fullName}`"))
-    }
+    val nums1: List[(TypeRepr, Int)] =
+      a_tpe.typeSymbol.children.map{ x =>
+        x.tpe ->
+          nums.collectFirst{
+            case (n, num) if n == x.name => num
+          }.getOrElse{
+            throwError(s"missing num for `${x.name}: ${x.fullName}`")
+          }
+      }
     sealedTraitCodec(a_tpe, nums1)
 
   def sealedTraitCodec[A: Type](
     a_tpe: TypeRepr & Matchable
   , nums: Seq[(TypeRepr, Int)]
   ): Expr[MessageCodec[A]] =
-    val aTypeSymbol = a_tpe.typeSymbol
-    val typeName = aTypeSymbol.fullName
-    val subclasses = aTypeSymbol.children
-
-    if subclasses.size <= 0 then throwError(s"required at least 1 subclass for `${typeName}`")
-    if nums.size != subclasses.size then throwError(s"`${typeName}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
-    if nums.exists(_._2 < 1) then throwError(s"nums for ${typeName} should be > 0")
-    if nums.groupBy(_._2).exists(_._2.size != 1) then throwError(s"nums for ${typeName} should be unique")
-    val restrictedNums = a_tpe.restrictedNums
-
-    val fields: List[FieldInfo] = subclasses.map{ s =>
-      val tpe = s.tpe
-      val num: Int = nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(throwError(s"missing num for class `${tpe}` of trait `${a_tpe}`"))
-      if restrictedNums.contains(num) then throwError(s"num ${num} is restricted for class `${tpe}` of trait `${a_tpe}`")
-    
-      FieldInfo(
-        name = s.fullName
-      , num = num
-      , sym = s
-      , tpe = tpe.matchable
-      , getter = 
-          if s.isTerm then (a: Term) => Ref(s)
-          else (a: Term) => Select.unique(a, "asInstanceOf").appliedToType(tpe)
-      , sizeSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
-      , prepareSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
-      , defaultValue = None
-      , isCaseObject = s.isTerm
-      )
-    }
+    val fields: List[FieldInfo] = childrenWithNum(a_tpe, nums).map(fieldInfoFromSym)
     '{
       new MessageCodec[A] {
         def prepare(a: A): Prepare =
@@ -269,6 +229,50 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
           ${ readImpl(a_tpe, fields, 'is, isTrait=true).asExprOf[A] }
       }
     }
+
+  private def childrenWithNum(a_tpe: TypeRepr & Matchable, nums: Seq[(TypeRepr, Int)]): List[(Symbol, Int)] =
+    val aTypeSymbol = a_tpe.typeSymbol
+    val typeName = aTypeSymbol.fullName
+    val subclasses = aTypeSymbol.children
+
+    if subclasses.size <= 0 then
+      throwError(s"required at least 1 subclass for `${typeName}`")
+    if nums.size != subclasses.size then
+      throwError(s"`${typeName}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
+    if nums.exists(_._2 < 1) then
+      throwError(s"nums for ${typeName} should be > 0")
+    if nums.groupBy(_._2).exists(_._2.size != 1) then
+      throwError(s"nums for ${typeName} should be unique")
+
+    val restrictedNums = a_tpe.restrictedNums
+
+    subclasses.map{ s =>
+      val tpe = s.tpe
+      val num: Int =
+        nums.collectFirst{
+          case (tpe1, num) if tpe =:= tpe1 => num
+        }.getOrElse{
+          throwError(s"missing num for class `${tpe}` of trait `${a_tpe}`")
+        }
+      if restrictedNums.contains(num) then
+        throwError(s"num ${num} is restricted for class `${tpe}` of trait `${a_tpe}`")
+      (s, num)
+    }
+
+  private def fieldInfoFromSym(s: Symbol, num: Int): FieldInfo =
+    FieldInfo(
+      name = s.fullName
+    , num = num
+    , sym = s
+    , tpe = s.tpe.matchable
+    , getter = 
+        if s.isTerm then (a: Term) => Ref(s)
+        else (a: Term) => Select.unique(a, "asInstanceOf").appliedToType(s.tpe)
+    , sizeSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
+    , prepareSym = Symbol.newVal(Symbol.spliceOwner, s"field${num}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
+    , defaultValue = None
+    , isCaseObject = s.isTerm
+    )
 
   private def getSealedTrait[A: Type]: TypeRepr =
     val tpe = TypeRepr.of[A]
