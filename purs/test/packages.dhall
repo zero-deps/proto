@@ -111,5 +111,5 @@ in  upstream
   with protobuf =
     { dependencies = [ "integers", "arrays" ]
     , repo = "https://github.com/zero-deps/purescript-protobuf.git"
-    , version = "1.2.0"
+    , version = "1.2.2"
     }

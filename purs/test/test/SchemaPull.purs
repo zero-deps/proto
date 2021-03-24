@@ -38,7 +38,7 @@ encodeClassWithLong :: ClassWithLong -> Uint8Array
 encodeClassWithLong msg = do
   let xs = concatAll
         [ Encode.unsignedVarint32 8
-        , Encode.signedVarint64 msg.x
+        , Encode.bigInt msg.x
         ]
   concatAll [ Encode.unsignedVarint32 $ length xs, xs ]
 

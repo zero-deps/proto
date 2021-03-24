@@ -268,7 +268,7 @@ object Decoders {
     } else if (tpe =:= IntClass.selfType) {
       tmpl(n, "Decode.signedVarint32", s"$name = Just val")
     } else if (tpe =:= LongClass.selfType) {
-      tmpl(n, "Decode.signedVarint64", s"$name = Just val")
+      tmpl(n, "Decode.bigInt", s"$name = Just val")
     } else if (tpe =:= BooleanClass.selfType) {
       tmpl(n, "Decode.boolean", s"$name = Just val")
     } else if (tpe =:= DoubleClass.selfType) {
@@ -281,7 +281,7 @@ object Decoders {
       } else if (tpe1 =:= IntClass.selfType) {
         tmpl(n, "Decode.signedVarint32", s"$name = Just val")
       } else if (tpe1 =:= LongClass.selfType) {
-        tmpl(n, "Decode.signedVarint64", s"$name = Just val")
+        tmpl(n, "Decode.bigInt", s"$name = Just val")
       } else if (tpe1 =:= BooleanClass.selfType) {
         tmpl(n, "Decode.boolean", s"$name = Just val")
       } else if (tpe1 =:= DoubleClass.selfType) {

@@ -106,7 +106,7 @@ object Encoders {
     } else if (tpe =:= LongClass.selfType) {
       List(
         s"""Encode.unsignedVarint32 ${(n<<3)+0}"""
-      , s"""Encode.signedVarint64 msg.$name"""
+      , s"""Encode.bigInt msg.$name"""
       )
     } else if (tpe =:= BooleanClass.selfType) {
       List(
@@ -126,7 +126,7 @@ object Encoders {
       } else if (tpe1 =:= IntClass.selfType) {
         s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.unsignedVarint32 ${(n<<3)+0}, Encode.signedVarint32 x ]) msg.$name""" :: Nil
       } else if (tpe1 =:= LongClass.selfType) {
-        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.unsignedVarint32 ${(n<<3)+0}, Encode.signedVarint64 x ]) msg.$name""" :: Nil
+        s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.unsignedVarint32 ${(n<<3)+0}, Encode.bigInt x ]) msg.$name""" :: Nil
       } else if (tpe1 =:= BooleanClass.selfType) {
         s"""fromMaybe (fromArray []) $$ map (\\x -> concatAll [ Encode.unsignedVarint32 ${(n<<3)+0}, Encode.boolean x ]) msg.$name""" :: Nil
       } else if (tpe1 =:= DoubleClass.selfType) {

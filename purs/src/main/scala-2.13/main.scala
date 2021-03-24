@@ -39,6 +39,7 @@ object Purescript {
               if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
             , if (code contains "Nothing") ("Data.Maybe" -> "Maybe(Nothing)").some else None
             , if (code contains "Tuple ") ("Data.Tuple" -> "Tuple").some else None
+            , if (code contains "BigInt ") ("Proto.BigInt" -> "BigInt").some else None
             ).flatten.groupMapReduce(_._1)(_._2)(_ + ", " + _).map(x => "import " + x._1 + " (" + x._2 + ")").to(List).sorted.mkString("\n")
             s"""|module $moduleCommon
                 |  ( ${commonPursTypes.flatMap(_.export).mkString("\n  , ")} 
@@ -54,6 +55,7 @@ object Purescript {
           val is = List(
             if (code contains "concatMap ") ("Data.Array" -> "concatMap").some else None
           , if (code contains "Uint8Array") ("Proto.Uint8Array" -> "Uint8Array").some else None
+          , if (code contains "BigInt") ("Proto.BigInt" -> "BigInt").some else None
           , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
           , if (raw"\WMaybe ".r.findFirstIn(code).isDefined) ("Data.Maybe" -> "Maybe(..)").some else None
           // , if (code contains "Nothing") ("Data.Maybe" -> "Maybe(Nothing)").some else None
@@ -84,6 +86,7 @@ object Purescript {
           , if (code contains "tailRecM3 ") ("Control.Monad.Rec.Class" -> "tailRecM3").some else None
           , if (code contains "snoc ") ("Data.Array" -> "snoc").some else None
           , if (code contains "Uint8Array ") ("Proto.Uint8Array" -> "Uint8Array").some else None
+          , if (code contains "BigInt") ("Proto.BigInt" -> "BigInt").some else None
           , if (code contains "Left ") ("Data.Either" -> "Either(Left)").some else None
           , if (code contains " :: Eq ") ("Data.Eq" -> "class Eq").some else None
           , if (code contains "zshr") ("Data.Int.Bits" -> "zshr").some else None

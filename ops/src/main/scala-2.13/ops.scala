@@ -168,7 +168,7 @@ object Ops {
     } else if (tpe =:= IntClass.selfType) {
       "Int" -> "(Maybe Int)"
     } else if (tpe =:= LongClass.selfType) {
-      "Number" -> "(Maybe Number)"
+      "BigInt" -> "(Maybe BigInt)"
     } else if (tpe =:= BooleanClass.selfType) {
       "Boolean" -> "(Maybe Boolean)"
     } else if (tpe =:= DoubleClass.selfType) {
@@ -178,7 +178,7 @@ object Ops {
     } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
       val typeArg = tpe.typeArgs.head
       if (typeArg =:= LongClass.selfType) {
-        "(Maybe Number)" -> "(Maybe Number)"
+        "(Maybe BigInt)" -> "(Maybe BigInt)"
       } else if (typeArg =:= DoubleClass.selfType) {
         "(Maybe Number)" -> "(Maybe Number)"
       } else {

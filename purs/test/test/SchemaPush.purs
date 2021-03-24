@@ -9,6 +9,7 @@ import Data.Int.Bits (zshr, (.&.))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, bind, pure, ($), (+), (<))
+import Proto.BigInt (BigInt)
 import Proto.Decode as Decode
 import Proto.Uint8Array (Uint8Array)
 import SchemaCommon
@@ -16,7 +17,7 @@ import SchemaCommon
 decodeFieldLoop :: forall a b c. Int -> Decode.Result a -> (a -> b) -> Decode.Result' (Step { a :: Int, b :: b, c :: Int } { pos :: Int, val :: c })
 decodeFieldLoop end res f = map (\{ pos, val } -> Loop { a: end, b: f val, c: pos }) res
 
-type ClassWithLong' = { x :: Maybe Number }
+type ClassWithLong' = { x :: Maybe BigInt }
 type ClassWithInt' = { x :: Maybe Int }
 
 decodeTestSchema :: Uint8Array -> Decode.Result TestSchema
@@ -73,7 +74,7 @@ decodeClassWithLong _xs_ pos0 = do
     decode end acc pos1 | pos1 < end = do
       { pos: pos2, val: tag } <- Decode.unsignedVarint32 _xs_ pos1
       case tag `zshr` 3 of
-        1 -> decodeFieldLoop end (Decode.signedVarint64 _xs_ pos2) \val -> acc { x = Just val }
+        1 -> decodeFieldLoop end (Decode.bigInt _xs_ pos2) \val -> acc { x = Just val }
         _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $ tag .&. 7) \_ -> acc
     decode end acc pos1 = pure $ Done { pos: pos1, val: acc }
 

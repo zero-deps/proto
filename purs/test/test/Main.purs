@@ -18,6 +18,8 @@ main = do
   encode_map_in_scala_and_purs
   encode_maxlong_in_scala_and_purs
   encode_minlong_in_scala_and_purs
+  encode_maxbigint_in_scala_and_purs
+  encode_minbigint_in_scala_and_purs
   encode_maxint_in_scala_and_purs
   encode_minint_in_scala_and_purs
 
@@ -50,6 +52,20 @@ encode_minlong_in_scala_and_purs = do
   let actual = printBytes xs
   let expected = Cases.minlong_bytestr
   assertEqual actual expected "encode_minlong_in_scala_and_purs"
+
+encode_maxbigint_in_scala_and_purs :: Effect Unit
+encode_maxbigint_in_scala_and_purs = do
+  let xs = encodeTestSchema Cases.max_bigint_schema
+  let actual = printBytes xs
+  let expected = Cases.max_bigint_bytestr
+  assertEqual actual expected "encode_maxbigint_in_scala_and_purs"
+
+encode_minbigint_in_scala_and_purs :: Effect Unit
+encode_minbigint_in_scala_and_purs = do
+  let xs = encodeTestSchema Cases.min_bigint_schema
+  let actual = printBytes xs
+  let expected = Cases.min_bigint_bytestr
+  assertEqual actual expected "encode_minbigint_in_scala_and_purs"
 
 encode_maxint_in_scala_and_purs :: Effect Unit
 encode_maxint_in_scala_and_purs = do

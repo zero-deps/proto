@@ -30,6 +30,8 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
       val Number_MIN_SAFE_INTEGER = -9007199254740991L
       val maxlong = encode[TestSchema](new ClassWithLong(Number_MAX_SAFE_INTEGER))
       val minlong = encode[TestSchema](new ClassWithLong(Number_MIN_SAFE_INTEGER))
+      val maxbigint = encode[TestSchema](new ClassWithLong(Long.MaxValue))
+      val minbigint = encode[TestSchema](new ClassWithLong(Long.MinValue))
       val maxint = encode[TestSchema](new ClassWithInt(Int.MaxValue))
       val minint = encode[TestSchema](new ClassWithInt(Int.MinValue))
       def bytes_to_str(xs: Array[Byte]): String = xs.map(x => if (x >= 0) x.toString else (x+256).toString).mkString(" ")
@@ -39,6 +41,7 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
             |import Prelude (negate)
             |import SchemaCommon
             |import Data.Tuple (Tuple(Tuple))
+            |import Proto.BigInt as BigInt
             |
             |map_schema :: TestSchema
             |map_schema = ClassWithMap { m: [ Tuple "en_GB" "Hello", Tuple "it_IT" "Ciao" ] }
@@ -47,16 +50,28 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
             |map_bytestr = "${bytes_to_str(hellomap)}"
             |
             |maxlong_schema :: TestSchema
-            |maxlong_schema = ClassWithLong { x: $Number_MAX_SAFE_INTEGER.0 }
+            |maxlong_schema = ClassWithLong { x: BigInt.fromNumber ($Number_MAX_SAFE_INTEGER.0) }
             |
             |maxlong_bytestr :: String
             |maxlong_bytestr = "${bytes_to_str(maxlong)}"
             |
             |minlong_schema :: TestSchema
-            |minlong_schema = ClassWithLong { x: $Number_MIN_SAFE_INTEGER.0 }
+            |minlong_schema = ClassWithLong { x: BigInt.fromNumber ($Number_MIN_SAFE_INTEGER.0) }
             |
             |minlong_bytestr :: String
             |minlong_bytestr = "${bytes_to_str(minlong)}"
+            |
+            |max_bigint_schema :: TestSchema
+            |max_bigint_schema = ClassWithLong { x: BigInt.fromString "${Long.MaxValue}" }
+            |
+            |max_bigint_bytestr :: String
+            |max_bigint_bytestr = "${bytes_to_str(maxbigint)}"
+            |
+            |min_bigint_schema :: TestSchema
+            |min_bigint_schema = ClassWithLong { x: BigInt.fromString "${Long.MinValue}" }
+            |
+            |min_bigint_bytestr :: String
+            |min_bigint_bytestr = "${bytes_to_str(minbigint)}"
             |
             |maxint_schema :: TestSchema
             |maxint_schema = ClassWithInt { x: ${Int.MaxValue} }
