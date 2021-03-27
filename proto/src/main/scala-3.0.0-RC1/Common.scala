@@ -55,7 +55,6 @@ trait Common:
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def sizeFun(t: TypeRepr & Matchable, getterTerm: Term): Expr[Int] =
-    val CodedOutputStreamRef = Ref(TypeRepr.of[CodedOutputStream].typeSymbol.companionModule)
     if      t.isInt then '{ CodedOutputStream.computeInt32SizeNoTag(${getterTerm.asExprOf[Int]}) }
     else if t.isLong then '{ CodedOutputStream.computeInt64SizeNoTag(${getterTerm.asExprOf[Long]}) }
     else if t.isBoolean then Expr(1)
