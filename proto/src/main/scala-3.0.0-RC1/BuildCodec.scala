@@ -450,13 +450,10 @@ trait BuildCodec extends Common:
           case x: TermRef => Ident(x)
           case x: TypeRef =>
             val companion = x.typeSymbol.companionModule
-            Select.unique(Ref(companion) , "apply")
-              .appliedToArgs(params)
+            Select.overloaded(Ref(companion) , "apply", Nil, params)
           case x: AppliedType =>
             val companion = x.typeSymbol.companionModule
-            Select.unique(Ref(companion) , "apply")
-              .appliedToTypes(x.matchable.typeArgs)
-              .appliedToArgs(params)
+            Select.overloaded(Ref(companion) , "apply", x.matchable.typeArgs, params)
 
   def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.asExprOf[Int]} + ${y} }.asTerm)
 
