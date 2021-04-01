@@ -73,7 +73,7 @@ ThisBuild / scalacOptions ++= {
   CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, 13)) => Nil
     case _ => Seq(
-      "-source", "future-migration", "-deprecation", "-rewrite"
+      "-source", "future-migration", "-deprecation"
     , "release", "11"
     , "-Yexplicit-nulls"
     )
