@@ -187,7 +187,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
       } match
         case List(x) => x
         case Nil =>
-          throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+          throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${x.name}`")
         case _ =>
           throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     )

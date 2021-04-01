@@ -438,7 +438,7 @@ trait BuildCodec extends Common:
     val tpe = TypeRepr.of[MessageCodec].appliedTo(t)
     Implicits.search(tpe) match
       case x: ImplicitSearchSuccess => x.tree
-      case _: ImplicitSearchFailure => throwError(s"could not find implicit codec for `${t.typeSymbol.fullName}`")
+      case x: ImplicitSearchFailure => throwError(x.explanation)
 
   def classApply(t: TypeRepr, params: List[Term], constructor: Option[Term]): Term =
     constructor match
