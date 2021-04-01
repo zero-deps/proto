@@ -179,9 +179,9 @@ trait BuildCodec extends Common:
           }
           Some(p)
         else None
-      }
+      }.asTerm.changeOwner(field.prepareOptionSym)
       List(
-        ValDef(field.prepareOptionSym, Some(prepareOptionRhs.asTerm))
+        ValDef(field.prepareOptionSym, Some(prepareOptionRhs))
       )
 
   def sizeCollection[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] = 
