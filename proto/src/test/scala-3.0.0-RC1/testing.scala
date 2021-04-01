@@ -111,14 +111,17 @@ object models:
     @N(2) case Msg(@N(1) txt: String, @N(2) id: Int)
 
   sealed trait Color
+  /* add subtraits just because we can */
+  sealed trait DarkColor extends Color
+  sealed trait LightColor extends Color
   @N(1) final case class Black(
       @N(1) name: String
     , @N(2) value: Int
     , @N(3) msg: Message
-    ) extends Color
-  @N(2) final case class White(@N(1) value: Int) extends Color
-  @N(3) case object Yellow extends Color
-  @N(4) case object Red extends Color
+    ) extends DarkColor
+  @N(2) final case class White(@N(1) value: Int) extends LightColor
+  @N(3) case object Yellow extends LightColor
+  @N(4) case object Red extends DarkColor
 
   given MessageCodec[Message1] = caseCodecAuto
   given MessageCodec[Message] = caseCodecAuto
