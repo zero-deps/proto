@@ -56,6 +56,8 @@ object models:
   object Teleport:
     def apply(id: String): Teleport =
       new Teleport(id)
+    def apply(): Teleport = ??? // just another apply
+  end Teleport
 
   final class Teleport2(@N(21) val id: String, @N(22) val n: Int) {
     override def toString(): String = s"Teleport2(id=$id, n=$n)"
