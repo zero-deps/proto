@@ -4,7 +4,6 @@ package purs
 import scala.annotation.unused
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
-import zero.ext._, option._
 import proto.Bytes
 
 import Ops._
@@ -24,7 +23,7 @@ object Encoders {
         val tmpl =
           s"""|encode$name :: $name -> Uint8Array
               |${cases.map(_.mkString("\n")).mkString("\n")}""".stripMargin
-        Coder(tmpl, s"encode$name".some)
+        Coder(tmpl, Some(s"encode$name"))
       case TraitType(tpe, name, children, false) =>
         val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
           if (noargs)

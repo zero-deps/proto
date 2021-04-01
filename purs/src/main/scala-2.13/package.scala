@@ -4,7 +4,6 @@ import scala.annotation.tailrec
 import scala.reflect.runtime.currentMirror
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
-import zero.ext._, option._
 import proto.Bytes
 
 import Ops._
@@ -37,7 +36,7 @@ package object purs {
             case x => s"${x.name} ${x.name}"
           }.mkString(" | ")}"
         , s"derive instance eq$name :: Eq $name"
-        ), export=s"$name(..)".some))
+        ), export=Some(s"$name(..)")))
       case _: TupleType => Nil
       case _: NoargsType => Nil
       case RecursiveType(tpe, name) =>
@@ -48,17 +47,17 @@ package object purs {
         val eq = s"derive instance eq$name :: Eq $name"
         val defaults = f.collect{ case (name1, tpe1, _, v: HasDefFun) => (name1, pursType(tpe1)._1, v) }
         Seq(
-          PursType(List(x, eq), s"$name($name)".some).some
+          Some(PursType(List(x, eq), Some(s"$name($name)")))
         , if (defaults.nonEmpty) {
             val tmpl1 = s"default$name :: { ${defaults.map{ case (name1, tpe1, _) => s"$name1 :: $tpe1" }.mkString(", ")} }"
             val tmpl2 = s"default$name = { ${defaults.map{ case (name1, _, v) => s"$name1: ${v.value}" }.mkString(", ")} }"
-            PursType(Seq(tmpl1, tmpl2), s"default$name".some).some
+            Some(PursType(Seq(tmpl1, tmpl2), Some(s"default$name")))
           } else None
         , if (genMaybe) {
             val params1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(", ")
             if (params != params1) {
               val x1 = s"type $name' = { $params1 }"
-              PursType(List(x1), None).some
+              Some(PursType(List(x1), None))
             } else None
           } else None
         ).flatten
@@ -69,17 +68,17 @@ package object purs {
         val x = if (params.nonEmpty) s"type $name = { $params }" else s"type $name = {}"
         val defaults = f.collect{ case (name1, tpe1, _, v: HasDefFun) => (name1, pursType(tpe1)._1, v) }
         Seq(
-          PursType(Seq(x), s"$name".some).some
+          Some(PursType(Seq(x), Some(s"$name")))
         , if (defaults.nonEmpty) {
             val tmpl1 = s"default$name :: { ${defaults.map{ case (name1, tpe1, _) => s"$name1 :: $tpe1" }.mkString(", ")} }"
             val tmpl2 = s"default$name = { ${defaults.map{ case (name1, _, v) => s"$name1: ${v.value}" }.mkString(", ")} }"
-            PursType(Seq(tmpl1, tmpl2), s"default$name".some).some
+            Some(PursType(Seq(tmpl1, tmpl2), Some(s"default$name")))
           } else None
         , if (genMaybe) {
             val params1 = fs.map{ case (name1, tpe1) => s"$name1 :: ${tpe1._2}" }.mkString(", ")
             if (params != params1) {
               val x1 = s"type $name' = { $params1 }"
-              PursType(Seq(x1), None).some
+              Some(PursType(Seq(x1), None))
             } else None
           } else None
         ).flatten

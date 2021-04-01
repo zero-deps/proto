@@ -31,14 +31,12 @@ lazy val protoops = project.in(file("ops")).settings(
       case _ => Nil
     }
   }
-).dependsOn(protosyntax, ext)
+).dependsOn(protosyntax)
 
 lazy val protosyntax = project.in(file("syntax")).settings(
   name := "proto-syntax"
 , version := zero.git.version()
 )
-
-lazy val ext = project.in(file("deps/ext"))
 
 lazy val bench = project.in(file("bench")).settings(
   publish / skip := true

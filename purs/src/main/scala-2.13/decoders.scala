@@ -4,7 +4,6 @@ package purs
 import scala.annotation.unused
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
-import zero.ext._, option._
 
 import Ops._
 
@@ -26,7 +25,7 @@ object Decoders {
               |  where
               |  decode :: forall a. Decode.Result a -> (a -> $name) -> Decode.Result $name
               |  decode res f = map (\\{ pos, val } -> { pos, val: f val }) res""".stripMargin
-        Coder(tmpl, s"decode$name".some)
+        Coder(tmpl, Some(s"decode$name"))
       case TraitType(tpe, name, children, false) =>
         val cases = children.flatMap{ case ChildMeta(name1, _, n, noargs, rec) =>
           if (noargs)   s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) \\_ -> Just $name1" :: Nil

@@ -3,7 +3,6 @@ package tex
 
 import scala.annotation._
 import scala.reflect.runtime.universe._
-import zero.ext._, option._
 
 import Ops._
 

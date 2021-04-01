@@ -4,7 +4,6 @@ package tex
 import scala.reflect.runtime.currentMirror
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
-import zero.ext._, option._
 
 import Ops._
 
@@ -37,7 +36,7 @@ object Doc {
       , names1.filterNot(x => x.endsWith(ask) || x.endsWith(ok) || x.endsWith(err))
       )
     }
-    val xstex = xs1.map{ case (a, b, c) =>
+    val xstex = Some(xs1.map{ case (a, b, c) =>
       val max = Math.max(Math.max(a.size, b.size), c.size)
       def f(xs: Seq[String], i: Int): String = {
         xs.lift(i).cata(x => s"\\hyperlink{$x}{$x}", "")
@@ -45,7 +44,7 @@ object Doc {
       (0 until max).map(i =>
         s"""${f(a,i)} & ${f(b,i)} & ${f(c,i)}\\\\"""
       ).mkString("\n")
-    }.mkString("\n").some.filter(_.nonEmpty).cata("\\hline\n"+_+"\n\\hline", "\\hline\\hline")
+    }.mkString("\n")).filter(_.nonEmpty).cata("\\hline\n"+_+"\n\\hline", "\\hline\\hline")
     s"""\\begin{table}[H]
     |\\begin{tabular}{lll}
     |request & response & others\\\\
@@ -74,7 +73,7 @@ object Doc {
       |\\begin{table}[H]
       |\\begin{tabular}{l|r$align3}
       |\\multicolumn{2}{l}{\\hypertarget{$name}{$name}}$col3\\\\
-      |${rows.mkString("\n").some.filter(_.nonEmpty).cata("\\hline\n"+_+"\n\\hline", "\\hline\\hline")}
+      |${Some(rows.mkString("\n")).filter(_.nonEmpty).cata("\\hline\n"+_+"\n\\hline", "\\hline\\hline")}
       |\\end{tabular}
       |\\end{table}
       |""".stripMargin.stripPrefix("\n").stripSuffix("\n")
