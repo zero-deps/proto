@@ -174,6 +174,12 @@ trait Common:
           nums
         case Nil => Nil
         case _ => throwError(s"multiple ${aName} annotations applied for `${tName}`")
+      
+    def traitChildren: List[Symbol] =
+      t.typeSymbol.children.flatMap{ x =>
+        if x.tpe.matchable.isSealedTrait then x.tpe.matchable.traitChildren
+        else x :: Nil
+      }
 
   def mkIfStatement(branches: List[(Term, Term)], elseBranch: Term): Term =
     branches match

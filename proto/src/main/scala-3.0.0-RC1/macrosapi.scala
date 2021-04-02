@@ -179,7 +179,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
   private def collectNs(a_tpe: TypeRepr): List[(TypeRepr, Int)] =
     val a_typeSym = a_tpe.typeSymbol
     val typeName = a_typeSym.fullName
-    childrenOfTrait(a_tpe).map(x =>
+    a_tpe.matchable.traitChildren.map(x =>
       x.annotations.collect{
         case Apply(Select(New(tpt), _), List(Literal(IntConstant(num))))
           if tpt.tpe.matchable.isNType =>
@@ -191,13 +191,6 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
         case _ =>
           throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     )
-
-  /* get children of depth 2 */
-  private def childrenOfTrait(a_tpe: TypeRepr): List[Symbol] =
-    a_tpe.typeSymbol.children.flatMap{ x =>
-      if x.tpe.matchable.isSealedTrait then x.tpe.typeSymbol.children
-      else x :: Nil
-    }
 
   def enumByN[A: Type]: Expr[MessageCodec[A]] =
     val a_tpe = TypeRepr.of[A].matchable
@@ -213,7 +206,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = getSealedTrait[A].matchable
     val nums1: List[(TypeRepr, Int)] =
-      childrenOfTrait(a_tpe).map{ x =>
+      a_tpe.matchable.traitChildren.map{ x =>
         x.tpe ->
           nums.collectFirst{
             case (n, num) if n == x.name => num
@@ -240,7 +233,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
   private def childrenWithNum(a_tpe: TypeRepr & Matchable, nums: Seq[(TypeRepr, Int)]): List[(Symbol, Int)] =
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
-    val subclasses = childrenOfTrait(a_tpe)
+    val subclasses = a_tpe.matchable.traitChildren
 
     if subclasses.size <= 0 then
       throwError(s"required at least 1 subclass for `${typeName}`")
