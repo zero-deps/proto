@@ -115,14 +115,18 @@ object models:
     @N(2) case Msg(@N(1) txt: String, @N(2) id: Int)
 
   sealed trait Color
+  /* add subtraits just because we can */
+  sealed trait DarkColor extends Color
+  sealed trait NotSoDarkColor extends DarkColor
+  sealed trait LightColor extends Color
   @N(1) final case class Black(
       @N(1) name: String
     , @N(2) value: Int
     , @N(3) msg: Message
-    ) extends Color
-  @N(2) final case class White(@N(1) value: Int) extends Color
-  @N(3) case object Yellow extends Color
-  @N(4) case object Red extends Color
+    ) extends DarkColor
+  @N(2) final case class White(@N(1) value: Int) extends LightColor
+  @N(3) case object Yellow extends LightColor
+  @N(4) case class Red(@N(1) value: Int) extends NotSoDarkColor
 
   given MessageCodec[Message1] = caseCodecAuto
   given MessageCodec[Message] = caseCodecAuto
@@ -569,6 +573,7 @@ class testing extends AnyFreeSpec:
   "sealed trait codec auto" - {
     implicit val c1: MessageCodec[Black] = caseCodecAuto
     implicit val c2: MessageCodec[White] = caseCodecAuto
+    implicit val c3: MessageCodec[Red] = caseCodecAuto
     implicit val codec: MessageCodec[Color] = sealedTraitCodecAuto
     def test[A:MessageCodec](data: A) =
       val bytes = encode[A](data)
@@ -577,7 +582,7 @@ class testing extends AnyFreeSpec:
     "white" `in` test[Color](data=White(value=100))
     "black" `in` test[Color](data=Black(name="black color111", value=33, msg=Message(int=1, str="str", set=Set("1","2"), msg1=None)))
     "yellow" `in` test[Color](data=Yellow)
-    "red" `in` test[Color](data=Red)
+    "red" `in` test[Color](data=Red(value=50))
   }
 
   "enum by name" - {
