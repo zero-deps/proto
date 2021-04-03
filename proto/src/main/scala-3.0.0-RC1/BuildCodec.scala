@@ -179,9 +179,9 @@ trait BuildCodec extends Common:
           }
           Some(p)
         else None
-      }
+      }.asTerm.changeOwner(field.prepareOptionSym)
       List(
-        ValDef(field.prepareOptionSym, Some(prepareOptionRhs.asTerm))
+        ValDef(field.prepareOptionSym, Some(prepareOptionRhs))
       )
 
   def sizeCollection[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref): List[Statement] = 
@@ -450,13 +450,10 @@ trait BuildCodec extends Common:
           case x: TermRef => Ident(x)
           case x: TypeRef =>
             val companion = x.typeSymbol.companionModule
-            Select.unique(Ref(companion) , "apply")
-              .appliedToArgs(params)
+            Select.overloaded(Ref(companion) , "apply", Nil, params)
           case x: AppliedType =>
             val companion = x.typeSymbol.companionModule
-            Select.unique(Ref(companion) , "apply")
-              .appliedToTypes(x.matchable.typeArgs)
-              .appliedToArgs(params)
+            Select.overloaded(Ref(companion) , "apply", x.matchable.typeArgs, params)
 
   def increment(x: Ref, y: Expr[Int]): Assign =  Assign(x, '{ ${x.asExprOf[Int]} + ${y} }.asTerm)
 

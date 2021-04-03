@@ -42,7 +42,9 @@ object models:
   , @N(33) setBasic: Set[Double]
   , @N(50) setMessage: Set[Vehicle]
   , @N(60) message2: List[Message]
+  , @N(100) int2: List_Int
   )
+  type List_Int = List[Int]
 
   final case class Message(@N(2) int: Int, @N(4) str: String, @N(6) set: Set[String], @N(8) msg1: Option[Message1])
   final case class Message1(@N(1) name: String, @N(2) value: Double)
@@ -56,6 +58,8 @@ object models:
   object Teleport:
     def apply(id: String): Teleport =
       new Teleport(id)
+    def apply(): Teleport = ??? // just another apply
+  end Teleport
 
   final class Teleport2(@N(21) val id: String, @N(22) val n: Int) {
     override def toString(): String = s"Teleport2(id=$id, n=$n)"
@@ -304,6 +308,7 @@ class testing extends AnyFreeSpec:
       , "setBasic"->19
       , "setMessage"->20
       , "message2"->21
+      , "int2"->22
       )
     object idxcodec:
       import messages.idxcodec.*
@@ -349,6 +354,7 @@ class testing extends AnyFreeSpec:
       , setBasic = setBasic
       , setMessage = setMessage
       , message2 = message2
+      , int2 = int
       )
       val encoded = encode(data)
       val decoded = decode(encoded)

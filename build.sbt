@@ -71,11 +71,15 @@ ThisBuild / credentials += Credentials("GnuPG Key ID", "gpg", "F68F0EADDB81EF533
 
 ThisBuild / scalacOptions ++= {
   CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, 13)) => Nil
+    case Some((2, 13)) => Seq(
+      "-deprecation"
+    , "-Wconf:cat=deprecation&msg=Auto-application:silent"
+    )
     case _ => Seq(
       "-source", "future-migration", "-deprecation"
     , "release", "11"
     , "-Yexplicit-nulls"
+    , "-Ycheck:macros"
     )
   }
 }

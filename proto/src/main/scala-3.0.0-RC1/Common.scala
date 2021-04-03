@@ -155,11 +155,11 @@ trait Common:
 
     def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol).matchable match
       case AppliedType(_, args) if t.isIterable => args.head
-      case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
+      case _ => throwError(s"It isn't Iterable (argument) type: ${t.typeSymbol.name}")
 
-    def iterableBaseType: TypeRepr = t.matchable match
+    def iterableBaseType: TypeRepr = t.dealias.matchable match
       case AppliedType(t1, _) if t.isIterable => t1
-      case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
+      case _ => throwError(s"It isn't Iterable (base) type: ${t.typeSymbol.name}")
 
     def restrictedNums: List[Int] =
       val aName = RestrictedNType.typeSymbol.name
