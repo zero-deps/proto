@@ -179,7 +179,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
   private def collectNs(a_tpe: TypeRepr): List[(TypeRepr, Int)] =
     val a_typeSym = a_tpe.typeSymbol
     val typeName = a_typeSym.fullName
-    a_tpe.matchable.traitChildren.map(x =>
+    a_tpe.matchable.knownFinalSubclasses.map(x =>
       x.annotations.collect{
         case Apply(Select(New(tpt), _), List(Literal(IntConstant(num))))
           if tpt.tpe.matchable.isNType =>
@@ -206,7 +206,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = getSealedTrait[A].matchable
     val nums1: List[(TypeRepr, Int)] =
-      a_tpe.matchable.traitChildren.map{ x =>
+      a_tpe.matchable.knownFinalSubclasses.map{ x =>
         x.tpe ->
           nums.collectFirst{
             case (n, num) if n == x.name => num
@@ -233,7 +233,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
   private def childrenWithNum(a_tpe: TypeRepr & Matchable, nums: Seq[(TypeRepr, Int)]): List[(Symbol, Int)] =
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
-    val subclasses = a_tpe.matchable.traitChildren
+    val subclasses = a_tpe.matchable.knownFinalSubclasses
 
     if subclasses.size <= 0 then
       throwError(s"required at least 1 subclass for `${typeName}`")
@@ -276,7 +276,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
 
   private def getSealedTrait[A: Type]: TypeRepr =
     val tpe = TypeRepr.of[A]
-    if tpe.matchable.isSealedTrait then tpe
+    if tpe.isSealedTrait then tpe
     else
       throwError(s"`${tpe.typeSymbol.fullName}` is not a sealed trait. Make sure that you specify codec type explicitly.\nExample:\n implicit val codecName: MessageCodec[SealedTraitTypeHere] = ...\n\n")
 

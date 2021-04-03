@@ -181,7 +181,7 @@ private class Impl(using qctx: Quotes):
   private val commonTypes: List[TypeRepr] =
     TypeRepr.of[String] :: TypeRepr.of[Int] :: TypeRepr.of[Long] :: TypeRepr.of[Boolean] :: TypeRepr.of[Double] :: TypeRepr.of[Float] :: ArrayByteType :: ArraySeqByteType :: BytesType :: Nil 
 
-  extension (t: TypeRepr & Matchable)
+  extension (t: TypeRepr)
     private def isNType: Boolean = t =:= NTpe
     private def isCaseClass: Boolean = t.typeSymbol.flags.is(Flags.Case)
     private def isCaseObject: Boolean = t.termSymbol.flags.is(Flags.Case)
@@ -205,21 +205,21 @@ private class Impl(using qctx: Quotes):
       .map(_.map(_.name).zip(t.typeArgs)).getOrElse(Nil)
       .toMap
 
-    private def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t match
+    private def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t.matchable match
       case AppliedType(t1, args) =>
         t1.appliedTo(args.map(_.matchable.replaceTypeArgs(map)))
       case _ =>
         map.getOrElse(t.typeSymbol.name, t)
 
-    private def isOption: Boolean = t match
+    private def isOption: Boolean = t.matchable match
       case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
       case _ => false
 
-    private def typeArgs: List[TypeRepr] = t match
+    private def typeArgs: List[TypeRepr] = t.matchable match
       case AppliedType(t1, args)  => args
       case _ => Nil
 
-    private def optionArgument: TypeRepr = t match
+    private def optionArgument: TypeRepr = t.matchable match
       case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head
       case _ => throwError(s"It isn't Option type: ${t.typeSymbol.name}")
 
@@ -227,7 +227,7 @@ private class Impl(using qctx: Quotes):
       case AppliedType(_, args) if t.isIterable => args.head
       case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
-    private def iterableBaseType: TypeRepr = t match
+    private def iterableBaseType: TypeRepr = t.matchable match
       case AppliedType(t1, _) if t.isIterable => t1
       case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 

@@ -3,6 +3,7 @@ package proto
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted.*
 import scala.collection.immutable.ArraySeq
+import scala.annotation.*
 
 trait Common:
   implicit val qctx: Quotes
@@ -112,7 +113,7 @@ trait Common:
   val commonTypes: List[TypeRepr] =
     TypeRepr.of[String] :: TypeRepr.of[Int] :: TypeRepr.of[Long] :: TypeRepr.of[Boolean] :: TypeRepr.of[Double] :: TypeRepr.of[Float] :: ArrayByteType :: ArraySeqByteType :: BytesType :: Nil 
 
-  extension (t: TypeRepr & Matchable)
+  extension (t: TypeRepr)
     def isNType: Boolean = t =:= NTpe
     def isCaseClass: Boolean = t.typeSymbol.flags.is(Flags.Case)
     def isCaseObject: Boolean = t.termSymbol.flags.is(Flags.Case)
@@ -136,19 +137,19 @@ trait Common:
       .map(_.map(_.name).zip(t.typeArgs)).getOrElse(Nil)
       .toMap
 
-    def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t match
+    def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t.matchable match
       case AppliedType(t1, args)  => t1.appliedTo(args.map(_.matchable.replaceTypeArgs(map)))
       case _ => map.getOrElse(t.typeSymbol.name, t)
 
-    def isOption: Boolean = t match
+    def isOption: Boolean = t.matchable match
       case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
       case _ => false
 
-    def typeArgs: List[TypeRepr] = t match
+    def typeArgs: List[TypeRepr] = t.matchable match
       case AppliedType(t1, args)  => args
       case _ => Nil
 
-    def optionArgument: TypeRepr = t match
+    def optionArgument: TypeRepr = t.matchable match
       case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head
       case _ => throwError(s"It isn't Option type: ${t.typeSymbol.name}")
 
@@ -156,7 +157,7 @@ trait Common:
       case AppliedType(_, args) if t.isIterable => args.head
       case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
-    def iterableBaseType: TypeRepr = t match
+    def iterableBaseType: TypeRepr = t.matchable match
       case AppliedType(t1, _) if t.isIterable => t1
       case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
@@ -175,11 +176,12 @@ trait Common:
         case Nil => Nil
         case _ => throwError(s"multiple ${aName} annotations applied for `${tName}`")
       
-    def traitChildren: List[Symbol] =
-      t.typeSymbol.children.flatMap{ x =>
-        if x.tpe.matchable.isSealedTrait then x.tpe.matchable.traitChildren
-        else x :: Nil
-      }
+    def knownFinalSubclasses: List[Symbol] =
+      @tailrec def loop(q: List[Symbol], acc: List[Symbol]): List[Symbol] = q match
+        case Nil => acc
+        case x :: xs if x.tpe.isSealedTrait => loop(x.tpe.typeSymbol.children ++ xs, acc)
+        case x :: xs => loop(xs, x :: acc)
+      loop(t.typeSymbol.children, Nil)
 
   def mkIfStatement(branches: List[(Term, Term)], elseBranch: Term): Term =
     branches match
