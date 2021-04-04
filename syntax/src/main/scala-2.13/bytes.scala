@@ -16,4 +16,5 @@ final class Bytes private (a: Array[Byte]) {
 object Bytes {
   val empty = new Bytes(Array.emptyByteArray)
   def unsafeWrap(a: Array[Byte]): Bytes = new Bytes(a)
+  def apply(bs: Byte*): Bytes = new Bytes(bs.toArray)
 }
