@@ -78,7 +78,7 @@ ThisBuild / scalacOptions ++= {
       "-source", "future-migration", "-deprecation"
     , "release", "11"
     , "-Yexplicit-nulls"
-    // , "-Xcheck-macros" //todo: uncomment
+    , "-Xcheck-macros"
     )
   }
 }

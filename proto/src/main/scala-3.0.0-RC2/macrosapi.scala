@@ -56,7 +56,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     )
     messageCodec(a_tpe, nums, params, restrictDefaults=true)
 
-  def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] =
+  def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using Quotes): Expr[MessageCodec[A]] =
     val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = getCaseClassType[A].matchable
     val aTypeSymbol = a_tpe.typeSymbol
@@ -92,7 +92,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     numsExpr: Expr[Seq[(String, Int)]]
   )(
     constructor: Expr[Any]
-  ): Expr[MessageCodec[A]] =
+  )(using Quotes): Expr[MessageCodec[A]] =
     val nums: Seq[(String, Int)] = numsExpr.valueOrError
     val a_tpe = TypeRepr.of[A].matchable
     val aTypeSymbol = a_tpe.typeSymbol
