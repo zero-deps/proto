@@ -3,8 +3,8 @@ val root = project.in(file(".")).settings(
 , version := zero.git.version()
 ).aggregate(proto, protosyntax, protopurs, prototex, protoops, bench)
 
-ThisBuild / scalaVersion := "3.0.0-RC1"
-ThisBuild / crossScalaVersions := "3.0.0-RC1" :: "2.13.5" :: Nil
+ThisBuild / scalaVersion := "3.0.0-RC2"
+ThisBuild / crossScalaVersions := "3.0.0-RC2" :: "2.13.5" :: Nil
 
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
@@ -54,11 +54,10 @@ lazy val bench = project.in(file("bench")).settings(
   }
 , resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 , Compile / PB.targets := Seq(scalapb.gen() -> (Compile / sourceManaged).value)
-, version := zero.git.version()
 , scalacOptions := Nil
 ).dependsOn(proto).enablePlugins(JmhPlugin)
 
-ThisBuild / libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.5" % Test
+ThisBuild / libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.7" % Test
 
 ThisBuild / organization := "io.github.zero-deps"
 ThisBuild / homepage := Some(url("https://github.com/zero-deps/proto"))
@@ -79,7 +78,7 @@ ThisBuild / scalacOptions ++= {
       "-source", "future-migration", "-deprecation"
     , "release", "11"
     , "-Yexplicit-nulls"
-    , "-Ycheck:macros"
+    // , "-Xcheck-macros" //todo: uncomment
     )
   }
 }
