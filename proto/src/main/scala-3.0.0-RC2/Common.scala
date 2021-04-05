@@ -43,7 +43,7 @@ trait Common:
             t.isIterable then 2
     else 2
 
-  def writeFun(os: Expr[CodedOutputStream], t: TypeRepr & Matchable, getterTerm: Term): Expr[Unit] =
+  def writeFun(os: Expr[CodedOutputStream], t: TypeRepr & Matchable, getterTerm: Term)(using Quotes): Expr[Unit] =
     if      t.isInt then '{ ${os}.writeInt32NoTag(${getterTerm.asExprOf[Int]}) }
     else if t.isLong then '{ ${os}.writeInt64NoTag(${getterTerm.asExprOf[Long]}) }
     else if t.isBoolean then '{ ${os}.writeBoolNoTag(${getterTerm.asExprOf[Boolean]}) }
@@ -67,7 +67,7 @@ trait Common:
     else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
-  def readFun(t: TypeRepr & Matchable, is: Expr[CodedInputStream]): Term =
+  def readFun(t: TypeRepr & Matchable, is: Expr[CodedInputStream])(using Quotes): Term =
     if      t.isInt then '{ ${is}.readInt32 }.asTerm
     else if t.isLong then '{ ${is}.readInt64 }.asTerm
     else if t.isBoolean then '{ ${is}.readBool }.asTerm
@@ -145,7 +145,7 @@ trait Common:
       case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
       case _ => false
 
-    def typeArgs: List[TypeRepr] = t.matchable match
+    def typeArgs: List[TypeRepr] = t.dealias.matchable match
       case AppliedType(t1, args)  => args
       case _ => Nil
 
