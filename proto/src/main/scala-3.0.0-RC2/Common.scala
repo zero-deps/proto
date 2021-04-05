@@ -145,7 +145,7 @@ trait Common:
       case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
       case _ => false
 
-    def typeArgs: List[TypeRepr] = t.matchable match
+    def typeArgs: List[TypeRepr] = t.dealias.matchable match
       case AppliedType(t1, args)  => args
       case _ => Nil
 

@@ -412,7 +412,7 @@ trait BuildCodec extends Common:
       val collectionCompanion = collectionType.typeSymbol.companionModule
       val builderTpe = builderType.appliedTo(List(tpe1, field.tpe))
       val sym = Symbol.newVal(Symbol.spliceOwner, s"${field.name}Read", builderTpe, Flags.EmptyFlags, Symbol.noSymbol)
-      val rhs = Select.unique(Ref(collectionCompanion), "newBuilder")
+      val rhs = Select.unique(Ref(collectionCompanion), "newBuilder").appliedToTypes(field.tpe.typeArgs)
       val init = ValDef(sym, Some(rhs))
       val ref = Ref(sym)
       init -> ref
@@ -426,7 +426,7 @@ trait BuildCodec extends Common:
   def resTerm(ref: Ref, field: FieldInfo): Term =
     if field.tpe.isOption then ref
     else if field.tpe.isIterable then
-      Select.unique(ref, "result")
+      Select.unique(ref, "result").appliedToNone
     else
       val error = s"missing required field `${field.name}: ${field.tpe.typeSymbol.name}`"
       val exception = '{ throw new RuntimeException(${Expr(error)}) }.asTerm
