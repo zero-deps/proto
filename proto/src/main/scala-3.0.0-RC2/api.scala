@@ -10,7 +10,7 @@ def encode[A](a: A)(implicit c: MessageCodec[A]): Array[Byte] =
   p.write(os)
   bytes
 
-def encodeI[A](a: A)(implicit c: MessageCodec[A]): IArray[Byte] =
+inline def encodeI[A](a: A)(implicit c: MessageCodec[A]): IArray[Byte] =
   IArray.unsafeFromArray[Byte](encode[A](a))
 
 def encodeS[A](a: A, s: OutputStream)(implicit c: MessageCodec[A]): OutputStream =
@@ -25,10 +25,10 @@ def decode[A](xs: Array[Byte])(implicit c: MessageCodec[A]): A =
 def decode[A](xs: Array[Byte], offset: Int)(implicit c: MessageCodec[A]): A =
   c.read(CodedInputStream.newInstance(xs, offset, xs.length-offset).nn)
 
-def decodeI[A](bs: IArray[Byte])(implicit c: MessageCodec[A]): A =
+inline def decodeI[A](bs: IArray[Byte])(implicit c: MessageCodec[A]): A =
   decode[A](bs.toArray)
 
-def decodeI[A](bs: IArray[Byte], offset: Int)(implicit c: MessageCodec[A]): A =
+inline def decodeI[A](bs: IArray[Byte], offset: Int)(implicit c: MessageCodec[A]): A =
   decode[A](bs.toArray, offset)
 
 def decodeS[A](s: InputStream)(implicit c: MessageCodec[A]): A =
