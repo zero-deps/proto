@@ -38,7 +38,7 @@ data | decode | java           | `   44079.139` | `  38979.697`
 data | decode | jackson        | `  176941.468` | ` 188555.562`
 data | decode | jsoniter-scala | `  483788.001` | no support for Scala 3
 data | decode | boopickle      | ` 2885610.648` | no support for Scala 3
-data | decode | proto          | ` 3383845.458` | `3611178.395`
+data | decode | proto          | ` 3383845.458` | `3776688.591`
 data | decode | scalapb        | ` 3270691.564` | `3893847.420`
 
 data |        | library        | scala-2        | scala-3
@@ -47,19 +47,19 @@ data | encode | java           | `  220444.268` | ` 217484.396`
 data | encode | jackson        | `  431318.803` | ` 384863.249`
 data | encode | jsoniter-scala | ` 1054650.233` | no support for Scala 3
 data | encode | boopickle      | ` 1520834.519` | no support for Scala 3
-data | encode | proto          | ` 3186951.441` | `2976302.106`
+data | encode | proto          | ` 3186951.441` | `2965427.382`
 data | encode | scalapb        | ` 3628779.864` | `3972905.402`
 
 data |        | library        | scala-2        | scala-3
 ---- | ------ |:-------------- | -------------: | ------------:
 msg  | decode | jsoniter-scala | ` 3486552.303` | no support for Scala 3
+msg  | decode | proto          | ` 5825174.170` | `6395557.251`
 msg  | decode | scalapb        | ` 4898257.671` | `6902064.854`
-msg  | decode | proto          | ` 5825174.170` | `6457300.688`
 
 data |        | library        | scala-2        | scala-3
 ---- | ------ |:-------------- | -------------: | ------------:
 msg  | encode | jsoniter-scala | ` 6372602.760` | no support for Scala 3
-msg  | encode | proto          | ` 6487748.959` | `6593503.242`
+msg  | encode | proto          | ` 6487748.959` | `6745673.393`
 msg  | encode | scalapb        | ` 9202135.451` | `9056962.541`
 
 ### environment

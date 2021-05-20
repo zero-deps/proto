@@ -51,8 +51,7 @@ lazy val bench = project.in(file("bench")).settings(
       case _ => Nil
     }
   }
-, resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
-, Compile / PB.targets := Seq(scalapb.gen() -> (Compile / sourceManaged).value)
+// , Compile / PB.targets := Seq(scalapb.gen() -> (Compile / sourceManaged).value)
 , scalacOptions := Nil
 ).dependsOn(proto).enablePlugins(JmhPlugin)
 

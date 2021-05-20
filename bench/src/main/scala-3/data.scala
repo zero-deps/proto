@@ -40,16 +40,16 @@ object States {
     val bytes: Array[Byte] = m.writeValueAsBytes(data)
   }
 
-  @State(Scope.Benchmark)
-  class ProtobufState {
-    import com.google.protobuf.ByteString
-    val value = ByteString.copyFrom(Array.fill(1000)(1).map(_.toByte))
-    val lastModified: Long = 1552661477L
-    val vc = binarymodel.VectorClock(Vector.fill(2)(binarymodel.Version(node="169.0.0.1:4400", timestamp=2000L)))
+  // @State(Scope.Benchmark)
+  // class ProtobufState {
+  //   import com.google.protobuf.ByteString
+  //   val value = ByteString.copyFrom(Array.fill(1000)(1).map(_.toByte))
+  //   val lastModified: Long = 1552661477L
+  //   val vc = binarymodel.VectorClock(Vector.fill(2)(binarymodel.Version(node="169.0.0.1:4400", timestamp=2000L)))
 
-    val data = binarymodel.Data(value=value, lastModified=lastModified, vc=Some(vc))
-    val bytes: Array[Byte] = data.toByteArray
-  }
+  //   val data = binarymodel.Data(value=value, lastModified=lastModified, vc=Some(vc))
+  //   val bytes: Array[Byte] = data.toByteArray
+  // }
 
   @State(Scope.Benchmark)
   class MacrosState {
@@ -80,10 +80,10 @@ class Encode {
     bh.consume(state.m.writeValueAsBytes(state.data))
   }
 
-  @Benchmark
-  def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
-    bh.consume(state.data.toByteArray)
-  }
+  // @Benchmark
+  // def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
+  //   bh.consume(state.data.toByteArray)
+  // }
 
   @Benchmark
   def proto(state: States.MacrosState, bh: Blackhole): Unit = {
@@ -105,10 +105,10 @@ class Decode {
     bh.consume(state.m.readValue(state.bytes, classOf[Data]): Data)
   }
 
-  @Benchmark
-  def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
-    bh.consume(binarymodel.Data.parseFrom(state.bytes): binarymodel.Data)
-  }
+  // @Benchmark
+  // def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
+  //   bh.consume(binarymodel.Data.parseFrom(state.bytes): binarymodel.Data)
+  // }
 
   @Benchmark
   def proto(state: States.MacrosState, bh: Blackhole): Unit = {
