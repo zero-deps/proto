@@ -40,14 +40,13 @@ lazy val protosyntax = project.in(file("syntax")).settings(
 
 lazy val bench = project.in(file("bench")).settings(
   publish / skip := true
-, libraryDependencies += "com.fasterxml.jackson.module" % "jackson-module-scala_2.13" % "2.12.1"
+, libraryDependencies += "com.fasterxml.jackson.module" % "jackson-module-scala_2.13" % "2.12.3"
 , libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 13)) => Seq(
         "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.6.4",
         "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.6.4" % "compile-internal",
         "io.suzaku" %% "boopickle" % "1.3.3",
-        "com.evolutiongaming" %% "kryo-macros" % "1.3.0",
       )
       case _ => Nil
     }
