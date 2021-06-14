@@ -60,16 +60,16 @@ object States {
     val bytes: Array[Byte] = writeToArray(data)(codec)
   }
 
-  @State(Scope.Benchmark)
-  class ProtobufState {
-    import com.google.protobuf.ByteString
-    val value = ByteString.copyFrom(Array.fill(1000)(1).map(_.toByte))
-    val lastModified: Long = 1552661477L
-    val vc = binarymodel.VectorClock(Vector.fill(2)(binarymodel.Version(node="169.0.0.1:4400", timestamp=2000L)))
+  // @State(Scope.Benchmark)
+  // class ProtobufState {
+  //   import com.google.protobuf.ByteString
+  //   val value = ByteString.copyFrom(Array.fill(1000)(1).map(_.toByte))
+  //   val lastModified: Long = 1552661477L
+  //   val vc = binarymodel.VectorClock(Vector.fill(2)(binarymodel.Version(node="169.0.0.1:4400", timestamp=2000L)))
 
-    val data = binarymodel.Data(value=value, lastModified=lastModified, vc=Some(vc))
-    val bytes: Array[Byte] = data.toByteArray
-  }
+  //   val data = binarymodel.Data(value=value, lastModified=lastModified, vc=Some(vc))
+  //   val bytes: Array[Byte] = data.toByteArray
+  // }
 
   @State(Scope.Benchmark)
   class MacrosState {
@@ -99,23 +99,23 @@ object States {
     bb.get(bytes)
   }
 
-  @State(Scope.Benchmark)
-  class KryoMacrosState {
-    val value = Array.fill(1000)(1).map(_.toByte)
-    val lastModified: Long = 1552661477L
-    val vc = VectorClock(Vector.fill(2)(Version(node="169.0.0.1:4400", timestamp=2000L)))
+  // @State(Scope.Benchmark)
+  // class KryoMacrosState {
+  //   val value = Array.fill(1000)(1).map(_.toByte)
+  //   val lastModified: Long = 1552661477L
+  //   val vc = VectorClock(Vector.fill(2)(Version(node="169.0.0.1:4400", timestamp=2000L)))
 
-    val data = Data(value=value, lastModified=lastModified, vc=vc)
-    import com.evolutiongaming.kryo.Serializer
-    val serializer = Serializer.make[Data]
-    import com.esotericsoftware.kryo.Kryo
-    val kryo = new Kryo
-    kryo.register(classOf[Data])
-    import com.esotericsoftware.kryo.io.Output
-    val output = new Output(1024, -1)
-    kryo.writeObject(output, data)
-    val bytes: Array[Byte] = output.getBuffer
-  }
+  //   val data = Data(value=value, lastModified=lastModified, vc=vc)
+  //   import com.evolutiongaming.kryo.Serializer
+  //   val serializer = Serializer.make[Data]
+  //   import com.esotericsoftware.kryo.Kryo
+  //   val kryo = new Kryo
+  //   kryo.register(classOf[Data])
+  //   import com.esotericsoftware.kryo.io.Output
+  //   val output = new Output(1024, -1)
+  //   kryo.writeObject(output, data)
+  //   val bytes: Array[Byte] = output.getBuffer
+  // }
 }
 
 class Encode {
@@ -139,10 +139,10 @@ class Encode {
     bh.consume(writeToArray(state.data)(state.codec))
   }
 
-  @Benchmark
-  def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
-    bh.consume(state.data.toByteArray)
-  }
+  // @Benchmark
+  // def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
+  //   bh.consume(state.data.toByteArray)
+  // }
 
   @Benchmark
   def proto(state: States.MacrosState, bh: Blackhole): Unit = {
@@ -158,14 +158,14 @@ class Encode {
     bh.consume(bytes)
   }
 
-  @Benchmark
-  def kryo_macros(state: States.KryoMacrosState, bh: Blackhole): Unit = {
-    import com.esotericsoftware.kryo.io.Output
-    val output = new Output(1024, -1)
-    state.kryo.writeObject(output, state.data)
-    val bytes: Array[Byte] = output.getBuffer
-    bh.consume(bytes)
-  }
+  // @Benchmark
+  // def kryo_macros(state: States.KryoMacrosState, bh: Blackhole): Unit = {
+  //   import com.esotericsoftware.kryo.io.Output
+  //   val output = new Output(1024, -1)
+  //   state.kryo.writeObject(output, state.data)
+  //   val bytes: Array[Byte] = output.getBuffer
+  //   bh.consume(bytes)
+  // }
 }
 
 class Decode {
@@ -188,10 +188,10 @@ class Decode {
     bh.consume(readFromArray(state.bytes)(state.codec): Data)
   }
 
-  @Benchmark
-  def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
-    bh.consume(binarymodel.Data.parseFrom(state.bytes): binarymodel.Data)
-  }
+  // @Benchmark
+  // def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
+  //   bh.consume(binarymodel.Data.parseFrom(state.bytes): binarymodel.Data)
+  // }
 
   @Benchmark
   def proto(state: States.MacrosState, bh: Blackhole): Unit = {

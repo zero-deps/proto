@@ -18,11 +18,11 @@ object States {
     val bytes: Array[Byte] = writeToArray(msg)(codec)
   }
 
-  @State(Scope.Benchmark)
-  class ProtobufState {
-    val msg = binarymodel.Msg(Some(binarymodel.Stat("cpu", "0.45")), Some(binarymodel.StatMeta("1571067208996", "127.0.0.1:8080")))
-    val bytes: Array[Byte] = msg.toByteArray
-  }
+  // @State(Scope.Benchmark)
+  // class ProtobufState {
+  //   val msg = binarymodel.Msg(Some(binarymodel.Stat("cpu", "0.45")), Some(binarymodel.StatMeta("1571067208996", "127.0.0.1:8080")))
+  //   val bytes: Array[Byte] = msg.toByteArray
+  // }
 
   @State(Scope.Benchmark)
   class MacrosState {
@@ -42,10 +42,10 @@ class Encode {
     bh.consume(writeToArray(state.msg)(state.codec))
   }
 
-  @Benchmark
-  def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
-    bh.consume(state.msg.toByteArray)
-  }
+  // @Benchmark
+  // def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
+  //   bh.consume(state.msg.toByteArray)
+  // }
 
   @Benchmark
   def protobuf_scala_macros(state: States.MacrosState, bh: Blackhole): Unit = {
@@ -60,10 +60,10 @@ class Decode {
     bh.consume(readFromArray(state.bytes)(state.codec): Msg)
   }
 
-  @Benchmark
-  def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
-    bh.consume(binarymodel.Msg.parseFrom(state.bytes): binarymodel.Msg)
-  }
+  // @Benchmark
+  // def scalapb(state: States.ProtobufState, bh: Blackhole): Unit = {
+  //   bh.consume(binarymodel.Msg.parseFrom(state.bytes): binarymodel.Msg)
+  // }
 
   @Benchmark
   def protobuf_scala_macros(state: States.MacrosState, bh: Blackhole): Unit = {

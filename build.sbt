@@ -9,7 +9,7 @@ ThisBuild / crossScalaVersions := "3.0.0" :: "2.13.6" :: Nil
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
   version := zero.git.version(),
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.17.0"
+  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.17.3"
 ).dependsOn(protoops)
 
 lazy val protopurs = project.in(file("purs")).settings(
@@ -65,6 +65,7 @@ ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 ThisBuild / versionScheme := Some("pvp")
 ThisBuild / publishTo := Some(Opts.resolver.sonatypeStaging)
 ThisBuild / credentials += Credentials("GnuPG Key ID", "gpg", "F68F0EADDB81EF533C4E8E3228C90422E5A0DB21", "ignored")
+ThisBuild / isSnapshot := true
 
 ThisBuild / scalacOptions ++= {
   CrossVersion.partialVersion(scalaVersion.value) match {
