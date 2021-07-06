@@ -91,7 +91,7 @@ trait BuildCodec extends Common:
     if tpe1.isCommonType then
       pType match
         case '[t] =>
-          if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || tpe1.isBytesType then
+          if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte then
             val expr = 
               Select.unique(getter, "foreach")
                 .appliedToType(unitLiteral.tpe)
@@ -194,7 +194,7 @@ trait BuildCodec extends Common:
         if tpe1.isCommonType then
           val sizeRef = Ref(field.sizeSym)
           val sizeValDef = ValDef(field.sizeSym, Some(Literal(IntConstant(0))))
-          if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || tpe1.isBytesType then
+          if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte then
             val sizeExpr = '{ 
               val tagSize = ${Expr(CodedOutputStream.computeTagSize(field.num))}
               ${
@@ -366,7 +366,7 @@ trait BuildCodec extends Common:
       val tpe1 = p.tpe.iterableArgument.matchable
       val fun: Term = readFun(tpe1, is)
       val addOneApply = Select.unique(readRef, "addOne").appliedTo(fun).asExpr
-      if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || tpe1.isBytesType then 
+      if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte then 
         addOneApply
       else
         putLimit(

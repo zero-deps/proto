@@ -96,7 +96,6 @@ object models:
 
   final case class ClassWithArray(@N(1) x: Array[Byte])
   final case class ClassWithArraySeq(@N(1) y: ArraySeq[Byte])
-  final case class ClassWithBytes(@N(1) z: IArray[Byte])
 
   final case class DefaultValuesClass(
     @N(1) int: Int = 10
@@ -141,14 +140,6 @@ class testing extends AnyFreeSpec:
     implicit val bc: MessageCodec[ClassWithArraySeq] = caseCodecAuto[ClassWithArraySeq]
     assert(Arrays.equals(decode[ClassWithArraySeq](encode[ClassWithArray](ClassWithArray(x=Array[Byte](1,2,3)))).y.unsafeArray.asInstanceOf[Array[Byte]], Array[Byte](1,2,3)))
     assert(Arrays.equals(decode[ClassWithArray](encode[ClassWithArraySeq](ClassWithArraySeq(y=ArraySeq.unsafeWrapArray[Byte](Array[Byte](1,2,3))))).x, Array[Byte](1,2,3)))
-  }
-
-  "IArray[Byte] is compatible with Array[Byte]" in {
-    import java.util.Arrays
-    implicit val ac: MessageCodec[ClassWithArray] = caseCodecAuto[ClassWithArray]
-    implicit val bc: MessageCodec[ClassWithBytes] = caseCodecAuto[ClassWithBytes]
-    assert(Arrays.equals(decode[ClassWithBytes](encode[ClassWithArray](ClassWithArray(x=Array[Byte](1,2,3)))).z.unsafeArray, Array[Byte](1,2,3)))
-    assert(Arrays.equals(decode[ClassWithArray](encode[ClassWithBytes](ClassWithBytes(z=IArray.unsafeFromArray(Array[Byte](1,2,3))))).x, Array[Byte](1,2,3)))
   }
 
   "array byte wrapper" - {

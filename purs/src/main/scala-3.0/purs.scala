@@ -151,7 +151,6 @@ private class Impl(using qctx: Quotes):
 
   private val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
   private val ArraySeqByteType: TypeRepr = TypeRepr.of[ArraySeq[Byte]]
-  private val BytesType: TypeRepr = TypeRepr.of[IArray[Byte]]
   private val NTpe: TypeRepr = TypeRepr.of[N]
   private val RestrictedNType: TypeRepr = TypeRepr.of[RestrictedN]
   private val ItetableType: TypeRepr = TypeRepr.of[scala.collection.Iterable[?]]

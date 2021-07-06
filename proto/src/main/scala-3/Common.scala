@@ -37,7 +37,6 @@ trait Common:
     else if t.isString || 
             t.isArrayByte || 
             t.isArraySeqByte || 
-            t.isBytesType || 
             t.isCaseType ||
             t.isSealedTrait ||
             t.isIterable then 2
@@ -52,7 +51,6 @@ trait Common:
     else if t.isString then '{ ${os}.writeStringNoTag(${getterTerm.asExprOf[String]}) }
     else if t.isArrayByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
     else if t.isArraySeqByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
-    else if t.isBytesType then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def sizeFun(t: TypeRepr & Matchable, getterTerm: Term): Expr[Int] =
@@ -64,7 +62,6 @@ trait Common:
     else if t.isString then '{ CodedOutputStream.computeStringSizeNoTag(${getterTerm.asExprOf[String]}) }
     else if t.isArrayByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
     else if t.isArraySeqByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
-    else if t.isBytesType then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[IArray[Byte]]}.toArray) }
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def readFun(t: TypeRepr & Matchable, is: Expr[CodedInputStream])(using Quotes): Term =
@@ -76,12 +73,10 @@ trait Common:
     else if t.isString then '{ ${is}.readString.nn }.asTerm
     else if t.isArrayByte then '{ ${is}.readByteArray.nn }.asTerm
     else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray.nn) }.asTerm
-    else if t.isBytesType then '{ IArray.unsafeFromArray(${is}.readByteArray.nn) }.asTerm
     else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
 
   val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
   val ArraySeqByteType: TypeRepr = TypeRepr.of[ArraySeq[Byte]]
-  val BytesType: TypeRepr = TypeRepr.of[IArray[Byte]]
   val NTpe: TypeRepr = TypeRepr.of[N]
   val RestrictedNType: TypeRepr = TypeRepr.of[RestrictedN]
   val ItetableType: TypeRepr = TypeRepr.of[scala.collection.Iterable[?]]
@@ -111,7 +106,7 @@ trait Common:
       .appliedTo(value)
 
   val commonTypes: List[TypeRepr] =
-    TypeRepr.of[String] :: TypeRepr.of[Int] :: TypeRepr.of[Long] :: TypeRepr.of[Boolean] :: TypeRepr.of[Double] :: TypeRepr.of[Float] :: ArrayByteType :: ArraySeqByteType :: BytesType :: Nil 
+    TypeRepr.of[String] :: TypeRepr.of[Int] :: TypeRepr.of[Long] :: TypeRepr.of[Boolean] :: TypeRepr.of[Double] :: TypeRepr.of[Float] :: ArrayByteType :: ArraySeqByteType :: Nil 
 
   extension (t: TypeRepr)
     def isNType: Boolean = t =:= NTpe
@@ -128,7 +123,6 @@ trait Common:
     def isFloat: Boolean = t =:= TypeRepr.of[Float]
     def isArrayByte: Boolean = t =:= ArrayByteType
     def isArraySeqByte: Boolean = t =:= ArraySeqByteType
-    def isBytesType: Boolean = t =:= BytesType
     def isCommonType: Boolean = commonTypes.exists(_ =:= t)
 
     def typeArgsToReplace: Map[String, TypeRepr] =
