@@ -8,15 +8,7 @@ import scala.reflect.runtime.universe.definitions._
 import Ops._
 
 object Doc {
-  type Version = String
-  type Change = String
-  type Message = String
-  type ChangeLog = List[(Version, Seq[(Message, Change)])]
-  def tex(messages: Seq[ChildMeta], others: Seq[Tpe], all: Seq[Tpe], category: Int => String, ask: String, ok: String, err: String): (String, ChangeLog) = {
-    val changeLog = all.flatMap{ x =>
-      val message = x.name
-      since(x.tpe.typeSymbol).map{ case (version, change) => version -> (message -> change) }
-    }.groupBy(_._1).view.mapValues(_.map(_._2)).to(List)
+  def tex(messages: Seq[ChildMeta], others: Seq[Tpe], all: Seq[Tpe], category: Int => String, ask: String, ok: String, err: String): String = {
     val messagestex = messages.groupBy(x => category(x.n)).toList.sortBy(_._1).map{
       case (cat, ys) =>
         s"""\\subsection{${cat}}
@@ -26,7 +18,7 @@ object Doc {
     val otherstex = s"""\\newpage
       |\\subsection{Other Types}
       |${others.map(fields_tex).mkString("\n")}""".stripMargin
-    (messagestex+"\n"+otherstex, changeLog)
+    (messagestex+"\n"+otherstex)
   }
 
   private def correlation_tex(xs: Seq[ChildMeta], ask: String, ok: String, err: String): String = {
@@ -87,16 +79,6 @@ object Doc {
   private val defval: DefVal => String = {
     case x: FillDef => x.value
     case _ => ""
-  }
-  
-  private def since(x: Symbol): List[(Version, Change)] = {
-    x.annotations.filter(_.tree.tpe =:= typeOf[Since]).map{ x1 =>
-      x1.tree.children.tail match {
-        case List(Literal(Constant(version: String)), Literal(Constant(change: String))) =>
-          version -> change
-        case _ => throw new Exception("bad args in N")
-      }
-    }.to(List)
   }
   
   private def pursTypeParsTex(tpe: Type): String = {

@@ -8,7 +8,7 @@ import Ops._
 
 object Run {
   final case class GenRes(
-    doc: (Content, Doc.ChangeLog)
+    doc: Content
   )
   type ModuleName = String
   type Content = String
