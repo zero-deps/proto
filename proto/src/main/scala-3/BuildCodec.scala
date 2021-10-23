@@ -439,7 +439,7 @@ trait BuildCodec extends Common:
     val tpe = TypeRepr.of[MessageCodec].appliedTo(t)
     Implicits.search(tpe) match
       case x: ImplicitSearchSuccess => x.tree
-      case x: ImplicitSearchFailure => throwError(x.explanation)
+      case x: ImplicitSearchFailure => errorAndAbort(x.explanation)
 
   def classApply(t: TypeRepr, params: List[Term], constructor: Option[Term]): Term =
     constructor match

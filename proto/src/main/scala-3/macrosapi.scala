@@ -51,13 +51,13 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
             p.name -> num 
       } match
         case List(x) => x
-        case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
-        case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
+        case Nil => errorAndAbort(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+        case _ => errorAndAbort(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     )
     messageCodec(a_tpe, nums, params, restrictDefaults=true)
 
   def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using Quotes): Expr[MessageCodec[A]] =
-    val nums: Seq[(String, Int)] = numsExpr.valueOrError
+    val nums: Seq[(String, Int)] = numsExpr.valueOrAbort
     val a_tpe = getCaseClassType[A].matchable
     val aTypeSymbol = a_tpe.typeSymbol
     val params: List[Symbol] = aTypeSymbol.constructorParams
@@ -83,8 +83,8 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
               p.name -> num
         } match
           case List(x) => x
-          case Nil => throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
-          case _ => throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
+          case Nil => errorAndAbort(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
+          case _ => errorAndAbort(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
       )
     messageCodec(a_tpe, nums, params, restrictDefaults=true)
 
@@ -93,17 +93,17 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
   )(
     constructor: Expr[Any]
   )(using Quotes): Expr[MessageCodec[A]] =
-    val nums: Seq[(String, Int)] = numsExpr.valueOrError
+    val nums: Seq[(String, Int)] = numsExpr.valueOrAbort
     val a_tpe = TypeRepr.of[A].matchable
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
-    val members: List[Symbol] = aTypeSymbol.memberFields ++ aTypeSymbol.memberMethods
+    val members: List[Symbol] = aTypeSymbol.fieldMembers ++ aTypeSymbol.methodMembers
     val params: List[Symbol] =
       nums.map{ case (name, num) =>
         members.find(_.name == name) match
           case Some(s) if s.isTerm => s
-          case Some(s) => throwError(s"`${typeName}` field `${name}` is not a term")
-          case None => throwError(s"`${typeName}` has no field `${name}`")
+          case Some(s) => errorAndAbort(s"`${typeName}` field `${name}` is not a term")
+          case None => errorAndAbort(s"`${typeName}` has no field `${name}`")
       }.toList
     messageCodec(a_tpe, nums, params, restrictDefaults=false, constructor=Some(constructor.asTerm))
 
@@ -118,9 +118,9 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     val aTypeCompanionSym = aTypeSym.companionModule
     val typeName = aTypeSym.fullName
     
-    if nums.exists(_._2 < 1) then throwError(s"nums ${nums} should be > 0")
-    if nums.size != cParams.size then throwError(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
-    if nums.groupBy(_._2).exists(_._2.size != 1) then throwError(s"nums ${nums} should be unique")
+    if nums.exists(_._2 < 1) then errorAndAbort(s"nums ${nums} should be > 0")
+    if nums.size != cParams.size then errorAndAbort(s"nums size ${nums} not equal to `${typeName}` constructor params size ${cParams.size}")
+    if nums.groupBy(_._2).exists(_._2.size != 1) then errorAndAbort(s"nums ${nums} should be unique")
     val restrictedNums = a_tpe.restrictedNums
     val typeArgsToReplace: Map[String, TypeRepr] = a_tpe.typeArgsToReplace
 
@@ -132,27 +132,27 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
         case DefDef(d_name, _, d_tpt, d_rhs) =>
           val tpe1 = d_tpt.tpe.matchable
           (d_name, tpe1.replaceTypeArgs(typeArgsToReplace))
-        case _ => throwError(s"wrong param definition of case class `${typeName}`")
+        case _ => errorAndAbort(s"wrong param definition of case class `${typeName}`")
 
       val defaultValue: Option[Term] = 
         if s.flags.is(Flags.HasDefault) then
-          aTypeCompanionSym.memberMethod(defaultMethodName(i)) match
+          aTypeCompanionSym.methodMember(defaultMethodName(i)) match
             case List(x) =>
               if tpe.matchable.isOption && restrictDefaults then
-                throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for Option isn't allowed")
+                errorAndAbort(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for Option isn't allowed")
               else if tpe.matchable.isIterable && restrictDefaults then
-                throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for collections isn't allowed")
+                errorAndAbort(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for collections isn't allowed")
               else
                 Some(Select(Ref(aTypeCompanionSym), x))
-            case _ => throwError(s"`${name}: ${tpe.typeSymbol.fullName}`: default value method not found")
+            case _ => errorAndAbort(s"`${name}: ${tpe.typeSymbol.fullName}`: default value method not found")
         else None
       val num: Int =
         nums.collectFirst{ case (name1, num1) if name1 == name =>
           if restrictedNums.contains(num1) then
-            throwError(s"num ${num1} for `${typeName}` is restricted") 
+            errorAndAbort(s"num ${num1} for `${typeName}` is restricted")
           else num1
         }.getOrElse(
-          throwError(s"missing num for `${name}: ${typeName}`")
+          errorAndAbort(s"missing num for `${name}: ${typeName}`")
         )
       FieldInfo(
         name = name
@@ -187,9 +187,9 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
       } match
         case List(x) => x
         case Nil =>
-          throwError(s"missing ${NTpe.typeSymbol.name} annotation for `${x.name}`")
+          errorAndAbort(s"missing ${NTpe.typeSymbol.name} annotation for `${x.name}`")
         case _ =>
-          throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
+          errorAndAbort(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     )
 
   def enumByN[A: Type]: Expr[MessageCodec[A]] =
@@ -203,7 +203,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     sealedTraitCodec(a_tpe, nums)
 
   def sealedTraitCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] =
-    val nums: Seq[(String, Int)] = numsExpr.valueOrError
+    val nums: Seq[(String, Int)] = numsExpr.valueOrAbort
     val a_tpe = getSealedTrait[A].matchable
     val nums1: List[(TypeRepr, Int)] =
       a_tpe.matchable.knownFinalSubclasses.map{ x =>
@@ -211,7 +211,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
           nums.collectFirst{
             case (n, num) if n == x.name => num
           }.getOrElse{
-            throwError(s"missing num for `${x.name}: ${x.fullName}`")
+            errorAndAbort(s"missing num for `${x.name}: ${x.fullName}`")
           }
       }
     sealedTraitCodec(a_tpe, nums1)
@@ -236,13 +236,13 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     val subclasses = a_tpe.matchable.knownFinalSubclasses
 
     if subclasses.size <= 0 then
-      throwError(s"required at least 1 subclass for `${typeName}`")
+      errorAndAbort(s"required at least 1 subclass for `${typeName}`")
     if nums.size != subclasses.size then
-      throwError(s"`${typeName}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
+      errorAndAbort(s"`${typeName}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
     if nums.exists(_._2 < 1) then
-      throwError(s"nums for ${typeName} should be > 0")
+      errorAndAbort(s"nums for ${typeName} should be > 0")
     if nums.groupBy(_._2).exists(_._2.size != 1) then
-      throwError(s"nums for ${typeName} should be unique")
+      errorAndAbort(s"nums for ${typeName} should be unique")
 
     val restrictedNums = a_tpe.restrictedNums
 
@@ -252,10 +252,10 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
         nums.collectFirst{
           case (tpe1, num) if tpe =:= tpe1 => num
         }.getOrElse{
-          throwError(s"missing num for class `${tpe}` of trait `${a_tpe}`")
+          errorAndAbort(s"missing num for class `${tpe}` of trait `${a_tpe}`")
         }
       if restrictedNums.contains(num) then
-        throwError(s"num ${num} is restricted for class `${tpe}` of trait `${a_tpe}`")
+        errorAndAbort(s"num ${num} is restricted for class `${tpe}` of trait `${a_tpe}`")
       (s, num)
     }
 
@@ -278,12 +278,12 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     val tpe = TypeRepr.of[A]
     if tpe.isSealedTrait then tpe
     else
-      throwError(s"`${tpe.typeSymbol.fullName}` is not a sealed trait. Make sure that you specify codec type explicitly.\nExample:\n implicit val codecName: MessageCodec[SealedTraitTypeHere] = ...\n\n")
+      errorAndAbort(s"`${tpe.typeSymbol.fullName}` is not a sealed trait. Make sure that you specify codec type explicitly.\nExample:\n implicit val codecName: MessageCodec[SealedTraitTypeHere] = ...\n\n")
 
   private def getCaseClassType[A: Type]: TypeRepr =
     val tpe = TypeRepr.of[A]
     if tpe.matchable.isCaseType then tpe
     else
-      throwError(s"`${tpe.typeSymbol.fullName}` is not a case class")
+      errorAndAbort(s"`${tpe.typeSymbol.fullName}` is not a case class")
 
 end Impl

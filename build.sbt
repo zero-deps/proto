@@ -1,15 +1,15 @@
-val root = project.in(file(".")).settings(
+val `proto-parent` = project.in(file(".")).settings(
   publish / skip := true
 , version := zero.git.version()
 ).aggregate(proto, protosyntax, protopurs, prototex, protoops, bench)
 
-ThisBuild / scalaVersion := "3.1.0-RC2"
-ThisBuild / crossScalaVersions := "3.1.0-RC2" :: "2.13.6" :: Nil
+ThisBuild / scalaVersion := "3.1.1-RC1"
+ThisBuild / crossScalaVersions := "3.1.1-RC1" :: "2.13.6" :: Nil
 
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
   version := zero.git.version(),
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.17.3"
+  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.19.0"
 ).dependsOn(protoops)
 
 lazy val protopurs = project.in(file("purs")).settings(
@@ -40,7 +40,7 @@ lazy val protosyntax = project.in(file("syntax")).settings(
 
 lazy val bench = project.in(file("bench")).settings(
   publish / skip := true
-, libraryDependencies += "com.fasterxml.jackson.module" % "jackson-module-scala_2.13" % "2.12.3"
+, libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.13.0"
 , libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 13)) => Seq(

@@ -51,7 +51,7 @@ trait Common:
     else if t.isString then '{ ${os}.writeStringNoTag(${getterTerm.asExprOf[String]}) }
     else if t.isArrayByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
     else if t.isArraySeqByte then '{ ${os}.writeByteArrayNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
-    else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
+    else errorAndAbort(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def sizeFun(t: TypeRepr & Matchable, getterTerm: Term): Expr[Int] =
     if      t.isInt then '{ CodedOutputStream.computeInt32SizeNoTag(${getterTerm.asExprOf[Int]}) }
@@ -62,7 +62,7 @@ trait Common:
     else if t.isString then '{ CodedOutputStream.computeStringSizeNoTag(${getterTerm.asExprOf[String]}) }
     else if t.isArrayByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[Array[Byte]]}) }
     else if t.isArraySeqByte then '{ CodedOutputStream.computeByteArraySizeNoTag(${getterTerm.asExprOf[ArraySeq[Byte]]}.toArray[Byte]) }
-    else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
+    else errorAndAbort(s"Unsupported common type: ${t.typeSymbol.name}")
 
   def readFun(t: TypeRepr & Matchable, is: Expr[CodedInputStream])(using Quotes): Term =
     if      t.isInt then '{ ${is}.readInt32 }.asTerm
@@ -70,10 +70,10 @@ trait Common:
     else if t.isBoolean then '{ ${is}.readBool }.asTerm
     else if t.isDouble then '{ ${is}.readDouble }.asTerm
     else if t.isFloat then '{ ${is}.readFloat }.asTerm
-    else if t.isString then '{ ${is}.readString.nn }.asTerm
-    else if t.isArrayByte then '{ ${is}.readByteArray.nn }.asTerm
+    else if t.isString then '{ ${is}.readString }.asTerm
+    else if t.isArrayByte then '{ ${is}.readByteArray }.asTerm
     else if t.isArraySeqByte then '{ ArraySeq.unsafeWrapArray(${is}.readByteArray.nn) }.asTerm
-    else throwError(s"Unsupported common type: ${t.typeSymbol.name}")
+    else errorAndAbort(s"Unsupported common type: ${t.typeSymbol.name}")
 
   val ArrayByteType: TypeRepr = TypeRepr.of[Array[Byte]]
   val ArraySeqByteType: TypeRepr = TypeRepr.of[ArraySeq[Byte]]
@@ -145,30 +145,30 @@ trait Common:
 
     def optionArgument: TypeRepr = t.matchable match
       case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head
-      case _ => throwError(s"It isn't Option type: ${t.typeSymbol.name}")
+      case _ => errorAndAbort(s"It isn't Option type: ${t.typeSymbol.name}")
 
     def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol).matchable match
       case AppliedType(_, args) if t.isIterable => args.head
-      case _ => throwError(s"It isn't Iterable (argument) type: ${t.typeSymbol.name}")
+      case _ => errorAndAbort(s"It isn't Iterable (argument) type: ${t.typeSymbol.name}")
 
     def iterableBaseType: TypeRepr = t.dealias.matchable match
       case AppliedType(t1, _) if t.isIterable => t1
-      case _ => throwError(s"It isn't Iterable (base) type: ${t.typeSymbol.name}")
+      case _ => errorAndAbort(s"It isn't Iterable (base) type: ${t.typeSymbol.name}")
 
     def restrictedNums: List[Int] =
       val aName = RestrictedNType.typeSymbol.name
       val tName = t.typeSymbol.fullName
       t.typeSymbol.annotations.collect{ case Apply(Select(New(tpt),_), List(Typed(Repeated(args,_),_))) if tpt.tpe =:= RestrictedNType => args } match
-        case List(Nil) => throwError(s"empty annotation ${aName} for `${tName}`")
+        case List(Nil) => errorAndAbort(s"empty annotation ${aName} for `${tName}`")
         case List(xs) =>
           val nums = xs.collect{
             case Literal(IntConstant(n)) => n
-            case x => throwError(s"wrong annotation ${aName} for `${tName}` $x")
+            case x => errorAndAbort(s"wrong annotation ${aName} for `${tName}` $x")
           }
-          if nums.size != nums.distinct.size then throwError(s"nums not unique in annotation ${aName} for `${tName}`")
+          if nums.size != nums.distinct.size then errorAndAbort(s"nums not unique in annotation ${aName} for `${tName}`")
           nums
         case Nil => Nil
-        case _ => throwError(s"multiple ${aName} annotations applied for `${tName}`")
+        case _ => errorAndAbort(s"multiple ${aName} annotations applied for `${tName}`")
       
     def knownFinalSubclasses: List[Symbol] =
       @tailrec def loop(q: List[Symbol], acc: List[Symbol]): List[Symbol] = q match

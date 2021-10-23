@@ -112,25 +112,25 @@ private class Impl(using qctx: Quotes):
         } match
           case List(x) => x
           case Nil =>
-            throwError(s"missing ${NTpe.typeSymbol.name} annotation for `$_typeName`")
+            errorAndAbort(s"missing ${NTpe.typeSymbol.name} annotation for `$_typeName`")
           case _ =>
-            throwError(s"multiple ${NTpe.typeSymbol.name} annotations applied for `$_typeName`")
+            errorAndAbort(s"multiple ${NTpe.typeSymbol.name} annotations applied for `$_typeName`")
       }
 
     if _subclasses.size <= 0
-      then throwError(s"required at least 1 subclass for `${_typeName}`")
+      then errorAndAbort(s"required at least 1 subclass for `${_typeName}`")
     if _nums.size != _subclasses.size
-      then throwError(s"`${_typeName}` _subclasses ${_subclasses.size} count != _nums definition ${_nums.size}")
+      then errorAndAbort(s"`${_typeName}` _subclasses ${_subclasses.size} count != _nums definition ${_nums.size}")
     if _nums.exists(_._2 < 1)
-      then throwError(s"_nums for ${_typeName} should be > 0")
+      then errorAndAbort(s"_nums for ${_typeName} should be > 0")
     if _nums.groupBy(_._2).exists(_._2.size != 1)
-      then throwError(s"_nums for ${_typeName} should be unique")
+      then errorAndAbort(s"_nums for ${_typeName} should be unique")
 
     _subclasses.map{ s =>
       val tpe = s.tpe.matchable
-      val num: Int = _nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(throwError(s"missing num for class `${tpe}` of trait `${_tpe}`"))
+      val num: Int = _nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(errorAndAbort(s"missing num for class `${tpe}` of trait `${_tpe}`"))
       if _tpe.restrictedNums.contains(num)
-        then throwError(s"num ${num} is restricted for class `${tpe}` of trait `${_tpe}`")
+        then errorAndAbort(s"num ${num} is restricted for class `${tpe}` of trait `${_tpe}`")
     
       FieldInfo(
         name = s.name
@@ -220,30 +220,30 @@ private class Impl(using qctx: Quotes):
 
     private def optionArgument: TypeRepr = t.matchable match
       case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head
-      case _ => throwError(s"It isn't Option type: ${t.typeSymbol.name}")
+      case _ => errorAndAbort(s"It isn't Option type: ${t.typeSymbol.name}")
 
     private def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol).matchable match
       case AppliedType(_, args) if t.isIterable => args.head
-      case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
+      case _ => errorAndAbort(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
     private def iterableBaseType: TypeRepr = t.matchable match
       case AppliedType(t1, _) if t.isIterable => t1
-      case _ => throwError(s"It isn't Iterable type: ${t.typeSymbol.name}")
+      case _ => errorAndAbort(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
     private def restrictedNums: List[Int] =
       val aName = RestrictedNType.typeSymbol.name
       val tName = t.typeSymbol.fullName
       t.typeSymbol.annotations.collect{ case Apply(Select(New(tpt),_), List(Typed(Repeated(args,_),_))) if tpt.tpe =:= RestrictedNType => args } match
-        case List(Nil) => throwError(s"empty annotation ${aName} for `${tName}`")
+        case List(Nil) => errorAndAbort(s"empty annotation ${aName} for `${tName}`")
         case List(xs) =>
           val nums = xs.collect{
             case Literal(IntConstant(n)) => n
-            case x => throwError(s"wrong annotation ${aName} for `${tName}` $x")
+            case x => errorAndAbort(s"wrong annotation ${aName} for `${tName}` $x")
           }
-          if nums.size != nums.distinct.size then throwError(s"nums not unique in annotation ${aName} for `${tName}`")
+          if nums.size != nums.distinct.size then errorAndAbort(s"nums not unique in annotation ${aName} for `${tName}`")
           nums
         case Nil => Nil
-        case _ => throwError(s"multiple ${aName} annotations applied for `${tName}`")
+        case _ => errorAndAbort(s"multiple ${aName} annotations applied for `${tName}`")
 
   private def mkIfStatement(branches: List[(Term, Term)], elseBranch: Term): Term =
     branches match
