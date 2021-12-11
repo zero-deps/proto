@@ -4,12 +4,12 @@ val `proto-parent` = project.in(file(".")).settings(
 ).aggregate(proto, protosyntax, protopurs, prototex, protoops, bench)
 
 ThisBuild / scalaVersion := "3.1.1-RC1"
-ThisBuild / crossScalaVersions := "3.1.1-RC1" :: "2.13.6" :: Nil
+ThisBuild / crossScalaVersions := "3.1.1-RC1" :: "2.13.7" :: Nil
 
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
   version := zero.git.version(),
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.19.0"
+  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.19.1"
 ).dependsOn(protoops)
 
 lazy val protopurs = project.in(file("purs")).settings(
@@ -55,7 +55,7 @@ lazy val bench = project.in(file("bench")).settings(
 , scalacOptions := Nil
 ).dependsOn(proto).enablePlugins(JmhPlugin)
 
-ThisBuild / libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9" % Test
+ThisBuild / libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % Test
 
 ThisBuild / organization := "io.github.zero-deps"
 ThisBuild / homepage := Some(url("https://github.com/zero-deps/proto"))
