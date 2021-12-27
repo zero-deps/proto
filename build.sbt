@@ -3,8 +3,8 @@ val `proto-parent` = project.in(file(".")).settings(
 , version := zero.git.version()
 ).aggregate(proto, protosyntax, protopurs, prototex, protoops, bench)
 
-ThisBuild / scalaVersion := "3.1.1-RC1"
-ThisBuild / crossScalaVersions := "3.1.1-RC1" :: "2.13.7" :: Nil
+ThisBuild / scalaVersion := "3.1.1-RC2"
+ThisBuild / crossScalaVersions := "3.1.1-RC2" :: "2.13.7" :: Nil
 
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
