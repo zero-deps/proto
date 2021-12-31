@@ -127,6 +127,13 @@ object models:
   @N(3) case object Yellow extends LightColor
   @N(4) case class Red(@N(1) value: Int) extends NotSoDarkColor
 
+  case class Simple(
+    @N(1) id: Int
+  , @N(3) name: String
+  , @N(4) int_list: List[Int]
+  , @N(5) double_list: List[Double]
+  )
+
   given MessageCodec[Message1] = caseCodecAuto
   given MessageCodec[Message] = caseCodecAuto
 end models
@@ -585,4 +592,20 @@ class testing extends AnyFreeSpec:
       assert(decoded === data)
     "object" `in` test(data=Push.Pong)
     "case class" `in` test(data=Push.Msg(txt="binary message", id=1001))
+  }
+
+  "decode non-packed format of repeated primitives" in {
+    import java.util.Arrays
+
+    implicit val codec: MessageCodec[Simple] = caseCodecAuto
+
+    val reference = Simple(42,"simple",List(1, 2, 3, 4, 5, 6),List(10.0, 20.0, 30.0))
+    val nonPackedBytes: Array[Byte] = Array(8, 42, 26, 6, 115, 105, 109, 112, 108, 101, 32, 1, 32, 2, 32, 3, 32, 4, 32, 5, 32, 6, 41, 0, 0, 0, 0, 0, 0, 36, 64, 41, 0, 0, 0, 0, 0, 0, 52, 64, 41, 0, 0, 0, 0, 0, 0, 62, 64)
+
+    val message: Simple = decode(nonPackedBytes)
+    assert(message == reference)
+
+    val encoded: Array[Byte] = encode(message)
+    assert(!Arrays.equals(nonPackedBytes, encoded))
+
   }

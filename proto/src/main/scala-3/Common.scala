@@ -26,9 +26,12 @@ trait Common:
   , prepareArraySym: Symbol = Symbol.noSymbol
   , defaultValue: Option[Term]
   , isCaseObject: Boolean = false
+  , nonPacked: Boolean = false
   ):
-    def tag: Int = num << 3 | wireType(tpe)
-
+    def tag: Int = 
+      if nonPacked && tpe.isIterable then num << 3 | wireType(tpe.iterableArgument.matchable)
+      else num << 3 | wireType(tpe)
+  
   def wireType(t: TypeRepr & Matchable): Int =
     if      t.isInt || t.isLong || t.isBoolean then 0
     else if t.isDouble then 1

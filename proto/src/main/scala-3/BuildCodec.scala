@@ -311,10 +311,16 @@ trait BuildCodec extends Common:
         ${
           val ifBranches: List[(Term, Term)] =
             ('{ tag == 0 }.asTerm -> '{ done = true; }.asTerm) ::
-            params.zip(readRefs).map{ case (p, ref) =>
-              val paramTag = Expr(p.tag)
-              '{ tag == ${paramTag} }.asTerm -> readContentImpl(p, ref, is).asTerm
-            }
+            params.zip(readRefs)
+              .flatMap{ case (p, ref) =>
+                if p.tpe.isIterable && p.tpe.iterableArgument.matchable.isCommonType then
+                  (p, ref) :: (p.copy(nonPacked = true), ref) :: Nil
+                else (p, ref) :: Nil
+              }
+              .map{ case (p, ref) =>
+                val paramTag = Expr(p.tag)
+                '{ tag == ${paramTag} }.asTerm -> readContentImpl(p, ref, is).asTerm
+              }
           val elseBranch: Term = '{ ${is}.skipField(tag) }.asTerm
           mkIfStatement(ifBranches, elseBranch).asExprOf[Any]
         }
@@ -366,7 +372,7 @@ trait BuildCodec extends Common:
       val tpe1 = p.tpe.iterableArgument.matchable
       val fun: Term = readFun(tpe1, is)
       val addOneApply = Select.unique(readRef, "addOne").appliedTo(fun).asExpr
-      if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte then 
+      if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || p.nonPacked then 
         addOneApply
       else
         putLimit(
