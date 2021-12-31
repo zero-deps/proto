@@ -20,7 +20,7 @@ class Impl(val c: Context) extends BuildCodec {
 
   private def getCaseClassType[A:c.WeakTypeTag]: c.Type = {
     val tpe: c.Type = c.weakTypeOf[A]
-    if (isCaseClass(tpe)) tpe else error(s"`${tpe}` is not a final case class")
+    if (tpe.isCaseClass) tpe else error(s"`${tpe}` is not a final case class")
   }
 
   private def getRestrictedNums(tpe: c.Type): List[Int] = {
@@ -44,7 +44,7 @@ class Impl(val c: Context) extends BuildCodec {
 
   def caseCodecAuto[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getCaseClassType[A]
-    val nums: List[(String, Int)] = constructorParams(aType).map(p =>
+    val nums: List[(String, Int)] = aType.constructorParams.map(p =>
       p.annotations.filter(_.tree.tpe =:= NType) match {
         case List(a) =>
           a.tree.children.tail match {
@@ -55,24 +55,24 @@ class Impl(val c: Context) extends BuildCodec {
         case _ => error(s"multiple ${NType} annotations applied for `${p.name}: ${p.info}`")
       }
     )
-    messageCodec(aType=aType, nums=nums, cParams=constructorParams(aType), restrictDefaults=true)
+    messageCodec(aType=aType, nums=nums, cParams=aType.constructorParams, restrictDefaults=true)
   }
 
   def caseCodecString[A:c.WeakTypeTag](nums: c.Expr[(String, Int)]*): c.Tree = {
     val aType: c.Type = getCaseClassType[A]
-    messageCodec(aType=aType, nums=nums.map(evalTyped), cParams=constructorParams(aType), restrictDefaults=false)
+    messageCodec(aType=aType, nums=nums.map(evalTyped), cParams=aType.constructorParams, restrictDefaults=false)
   }
 
   def caseCodecIdx[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getCaseClassType[A]
-    val cParams: List[TermSymbol] = constructorParams(aType)
+    val cParams: List[TermSymbol] = aType.constructorParams
     val nums = cParams.zipWithIndex.map{case (p, idx) => (p.name.decodedName.toString, idx + 1)}
     messageCodec(aType=aType, nums=nums, cParams=cParams, restrictDefaults=false)
   }
 
   def classCodecAuto[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = c.weakTypeOf[A]
-    val nums: List[(String, Int)] = constructorParams(aType).map(p =>
+    val nums: List[(String, Int)] = aType.constructorParams.map(p =>
       p.annotations.filter(_.tree.tpe =:= NType) match {
         case List(a) =>
           a.tree.children.tail match {
@@ -83,7 +83,7 @@ class Impl(val c: Context) extends BuildCodec {
         case _ => error(s"multiple ${NType} annotations applied for `${p.name}: ${p.info}`")
       }
     )
-    val res = messageCodec(aType=aType, nums=nums, cParams=constructorParams(aType), restrictDefaults=true)
+    val res = messageCodec(aType=aType, nums=nums, cParams=aType.constructorParams, restrictDefaults=true)
     res
   }
 
@@ -116,15 +116,15 @@ class Impl(val c: Context) extends BuildCodec {
       }
       val decodedName: String = p.name.decodedName.toString
       val encodedName: String = p.name.encodedName.toString
-      val typeArgs: List[(c.Type, c.Type)] = typeArgsToReplace(aType)
+      val typeArgs: List[(c.Type, c.Type)] = aType.typeArgsToReplace
       val withoutTypeArgs: c.Type = if (typeArgs.isEmpty) {
         tpe
       } else {
         tpe.map(tt => typeArgs.collectFirst{case (fromT, toT) if fromT =:= tt => toT}.getOrElse(tt))
       }
       val defaultValue = if (p.isParamWithDefault) {
-        if (isOption(tpe) && restrictDefaults) error(s"`${p.name}: ${tpe}`: default value for Option isn't allowed")
-        else if (isIterable(tpe) && restrictDefaults) error(s"`${p.name}: ${tpe}`: default value for collections isn't allowed")
+        if (tpe.isOption && restrictDefaults) error(s"`${p.name}: ${tpe}`: default value for Option isn't allowed")
+        else if (tpe.isIterable && restrictDefaults) error(s"`${p.name}: ${tpe}`: default value for collections isn't allowed")
         else {
           val getDefaultMethod = TermName(s"apply$$default$$${i + 1}")
           Some(q"${aType.typeSymbol.companion}.${getDefaultMethod}")
@@ -156,12 +156,12 @@ class Impl(val c: Context) extends BuildCodec {
 
   private def getSealedTrait[A:c.WeakTypeTag] = {
     val tpe: c.Type = c.weakTypeOf[A]
-    if (isTrait(tpe)) tpe else error(s"`${tpe}` is not a sealed trait. Make sure that you specify codec type explicitly.\nExample:\n implicit val codecName: MessageCodec[SealedTraitTypeHere] = ...\n\n")
+    if (tpe.isTrait) tpe else error(s"`${tpe}` is not a sealed trait. Make sure that you specify codec type explicitly.\nExample:\n implicit val codecName: MessageCodec[SealedTraitTypeHere] = ...\n\n")
   }
 
   def sealedTraitCodecAuto[A:c.WeakTypeTag]: c.Tree = {
     val aType: c.Type = getSealedTrait[A]
-    val nums: List[(c.Type, Int)] = knownFinalSubclasses(aType).map { tpe =>
+    val nums: List[(c.Type, Int)] = aType.knownFinalSubclasses.map { tpe =>
       tpe.typeSymbol.annotations.filter(_.tree.tpe =:= NType) match {
         case List(a) =>
           a.tree.children.tail match {
@@ -179,7 +179,7 @@ class Impl(val c: Context) extends BuildCodec {
 
   def findTypes[A:c.WeakTypeTag](nums: Seq[(String, Int)]): Seq[(c.Type, Int)] = {
     val aType: c.Type = getSealedTrait[A]
-    knownFinalSubclasses(aType).map{tpe =>
+    aType.knownFinalSubclasses.map{tpe =>
       val decodedName: String = tpe.typeSymbol.name.decodedName.toString
       tpe -> nums.collectFirst{case (name, num) if name == decodedName => num}.getOrElse(error(s"missing num for `${decodedName}: ${tpe}`"))
     }
@@ -188,7 +188,7 @@ class Impl(val c: Context) extends BuildCodec {
   def sealedTraitCodec[A:c.WeakTypeTag](nums: Seq[(c.Type, Int)]): c.Tree = {
     val aType: c.Type = getSealedTrait[A]
     val restrictedNums = getRestrictedNums(aType)
-    val subclasses = knownFinalSubclasses(aType)
+    val subclasses = aType.knownFinalSubclasses
     if (subclasses.size <= 0) error(s"required at least 1 subclass for `${aType}`")
     if (nums.size != subclasses.size) error(s"`${aType}` subclasses ${subclasses.size} count != nums definition ${nums.size}")
     if (nums.exists(_._2 < 1)) error(s"nums ${nums} should be > 0")

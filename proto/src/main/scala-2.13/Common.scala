@@ -11,7 +11,7 @@ trait Common {
   def error[A](msg: String): A = c.abort(c.enclosingPosition, msg)
   def evalTyped[A](expr: c.Expr[A]) = c.eval(c.Expr[A](c.untypecheck(expr.tree.duplicate)))
   
-  private[proto] case class FieldInfo(name: TermName, sizeName: TermName, prepareName: TermName, readName: TermName, getter: c.Tree, tpe: c.Type, num: Int, defaultValue: Option[c.Tree])  
+  private[proto] case class FieldInfo(name: TermName, sizeName: TermName, prepareName: TermName, readName: TermName, getter: c.Tree, tpe: c.Type, num: Int, defaultValue: Option[c.Tree], nonPacked: Boolean = false)  
 
   val PrepareType: c.Type = typeOf[Prepare]
   val CodedOutputStreamType: c.Type = typeOf[CodedOutputStream]
@@ -22,24 +22,37 @@ trait Common {
   val NType: c.Type = c.typeOf[N]
   val RestrictedNType: c.Type = c.typeOf[RestrictedN]
   val ItetableType: c.Type = typeOf[scala.collection.Iterable[Unit]]
-  
-  def isOption(t: c.Type): Boolean = t.typeConstructor =:= OptionClass.selfType.typeConstructor
-  def isIterable(t: c.Type): Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ItetableType.typeConstructor) && !(t =:= ArraySeqByteType)
-  def isTrait(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
-  def isCaseClass(t: c.Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass
-  def constructorParams(t: c.Type): List[TermSymbol] = t.typeSymbol.asClass.primaryConstructor.asMethod.paramLists.flatten.map(_.asTerm)
-  def typeArgsToReplace(t: c.Type): List[(c.Type, c.Type)] = t.typeSymbol.asClass.primaryConstructor.owner.asClass.typeParams.map(_.asType.toType).zip(t.typeArgs)
-  def knownDirectSubclasses(t: c.Type): List[c.Type] = t.typeSymbol.asClass.knownDirectSubclasses.toList.map(_.asType.toType)//.filter(isCaseClass)
-  def knownFinalSubclasses(t: c.Type): List[c.Type] = knownDirectSubclasses(t).flatMap{
-    case t if isTrait(t) => knownDirectSubclasses(t)
-    case t => List(t)
-  }
 
   def messageCodecFor(t: c.Type): c.Type = appliedType(typeOf[MessageCodec[Unit]].typeConstructor, t)
   def builder(t1: c.Type, t2: c.Type): c.Type = appliedType(typeOf[scala.collection.mutable.Builder[Unit, Unit]].typeConstructor, t1, t2)
+
+  val commonTypes: List[c.Type] =
+    StringClass.selfType :: IntClass.selfType :: LongClass.selfType :: BooleanClass.selfType :: DoubleClass.selfType :: FloatClass.selfType :: ArrayByteType :: ArraySeqByteType :: Nil 
+
+  implicit class TypeOps (t: c.Type) {
+
+    def isOption: Boolean = t.typeConstructor =:= OptionClass.selfType.typeConstructor
+    def isTrait: Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isTrait && t.typeSymbol.asClass.isSealed
+    def isCaseClass: Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass
+    def constructorParams: List[TermSymbol] = t.typeSymbol.asClass.primaryConstructor.asMethod.paramLists.flatten.map(_.asTerm)
+    def typeArgsToReplace: List[(c.Type, c.Type)] = t.typeSymbol.asClass.primaryConstructor.owner.asClass.typeParams.map(_.asType.toType).zip(t.typeArgs)
+    def knownDirectSubclasses: List[c.Type] = t.typeSymbol.asClass.knownDirectSubclasses.toList.map(_.asType.toType)//.filter(isCaseClass)
+    def knownFinalSubclasses: List[c.Type] = t.knownDirectSubclasses.flatMap{
+      case t if t.isTrait => t.knownDirectSubclasses
+      case t => List(t)
+    }
+
+    def isCommonType: Boolean = commonTypes.exists(_ =:= t)
+    def isIterable: Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ItetableType.typeConstructor) && !(t =:= ArraySeqByteType)
+    def iterableArgument: c.Type = if (t.isIterable) t.baseType(ItetableType.typeSymbol).typeArgs(0) else error(s"It isn't Iterable (argument) type: $t")
+
+  }
   
   object common {
-    def tag(field: FieldInfo): Int = field.num << 3 | wireType(field.tpe)
+    def tag(field: FieldInfo): Int = 
+      if (field.nonPacked && field.tpe.isIterable && field.tpe.iterableArgument.isCommonType)
+        field.num << 3 | wireType(field.tpe.iterableArgument)
+      else field.num << 3 | wireType(field.tpe)
 
     def wireType(t: c.Type): Int = 
       if ( t =:= IntClass.selfType 
@@ -58,9 +71,9 @@ trait Common {
                || t =:= ArrayByteType
                || t =:= ArraySeqByteType
                || t =:= BytesType
-               || isCaseClass(t)
-               || isTrait(t)
-               || isIterable(t)
+               || t.isCaseClass
+               || t.isTrait
+               || t.isIterable
                 ) {
         2
       } else {

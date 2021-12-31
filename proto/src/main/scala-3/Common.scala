@@ -29,7 +29,8 @@ trait Common:
   , nonPacked: Boolean = false
   ):
     def tag: Int = 
-      if nonPacked && tpe.isIterable then num << 3 | wireType(tpe.iterableArgument.matchable)
+      if nonPacked && tpe.isIterable && tpe.iterableArgument.matchable.isCommonType then 
+        num << 3 | wireType(tpe.iterableArgument.matchable)
       else num << 3 | wireType(tpe)
   
   def wireType(t: TypeRepr & Matchable): Int =

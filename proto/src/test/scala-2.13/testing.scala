@@ -91,6 +91,13 @@ object models {
   )
 
   final case class DefaultValuesClass1(@N(3) float: Float)
+
+  case class Simple(
+    @N(1) id: Int
+  , @N(3) name: String
+  , @N(4) int_list: List[Int]
+  , @N(5) double_list: List[Double]
+  )
 }
 
 class testing extends AnyFreeSpec {
@@ -464,5 +471,23 @@ class testing extends AnyFreeSpec {
       val decoded: DefaultValuesClass = decode[DefaultValuesClass](encode[DefaultValuesClass1](data))
       val _ = assert(decoded === expected)
     }
+  }
+
+  "decode non-packed format of repeated primitives" in {
+    import java.util.Arrays
+    implicit val codec: MessageCodec[Simple] = caseCodecAuto[Simple]
+
+    val reference = Simple(42,"simple",List(1, 2, 3, 4, 5, 6),List(10.0, 20.0, 30.0))
+    val nonPackedBytes: Array[Byte] = Array(8, 42, 26, 6, 115, 105, 109, 112, 108, 101, 32, 1, 32, 2, 32, 3, 32, 4, 32, 5, 32, 6, 41, 0, 0, 0, 0, 0, 0, 36, 64, 41, 0, 0, 0, 0, 0, 0, 52, 64, 41, 0, 0, 0, 0, 0, 0, 62, 64)
+    val packedBytes: Array[Byte] = Array(8, 42, 26, 6, 115, 105, 109, 112, 108, 101, 34, 6, 1, 2, 3, 4, 5, 6, 42, 24, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 52, 64, 0, 0, 0, 0, 0, 0, 62, 64)
+
+    val message1: Simple = decode(nonPackedBytes)
+    val message2: Simple = decode(packedBytes)
+
+    assert(message1 == reference)
+    assert(message2 == reference)
+
+    val encoded: Array[Byte] = encode(reference)
+    assert(Arrays.equals(packedBytes, encoded))
   }
 }
