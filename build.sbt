@@ -4,7 +4,7 @@ val `proto-parent` = project.in(file(".")).settings(
 ).aggregate(proto, protosyntax, protopurs, prototex, protoops, bench)
 
 ThisBuild / scalaVersion := "3.1.1-RC2"
-ThisBuild / crossScalaVersions := "3.1.1-RC2" :: "2.13.7" :: Nil
+ThisBuild / crossScalaVersions := "3.1.1-RC2" :: "2.13.7" :: "2.12.15" :: Nil
 
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
@@ -28,6 +28,7 @@ lazy val protoops = project.in(file("ops")).settings(
 , libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 13)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+      case Some((2, 12)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
       case _ => Nil
     }
   }
@@ -69,6 +70,10 @@ ThisBuild / isSnapshot := true
 
 ThisBuild / scalacOptions ++= {
   CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 12)) => Seq(
+      "-deprecation"
+    , "-Wconf:cat=deprecation&msg=Auto-application:silent"
+    )
     case Some((2, 13)) => Seq(
       "-deprecation"
     , "-Wconf:cat=deprecation&msg=Auto-application:silent"
