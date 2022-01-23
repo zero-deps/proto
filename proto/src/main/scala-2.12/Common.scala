@@ -80,7 +80,7 @@ trait Common {
                || t =:= BytesType
                || t.isCaseClass
                || t.isTrait
-               || t.isIterable
+               || t.isRepeated
                 ) {
         2
       } else {

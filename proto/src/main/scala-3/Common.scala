@@ -29,8 +29,8 @@ trait Common:
   , nonPacked: Boolean = false
   ):
     def tag: Int = 
-      if nonPacked && tpe.isIterable && tpe.iterableArgument.matchable.isCommonType then 
-        num << 3 | wireType(tpe.iterableArgument.matchable)
+      if nonPacked && tpe.isRepeated && tpe.repeatedArgument.matchable.isCommonType then 
+        num << 3 | wireType(tpe.repeatedArgument.matchable)
       else num << 3 | wireType(tpe)
   
   def wireType(t: TypeRepr & Matchable): Int =
@@ -43,7 +43,7 @@ trait Common:
             t.isArraySeqByte || 
             t.isCaseType ||
             t.isSealedTrait ||
-            t.isIterable then 2
+            t.isRepeated then 2
     else 2
 
   def writeFun(os: Expr[CodedOutputStream], t: TypeRepr & Matchable, getterTerm: Term)(using Quotes): Expr[Unit] =
@@ -84,6 +84,7 @@ trait Common:
   val NTpe: TypeRepr = TypeRepr.of[N]
   val RestrictedNType: TypeRepr = TypeRepr.of[RestrictedN]
   val ItetableType: TypeRepr = TypeRepr.of[scala.collection.Iterable[?]]
+  val ArrayType: TypeRepr = TypeRepr.of[Array[?]]
   val PrepareType: TypeRepr = TypeRepr.of[Prepare]
   val CodedInputStreamType: TypeRepr = TypeRepr.of[CodedInputStream]
   
@@ -119,6 +120,8 @@ trait Common:
     def isCaseType: Boolean = t.isCaseClass || t.isCaseObject
     def isSealedTrait: Boolean = t.typeSymbol.flags.is(Flags.Sealed) && t.typeSymbol.flags.is(Flags.Trait)
     def isIterable: Boolean = t <:< ItetableType && !t.isArraySeqByte
+    def isArray: Boolean = t <:< ArrayType && !t.isArrayByte
+    def isRepeated: Boolean = t.isIterable || t.isArray
     def isString: Boolean = t =:= TypeRepr.of[String]
     def isInt: Boolean = t =:= TypeRepr.of[Int]
     def isLong: Boolean = t =:= TypeRepr.of[Long]
@@ -155,9 +158,18 @@ trait Common:
       case AppliedType(_, args) if t.isIterable => args.head
       case _ => errorAndAbort(s"It isn't Iterable (argument) type: ${t.typeSymbol.name}")
 
-    def iterableBaseType: TypeRepr = t.dealias.matchable match
-      case AppliedType(t1, _) if t.isIterable => t1
-      case _ => errorAndAbort(s"It isn't Iterable (base) type: ${t.typeSymbol.name}")
+    def arrayArgument: TypeRepr = t.dealias.matchable match
+      case AppliedType(_, args) if t.isArray => args.head
+      case _ => errorAndAbort(s"It isn't Array (base) type: ${t.typeSymbol.name}")
+      
+    def repeatedArgument: TypeRepr = 
+      if t.isIterable   then t.iterableArgument
+      else if t.isArray then t.arrayArgument
+      else errorAndAbort(s"It isn't Iterable or Array type: ${t.typeSymbol.name}")
+
+    def repeatedBaseType: TypeRepr = t.dealias.matchable match
+      case AppliedType(t1, _) if t.isRepeated => t1
+      case _ => errorAndAbort(s"It isn't Iterable or Array  type: ${t.typeSymbol.name}")
 
     def restrictedNums: List[Int] =
       val aName = RestrictedNType.typeSymbol.name
@@ -186,5 +198,20 @@ trait Common:
       case (cond, thenp) :: xs =>
         If(cond, thenp, mkIfStatement(xs, elseBranch))
       case Nil => elseBranch
+
+  def findCodec(t: TypeRepr): Term = 
+    val tpe = TypeRepr.of[MessageCodec].appliedTo(t)
+    Implicits.search(tpe) match
+      case x: ImplicitSearchSuccess => x.tree
+      case x: ImplicitSearchFailure => errorAndAbort(x.explanation)
+
+  def findImplicit(tpe: TypeRepr): Term =
+    Implicits.search(tpe) match
+      case x: ImplicitSearchSuccess => x.tree
+      case x: ImplicitSearchFailure => errorAndAbort(x.explanation)
+
+  extension (array_term: Term)
+    private[proto] def wrapArrayOps(array_tpe: TypeRepr): Term =
+      Select.unique(Ref(PredefModule), "genericArrayOps").appliedToType(array_tpe.arrayArgument).appliedTo(array_term)
 
 end Common

@@ -140,7 +140,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
             case List(x) =>
               if tpe.matchable.isOption && restrictDefaults then
                 errorAndAbort(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for Option isn't allowed")
-              else if tpe.matchable.isIterable && restrictDefaults then
+              else if tpe.matchable.isRepeated && restrictDefaults then
                 errorAndAbort(s"`${name}: ${tpe.typeSymbol.fullName}`: default value for collections isn't allowed")
               else
                 Some(Select(Ref(aTypeCompanionSym), x))
@@ -159,7 +159,9 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
       , num = num
       , sym = s
       , tpe = tpe.matchable
-      , getter = (a: Term) => Select.unique(a, name)
+      , getter = (a: Term) => 
+          if tpe.isArray then Select.unique(a, name).wrapArrayOps(tpe)
+          else Select.unique(a, name)
       , sizeSym = Symbol.newVal(Symbol.spliceOwner, s"${name}Size", TypeRepr.of[Int], Flags.Mutable, Symbol.noSymbol)
       , prepareSym = Symbol.newVal(Symbol.spliceOwner, s"${name}Prepare", PrepareType, Flags.Mutable, Symbol.noSymbol)
       , prepareOptionSym = Symbol.newVal(Symbol.spliceOwner, s"${name}Prepare", OptionType.appliedTo(PrepareType), Flags.Mutable, Symbol.noSymbol)

@@ -46,7 +46,7 @@ trait BuildCodec extends Common:
         if      p.isCaseObject then writeCaseObject(os, p)
         else if p.tpe.isCommonType then writeCommon(a, os, p)
         else if p.tpe.isOption     then writeOption(a, os, p)
-        else if p.tpe.isIterable   then writeCollection(a, os, p)
+        else if p.tpe.isRepeated   then writeCollection(a, os, p)
         else writeMessage(a, os, p)
       )
     , unitExpr)
@@ -84,7 +84,7 @@ trait BuildCodec extends Common:
       )
 
   def writeCollection[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo)(using Quotes): List[Expr[Unit]] =
-    val tpe1 = field.tpe.iterableArgument.matchable
+    val tpe1 = field.tpe.repeatedArgument.matchable
     val getter = field.getter(a.asTerm)
     val pType = tpe1.asType
     val sizeRef = Ref(field.sizeSym)
@@ -150,7 +150,7 @@ trait BuildCodec extends Common:
     if      field.isCaseObject     then sizeCaseObject(field, sizeAcc)
     else if field.tpe.isCommonType then sizeCommon(a, field, sizeAcc)
     else if field.tpe.isOption     then sizeOption(a, field, sizeAcc)
-    else if field.tpe.isIterable   then sizeCollection(a, field, sizeAcc)
+    else if field.tpe.isRepeated   then sizeCollection(a, field, sizeAcc)
     else sizeMessage(a, field, sizeAcc)
 
   def sizeCommon[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref)(using Quotes): List[Statement] =
@@ -186,7 +186,7 @@ trait BuildCodec extends Common:
       )
 
   def sizeCollection[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref)(using Quotes): List[Statement] = 
-    val tpe1 = field.tpe.iterableArgument.matchable
+    val tpe1 = field.tpe.repeatedArgument.matchable
     val getter = field.getter(a.asTerm)
     val pType = tpe1.asType
     pType match
@@ -313,7 +313,7 @@ trait BuildCodec extends Common:
             ('{ tag == 0 }.asTerm -> '{ done = true; }.asTerm) ::
             params.zip(readRefs)
               .flatMap{ case (p, ref) =>
-                if p.tpe.isIterable && p.tpe.iterableArgument.matchable.isCommonType then
+                if p.tpe.isRepeated && p.tpe.repeatedArgument.matchable.isCommonType then
                   (p, ref) :: (p.copy(nonPacked = true), ref) :: Nil
                 else (p, ref) :: Nil
               }
@@ -368,8 +368,8 @@ trait BuildCodec extends Common:
         , Some_Apply(tpe=tpe1, value=fun)
         ).asExpr      
       )
-    else if p.tpe.isIterable && p.tpe.iterableArgument.matchable.isCommonType then
-      val tpe1 = p.tpe.iterableArgument.matchable
+    else if p.tpe.isRepeated && p.tpe.repeatedArgument.matchable.isCommonType then
+      val tpe1 = p.tpe.repeatedArgument.matchable
       val fun: Term = readFun(tpe1, is)
       val addOneApply = Select.unique(readRef, "addOne").appliedTo(fun).asExpr
       if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || p.nonPacked then 
@@ -379,8 +379,8 @@ trait BuildCodec extends Common:
           is
         , '{ while ${is}.getBytesUntilLimit > 0 do ${addOneApply} }
         )
-    else if p.tpe.isIterable then
-      val tpe1 = p.tpe.iterableArgument
+    else if p.tpe.isRepeated then
+      val tpe1 = p.tpe.repeatedArgument
       val fun: Term = Select.unique(findCodec(tpe1), "read").appliedTo(is.asTerm)
       val addOneApply = Select.unique(readRef, "addOne").appliedTo(fun).asExpr
       putLimit(
@@ -412,13 +412,19 @@ trait BuildCodec extends Common:
       val init = ValDef(sym, Some(_none))
       val ref = Ref(sym)
       init -> ref
-    else if field.tpe.isIterable then
-      val tpe1 = field.tpe.iterableArgument
-      val collectionType = field.tpe.iterableBaseType
+    else if field.tpe.isRepeated then
+      val tpe1 = field.tpe.repeatedArgument
+      val collectionType = field.tpe.repeatedBaseType
       val collectionCompanion = collectionType.typeSymbol.companionModule
       val builderTpe = builderType.appliedTo(List(tpe1, field.tpe))
       val sym = Symbol.newVal(Symbol.spliceOwner, s"${field.name}Read", builderTpe, Flags.EmptyFlags, Symbol.noSymbol)
-      val rhs = Select.unique(Ref(collectionCompanion), "newBuilder").appliedToTypes(field.tpe.typeArgs)
+      val rhs = 
+        if field.tpe.isArray then
+          val classTag = findImplicit(TypeRepr.of[scala.reflect.ClassTag].appliedTo(tpe1))
+          Select.unique(Ref(collectionCompanion), "newBuilder")
+            .appliedToTypes(field.tpe.typeArgs)
+            .appliedTo(classTag)
+        else Select.unique(Ref(collectionCompanion), "newBuilder").appliedToTypes(field.tpe.typeArgs)
       val init = ValDef(sym, Some(rhs))
       val ref = Ref(sym)
       init -> ref
@@ -431,7 +437,7 @@ trait BuildCodec extends Common:
 
   def resTerm(ref: Ref, field: FieldInfo): Term =
     if field.tpe.isOption then ref
-    else if field.tpe.isIterable then
+    else if field.tpe.isRepeated then
       Select.unique(ref, "result").appliedToNone
     else
       val error = s"missing required field `${field.name}: ${field.tpe.typeSymbol.name}`"
@@ -440,12 +446,6 @@ trait BuildCodec extends Common:
       Select.unique(ref, "getOrElse")
         .appliedToType(field.tpe)
         .appliedTo(orElse) // ref.getOrElse[feld.tpe](orElse)
-  
-  def findCodec(t: TypeRepr): Term = 
-    val tpe = TypeRepr.of[MessageCodec].appliedTo(t)
-    Implicits.search(tpe) match
-      case x: ImplicitSearchSuccess => x.tree
-      case x: ImplicitSearchFailure => errorAndAbort(x.explanation)
 
   def classApply(t: TypeRepr, params: List[Term], constructor: Option[Term]): Term =
     constructor match
