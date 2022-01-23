@@ -124,7 +124,7 @@ class Impl(val c: Context) extends BuildCodec {
       }
       val defaultValue = if (p.isParamWithDefault) {
         if (tpe.isOption && restrictDefaults) error(s"`${p.name}: ${tpe}`: default value for Option isn't allowed")
-        else if (tpe.isIterable && restrictDefaults) error(s"`${p.name}: ${tpe}`: default value for collections isn't allowed")
+        else if (tpe.isRepeated && restrictDefaults) error(s"`${p.name}: ${tpe}`: default value for collections isn't allowed")
         else {
           val getDefaultMethod = TermName(s"apply$$default$$${i + 1}")
           Some(q"${aType.typeSymbol.companion}.${getDefaultMethod}")

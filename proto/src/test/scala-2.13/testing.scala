@@ -40,6 +40,8 @@ object models {
   , @N(32) messageBasic: Map[Vehicle, String]
   , @N(33) setBasic: Set[Double]
   , @N(50) setMessage: Set[Vehicle]
+  , @N(60) array: Array[Int]
+  , @N(70) arrayVehicle: Array[Vehicle]
   )
 
   sealed trait Vehicle
@@ -97,6 +99,13 @@ object models {
   , @N(3) name: String
   , @N(4) int_list: List[Int]
   , @N(5) double_list: List[Double]
+  )
+
+  case class SimpleWithArray(
+    @N(1) id: Int
+  , @N(3) name: String
+  , @N(4) int_list: Array[Int]
+  , @N(5) double_list: Array[Double]
   )
 }
 
@@ -284,6 +293,8 @@ class testing extends AnyFreeSpec {
       , "messageBasic"->18
       , "setBasic"->19
       , "setMessage"->20
+      , "array"->21
+      , "arrayVehicle"->22
       )
     }
     object idxcodec {
@@ -298,6 +309,7 @@ class testing extends AnyFreeSpec {
 
   "collections" - {
     def test(implicit codec: MessageCodec[Collections]): Unit = {
+      import java.util.Arrays
       val int = List(Int.MinValue, -2, -1, 0, 1, 2, Int.MaxValue)
       val long = List(Long.MinValue, -2L, -1L, 0L, 1L, 2L, Long.MaxValue)
       val bool = List(false, true)
@@ -312,6 +324,8 @@ class testing extends AnyFreeSpec {
       val messageBasic: Map[Vehicle, String] = Map(Bus(id="1")->"123", Car("2")->"456")
       val setBasic: Set[Double] = Set(Double.MinValue, -2.0D, -1.1D, 0.0D, 1.1D, 2.0D, Double.MaxValue)
       val setMessage: Set[Vehicle] = Set(Car(id="1"), Bus(id="2"), Unknown)
+      val array: Array[Int] = Array(1, 3, 5, 7, 9, 12345)
+      val arrayVehicle: Array[Vehicle] = Array(Car(id="1"), Bus(id="2"), Unknown)
       val data = Collections(
         int = int
       , long = long
@@ -327,6 +341,8 @@ class testing extends AnyFreeSpec {
       , messageBasic = messageBasic
       , setBasic = setBasic
       , setMessage = setMessage
+      , array = array
+      , arrayVehicle = arrayVehicle
       )
       val encoded = encode(data)
       val decoded = decode(encoded)
@@ -336,6 +352,14 @@ class testing extends AnyFreeSpec {
       assert(decoded.double === data.double)
       assert(decoded.float === data.float)
       assert(decoded.str === data.str)
+      assert(decoded.message === data.message)
+      assert(decoded.basicBasic === data.basicBasic)
+      assert(decoded.messageMessage === data.messageMessage)
+      assert(decoded.messageBasic === data.messageBasic)
+      assert(decoded.setBasic === data.setBasic)
+      assert(decoded.setMessage === data.setMessage)
+      assert(Arrays.equals(decoded.array, data.array))
+      assert(decoded.arrayVehicle.sameElements(data.arrayVehicle))
       val _ = assert(decoded.bytes.zip(data.bytes).forall{ case (decodedBytes, dataBytes) => decodedBytes === dataBytes })
     }
     "encode <-> decode" - {
@@ -475,19 +499,31 @@ class testing extends AnyFreeSpec {
 
   "decode non-packed format of repeated primitives" in {
     import java.util.Arrays
-    implicit val codec: MessageCodec[Simple] = caseCodecAuto[Simple]
+    implicit val codec1: MessageCodec[Simple] = caseCodecAuto[Simple]
+    implicit val codec2: MessageCodec[SimpleWithArray] = caseCodecAuto[SimpleWithArray]
 
-    val reference = Simple(42,"simple",List(1, 2, 3, 4, 5, 6),List(10.0, 20.0, 30.0))
+    val reference_list = Simple(42,"simple",List(1, 2, 3, 4, 5, 6),List(10.0, 20.0, 30.0))
+    val reference_array = SimpleWithArray(42,"simple",Array(1, 2, 3, 4, 5, 6),Array(10.0, 20.0, 30.0))
     val nonPackedBytes: Array[Byte] = Array(8, 42, 26, 6, 115, 105, 109, 112, 108, 101, 32, 1, 32, 2, 32, 3, 32, 4, 32, 5, 32, 6, 41, 0, 0, 0, 0, 0, 0, 36, 64, 41, 0, 0, 0, 0, 0, 0, 52, 64, 41, 0, 0, 0, 0, 0, 0, 62, 64)
     val packedBytes: Array[Byte] = Array(8, 42, 26, 6, 115, 105, 109, 112, 108, 101, 34, 6, 1, 2, 3, 4, 5, 6, 42, 24, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 52, 64, 0, 0, 0, 0, 0, 0, 62, 64)
 
-    val message1: Simple = decode(nonPackedBytes)
-    val message2: Simple = decode(packedBytes)
+    val message1: Simple = decode[Simple](nonPackedBytes)
+    val message2: Simple = decode[Simple](packedBytes)
 
-    assert(message1 == reference)
-    assert(message2 == reference)
+    val message3: SimpleWithArray = decode[SimpleWithArray](nonPackedBytes)
+    val message4: SimpleWithArray = decode[SimpleWithArray](packedBytes)
 
-    val encoded: Array[Byte] = encode(reference)
+    assert(message1 == reference_list)
+    assert(message2 == reference_list)
+
+    assert(message3.int_list.sameElements(reference_array.int_list))
+    assert(message4.double_list.sameElements(reference_array.double_list))
+
+
+    val encoded: Array[Byte] = encode(reference_list)
     assert(Arrays.equals(packedBytes, encoded))
+
+    val encodedArrays: Array[Byte] = encode(reference_array)
+    assert(Arrays.equals(packedBytes, encodedArrays))
   }
 }

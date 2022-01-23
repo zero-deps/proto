@@ -33,9 +33,9 @@ trait BuildCodec extends Common {
     }
 
   def sizeCollection(field: FieldInfo, sizeAcc: TermName): Option[List[c.Tree]] =
-    if (field.tpe.isIterable) {
+    if (field.tpe.isRepeated) {
       val value = TermName("value")
-      val tpe1 = field.tpe.iterableArgument
+      val tpe1 = field.tpe.repeatedArgument
       val field1 = field.copy(getter=q"${value}", tpe=tpe1, num=field.num) 
       common.sizeFun(field1).map{ v =>
         if ( field1.tpe =:= StringClass.selfType
@@ -115,9 +115,9 @@ trait BuildCodec extends Common {
     }
 
   def writeCollection(field: FieldInfo, os: TermName): Option[List[c.Tree]] =
-    if (field.tpe.isIterable) {
+    if (field.tpe.isRepeated) {
       val value = TermName("value")
-      val tpe1 = field.tpe.iterableArgument
+      val tpe1 = field.tpe.repeatedArgument
       val field1 = field.copy(getter=q"${value}", tpe=tpe1, num=field.num)
       common.writeFun(field1, os).map(v =>
         if ( field1.tpe =:= StringClass.selfType
@@ -187,7 +187,7 @@ trait BuildCodec extends Common {
   def initArg(field: FieldInfo): c.Tree =
     if (field.tpe.isOption) {
       q"${field.readName}"
-    } else if (field.tpe.isIterable) {
+    } else if (field.tpe.isRepeated) {
       q"${field.readName}.result"
     } else {
       val err: String = s"missing required field `${field.name}: ${field.tpe}`"
@@ -203,8 +203,8 @@ trait BuildCodec extends Common {
         params.map(field =>
           if (field.tpe.isOption) {
             q"var ${field.readName}: ${field.tpe} = ${NoneModule}"
-          } else if (field.tpe.isIterable) {
-            val tpe1 = field.tpe.iterableArgument
+          } else if (field.tpe.isRepeated) {
+            val tpe1 = field.tpe.repeatedArgument
             q"var ${field.readName}: ${builder(tpe1, field.tpe)} = ${field.tpe.typeConstructor.typeSymbol.companion}.newBuilder"
           } else {
             q"var ${field.readName}: ${OptionClass}[${field.tpe}] = ${NoneModule}"
@@ -238,7 +238,7 @@ trait BuildCodec extends Common {
 
     def tagMatch(is: TermName): List[c.Tree] = 
       params.flatMap(p =>
-        if (p.tpe.isIterable && p.tpe.iterableArgument.isCommonType)
+        if (p.tpe.isRepeated && p.tpe.repeatedArgument.isCommonType)
           p :: p.copy(nonPacked = true) :: Nil
         else p :: Nil
       ).map{ field =>
@@ -254,8 +254,8 @@ trait BuildCodec extends Common {
             )).getOrElse(
               putLimit(is, q"${field.readName} = Some(implicitly[${messageCodecFor(tpe1)}].read(${is}))")
             )
-          } else if (field.tpe.isIterable) {
-            val tpe1 = field.tpe.iterableArgument
+          } else if (field.tpe.isRepeated) {
+            val tpe1 = field.tpe.repeatedArgument
             val field1: FieldInfo = field.copy(getter=q"${value}", tpe=tpe1, num=field.num)
             common.readFun(field1, is).map(readFun =>
               if ( field1.tpe =:= StringClass.selfType

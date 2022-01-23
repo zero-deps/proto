@@ -21,6 +21,7 @@ trait Common {
   val NType: c.Type = c.typeOf[N]
   val RestrictedNType: c.Type = c.typeOf[RestrictedN]
   val ItetableType: c.Type = typeOf[scala.collection.Iterable[Unit]]
+  val ArrayType: c.Type = typeOf[Array[_]]
 
   def messageCodecFor(t: c.Type): c.Type = appliedType(typeOf[MessageCodec[Unit]].typeConstructor, t)
   def builder(t1: c.Type, t2: c.Type): c.Type = appliedType(typeOf[scala.collection.mutable.Builder[Unit, Unit]].typeConstructor, t1, t2)
@@ -45,12 +46,20 @@ trait Common {
     def isIterable: Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ItetableType.typeConstructor)
     def iterableArgument: c.Type = if (t.isIterable) t.baseType(ItetableType.typeSymbol).typeArgs(0) else error(s"It isn't Iterable (argument) type: $t")
 
+    def isArray: Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ArrayType.typeConstructor) && !(t =:= ArrayByteType)
+    def arrayArgument: c.Type = if (t.isArray) t.baseType(ArrayType.typeSymbol).typeArgs(0) else error(s"It isn't Array (argument) type: $t")
+
+    def isRepeated: Boolean = t.isIterable || t.isArray
+    def repeatedArgument: c.Type = 
+      if (t.isIterable) t.iterableArgument
+      else if (t.isArray) t.arrayArgument
+      else error(s"It isn't repated type: $t")
   }
   
   object common {
     def tag(field: FieldInfo): Int = 
-      if (field.nonPacked && field.tpe.isIterable && field.tpe.iterableArgument.isCommonType)
-        field.num << 3 | wireType(field.tpe.iterableArgument)
+      if (field.nonPacked && field.tpe.isRepeated && field.tpe.repeatedArgument.isCommonType)
+        field.num << 3 | wireType(field.tpe.repeatedArgument)
       else field.num << 3 | wireType(field.tpe)
 
     def wireType(t: c.Type): Int = 
