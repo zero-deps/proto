@@ -9,12 +9,14 @@ ThisBuild / crossScalaVersions := "3.1.1" :: "2.13.8" :: "2.12.15" :: Nil
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
   version := zero.git.version(),
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.19.3"
+  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.19.3",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % Test
 ).dependsOn(protoops)
 
 lazy val protopurs = project.in(file("purs")).settings(
   name := "proto-purs"
 , version := zero.git.version()
+, libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % Test
 ).dependsOn(protoops, proto % Test)
 
 lazy val prototex = project.in(file("tex")).settings(
@@ -55,8 +57,6 @@ lazy val bench = project.in(file("bench")).settings(
 // , Compile / PB.targets := Seq(scalapb.gen() -> (Compile / sourceManaged).value)
 , scalacOptions := Nil
 ).dependsOn(proto).enablePlugins(JmhPlugin)
-
-ThisBuild / libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % Test
 
 ThisBuild / organization := "io.github.zero-deps"
 ThisBuild / homepage := Some(url("https://github.com/zero-deps/proto"))
