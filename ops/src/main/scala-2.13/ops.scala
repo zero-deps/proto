@@ -68,7 +68,7 @@ object Ops {
         val typeArgType = typeArg.asType.toType
         if (complexType(typeArgType)) (typeArgType+:tail, acc)
         else (tail, acc)
-      } else if (isIterable(head)) {
+      } else if (isRepeated(head)) {
         head.typeArgs match {
           case x :: Nil =>
             val typeArg = x.typeSymbol
@@ -108,7 +108,7 @@ object Ops {
         })
       } else if (tpe1.typeConstructor =:= OptionClass.selfType.typeConstructor) {
         NoneDef
-      } else if (isIterable(tpe1)) {
+      } else if (isRepeated(tpe1)) {
         SeqDef
       } else NoDef
       (term.name.encodedName.toString, tpe1, findN(x), defval)
@@ -141,6 +141,11 @@ object Ops {
   def isIterable(tpe: Type): Boolean = {
     tpe.baseClasses.exists(_.asType.toType.typeConstructor <:< typeOf[scala.collection.Iterable[Unit]].typeConstructor)
   }
+
+  def isArray(tpe: Type): Boolean = 
+    tpe.baseClasses.exists(_.asType.toType.typeConstructor <:< typeOf[Array[_]].typeConstructor) && !(tpe =:= typeOf[Array[Byte]])
+
+  def isRepeated(tpe: Type): Boolean = isIterable(tpe) || isArray(tpe)
   
   def tupleFunName(tpe_1: Type, tpe_2: Type): String = {
     (pursType(tpe_1)._1.filter(_.isLetter) + "_" + pursType(tpe_2)._1).filter(_.isLetter)
@@ -185,7 +190,7 @@ object Ops {
         val name = typeArg.typeSymbol.name.encodedName.toString
         s"(Maybe $name)" -> s"Maybe $name)"
       }
-    } else if (isIterable(tpe)) {
+    } else if (isRepeated(tpe)) {
       iterablePurs(tpe) match {
         case ArrayPurs(tpe) =>
           val name = tpe.typeSymbol.asClass.name.encodedName.toString

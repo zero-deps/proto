@@ -139,7 +139,7 @@ object Encoders {
         s"""Encode.unsignedVarint32 ${(n<<3)+2}"""
       , s"""Encode.bytes msg.$name"""
       )
-    } else if (isIterable(tpe)) {
+    } else if (isRepeated(tpe)) {
       iterablePurs(tpe) match {
         case ArrayPurs(x) =>
           if (x =:= StringClass.selfType) {

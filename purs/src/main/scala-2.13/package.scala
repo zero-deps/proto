@@ -10,7 +10,7 @@ import Ops._
 
 package object purs {
   def nothingValue(name: String, tpe: Type): String = {
-    if (isIterable(tpe)) {
+    if (isRepeated(tpe)) {
       iterablePurs(tpe) match {
         case _: ArrayPurs => s"$name: []"
         case _: ArrayTuplePurs => s"$name: []"
@@ -20,7 +20,7 @@ package object purs {
   
   def justValue(name: String, tpe: Type): String = {
     if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) name
-    else if (isIterable(tpe)) name
+    else if (isRepeated(tpe)) name
     else {
       s"$name: Just $name"
     }

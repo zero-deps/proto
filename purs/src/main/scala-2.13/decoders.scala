@@ -289,13 +289,15 @@ object Decoders {
         val typeArgName = typeArg.name.encodedName.toString
         tmpl(n, s"decode$typeArgName", s"$name = Just val")
       }
-    } else if (isIterable(tpe)) {
+    } else if (tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]) {
+       tmpl(n, "Decode.bytes", s"$name = Just val")
+    } else if (isRepeated(tpe)) {
       iterablePurs(tpe) match {
-        case ArrayPurs(tpe) =>
-          if (tpe =:= StringClass.selfType) {
+        case ArrayPurs(tpe1) =>
+          if (tpe1 =:= StringClass.selfType) {
             tmpl(n, "Decode.string", s"$name = snoc acc.$name val")
           } else {
-            val tpeName = tpe.typeSymbol.asClass.name.encodedName.toString
+            val tpeName = tpe1.typeSymbol.asClass.name.encodedName.toString
             tmpl(n, s"decode$tpeName", s"$name = snoc acc.$name val")
           }
         case ArrayTuplePurs(tpe1, tpe2) =>
