@@ -3,13 +3,13 @@ val `proto-parent` = project.in(file(".")).settings(
 , version := zero.git.version()
 ).aggregate(proto, protosyntax, protopurs, prototex, protoops, bench)
 
-ThisBuild / scalaVersion := "3.1.1"
-ThisBuild / crossScalaVersions := "3.1.1" :: "2.13.8" :: "2.12.15" :: Nil
+ThisBuild / scalaVersion := "3.1.3-RC2"
+ThisBuild / crossScalaVersions := "3.1.3-RC2" :: "2.13.8" :: "2.12.15" :: Nil
 
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
   version := zero.git.version(),
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.19.3",
+  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.20.1",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % Test
 ).dependsOn(protoops)
 
@@ -82,7 +82,7 @@ ThisBuild / scalacOptions ++= {
       "-source", "future-migration", "-deprecation"
     , "release", "11"
     , "-Yexplicit-nulls"
-    , "-Xcheck-macros"
+    // , "-Xcheck-macros"
     )
   }
 }

@@ -61,7 +61,7 @@ object States {
     given MessageCodec[Version] = caseCodecIdx
     given MessageCodec[VectorClock] = caseCodecIdx
     val codec = caseCodecIdx[Data]
-    val bytes: Array[Byte] = encode(data)(codec)
+    val bytes: Array[Byte] = encode(data)(using codec)
   }
 }
 
@@ -87,7 +87,7 @@ class Encode {
 
   @Benchmark
   def proto(state: States.MacrosState, bh: Blackhole): Unit = {
-    bh.consume(encode(state.data)(state.codec))
+    bh.consume(encode(state.data)(using state.codec))
   }
 }
 
@@ -112,6 +112,6 @@ class Decode {
 
   @Benchmark
   def proto(state: States.MacrosState, bh: Blackhole): Unit = {
-    bh.consume(decode(state.bytes)(state.codec))
+    bh.consume(decode(state.bytes)(using state.codec))
   }
 }

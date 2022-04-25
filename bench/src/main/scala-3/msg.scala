@@ -21,7 +21,7 @@ object States {
     given MessageCodec[Stat] = caseCodecIdx
     given MessageCodec[StatMeta] = caseCodecIdx
     val codec = caseCodecIdx[Msg]
-    val bytes: Array[Byte] = encode(msg)(codec)
+    val bytes: Array[Byte] = encode(msg)(using codec)
   }
 }
 
@@ -33,7 +33,7 @@ class Encode {
 
   @Benchmark
   def proto(state: States.MacrosState, bh: Blackhole): Unit = {
-    bh.consume(encode(state.msg)(state.codec))
+    bh.consume(encode(state.msg)(using state.codec))
   }
 }
 
@@ -45,6 +45,6 @@ class Decode {
 
   @Benchmark
   def proto(state: States.MacrosState, bh: Blackhole): Unit = {
-    bh.consume(decode(state.bytes)(state.codec))
+    bh.consume(decode(state.bytes)(using state.codec))
   }
 }
