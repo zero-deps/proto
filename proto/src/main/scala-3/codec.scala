@@ -9,3 +9,5 @@ trait Prepare:
 trait MessageCodec[A]:
   def prepare(a: A): Prepare
   def read(is: CodedInputStream): A
+
+type Codec[A] = MessageCodec[A]
