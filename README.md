@@ -1,7 +1,9 @@
 # proto
 
-[![scaladex](https://index.scala-lang.org/zero-deps/proto/proto/latest-by-scala-version.svg)](https://index.scala-lang.org/zero-deps/proto/proto)
-[![test](https://img.shields.io/github/workflow/status/zero-deps/proto/test?label=tests)](https://github.com/zero-deps/proto/actions/workflows/test.yml)
+[![Scaladex](https://index.scala-lang.org/zero-deps/proto/proto/latest-by-scala-version.svg)](https://index.scala-lang.org/zero-deps/proto/proto)
+[![CI](https://img.shields.io/github/workflow/status/zero-deps/proto/test?label=tests)](https://github.com/zero-deps/proto/actions/workflows/test.yml)
+[![License](https://img.shields.io/github/license/zero-deps/proto)](LICENSE)
+[![LoC](https://img.shields.io/tokei/lines/github/zero-deps/proto)](#)
 
 Lightweight and fast serialization library for Scala 2/3 based on Protocol Buffers with macros magic.
 
