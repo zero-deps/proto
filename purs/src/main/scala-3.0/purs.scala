@@ -4,6 +4,7 @@ package purs
 import scala.quoted.*
 import proto.*
 import scala.collection.immutable.ArraySeq
+import compiletime.asMatchable
 
 inline def enumByN[A, B]: String = ${enumByN[A, B]}
 
@@ -13,15 +14,12 @@ private class Impl(using qctx: Quotes):
   import qctx.reflect.{*, given}
   import qctx.reflect.defn.*
   import report.*
-  
-  extension (x: TypeRepr)
-    private def matchable: TypeRepr & Matchable = x.asInstanceOf[TypeRepr & Matchable]
 
   def enumByN[A: Type, B: Type]: Expr[String] =
     val a_tpe = TypeRepr.of[A]
     val b_tpe = TypeRepr.of[B]
-    val a_fields = fieldsOf(a_tpe.matchable)
-    val b_fields = fieldsOf(b_tpe.matchable)
+    val a_fields = fieldsOf(a_tpe.asMatchable)
+    val b_fields = fieldsOf(b_tpe.asMatchable)
     val pushTypes =
       a_fields
       .map(_.name)
@@ -107,7 +105,7 @@ private class Impl(using qctx: Quotes):
       _subclasses.map{ x =>
         x.annotations.collect{
           case Apply(Select(New(tpt),_), List(Literal(IntConstant(num))))
-            if tpt.tpe.matchable.isNType =>
+            if tpt.tpe.asMatchable.isNType =>
               x.tpe -> num
         } match
           case List(x) => x
@@ -127,7 +125,7 @@ private class Impl(using qctx: Quotes):
       then errorAndAbort(s"_nums for ${_typeName} should be unique")
 
     _subclasses.map{ s =>
-      val tpe = s.tpe.matchable
+      val tpe = s.tpe.asMatchable
       val num: Int = _nums.collectFirst{ case (tpe1, num) if tpe =:= tpe1 => num }.getOrElse(errorAndAbort(s"missing num for class `${tpe}` of trait `${_tpe}`"))
       if _tpe.restrictedNums.contains(num)
         then errorAndAbort(s"num ${num} is restricted for class `${tpe}` of trait `${_tpe}`")
@@ -204,29 +202,29 @@ private class Impl(using qctx: Quotes):
       .map(_.map(_.name).zip(t.typeArgs)).getOrElse(Nil)
       .toMap
 
-    private def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t.matchable match
+    private def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t.asMatchable match
       case AppliedType(t1, args) =>
-        t1.appliedTo(args.map(_.matchable.replaceTypeArgs(map)))
+        t1.appliedTo(args.map(_.asMatchable.replaceTypeArgs(map)))
       case _ =>
         map.getOrElse(t.typeSymbol.name, t)
 
-    private def isOption: Boolean = t.matchable match
+    private def isOption: Boolean = t.asMatchable match
       case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
       case _ => false
 
-    private def typeArgs: List[TypeRepr] = t.matchable match
+    private def typeArgs: List[TypeRepr] = t.asMatchable match
       case AppliedType(t1, args)  => args
       case _ => Nil
 
-    private def optionArgument: TypeRepr = t.matchable match
+    private def optionArgument: TypeRepr = t.asMatchable match
       case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head
       case _ => errorAndAbort(s"It isn't Option type: ${t.typeSymbol.name}")
 
-    private def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol).matchable match
+    private def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol).asMatchable match
       case AppliedType(_, args) if t.isIterable => args.head
       case _ => errorAndAbort(s"It isn't Iterable type: ${t.typeSymbol.name}")
 
-    private def iterableBaseType: TypeRepr = t.matchable match
+    private def iterableBaseType: TypeRepr = t.asMatchable match
       case AppliedType(t1, _) if t.isIterable => t1
       case _ => errorAndAbort(s"It isn't Iterable type: ${t.typeSymbol.name}")
 

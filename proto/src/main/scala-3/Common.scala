@@ -4,15 +4,13 @@ import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted.*
 import scala.collection.immutable.ArraySeq
 import scala.annotation.*
+import compiletime.asMatchable
 
 trait Common:
   implicit val qctx: Quotes
   import qctx.reflect.{*, given}
   import qctx.reflect.defn.*
   import report.*
-
-  extension (x: TypeRepr)
-    private[proto] def matchable: TypeRepr & Matchable = x.asInstanceOf[TypeRepr & Matchable]
 
   private[proto] case class FieldInfo(
     name: String
@@ -29,15 +27,15 @@ trait Common:
   , nonPacked: Boolean = false
   ):
     def tag: Int = 
-      if nonPacked && tpe.isRepeated && tpe.repeatedArgument.matchable.isCommonType then 
-        num << 3 | wireType(tpe.repeatedArgument.matchable)
+      if nonPacked && tpe.isRepeated && tpe.repeatedArgument.asMatchable.isCommonType then 
+        num << 3 | wireType(tpe.repeatedArgument.asMatchable)
       else num << 3 | wireType(tpe)
   
   def wireType(t: TypeRepr & Matchable): Int =
     if      t.isInt || t.isLong || t.isBoolean then 0
     else if t.isDouble then 1
     else if t.isFloat then 5
-    else if t.isOption then wireType(t.optionArgument.matchable)
+    else if t.isOption then wireType(t.optionArgument.asMatchable)
     else if t.isString || 
             t.isArrayByte || 
             t.isArraySeqByte || 
@@ -138,27 +136,27 @@ trait Common:
       .map(_.map(_.name).zip(t.typeArgs)).getOrElse(Nil)
       .toMap
 
-    def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t.matchable match
-      case AppliedType(t1, args)  => t1.appliedTo(args.map(_.matchable.replaceTypeArgs(map)))
+    def replaceTypeArgs(map: Map[String, TypeRepr]): TypeRepr = t.asMatchable match
+      case AppliedType(t1, args)  => t1.appliedTo(args.map(_.asMatchable.replaceTypeArgs(map)))
       case _ => map.getOrElse(t.typeSymbol.name, t)
 
-    def isOption: Boolean = t.matchable match
+    def isOption: Boolean = t.asMatchable match
       case AppliedType(t1, _) if t1.typeSymbol == OptionClass => true
       case _ => false
 
-    def typeArgs: List[TypeRepr] = t.dealias.matchable match
+    def typeArgs: List[TypeRepr] = t.dealias.asMatchable match
       case AppliedType(t1, args)  => args
       case _ => Nil
 
-    def optionArgument: TypeRepr = t.matchable match
+    def optionArgument: TypeRepr = t.asMatchable match
       case AppliedType(t1, args) if t1.typeSymbol == OptionClass => args.head
       case _ => errorAndAbort(s"It isn't Option type: ${t.typeSymbol.name}")
 
-    def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol).matchable match
+    def iterableArgument: TypeRepr = t.baseType(ItetableType.typeSymbol).asMatchable match
       case AppliedType(_, args) if t.isIterable => args.head
       case _ => errorAndAbort(s"It isn't Iterable (argument) type: ${t.typeSymbol.name}")
 
-    def arrayArgument: TypeRepr = t.dealias.matchable match
+    def arrayArgument: TypeRepr = t.dealias.asMatchable match
       case AppliedType(_, args) if t.isArray => args.head
       case _ => errorAndAbort(s"It isn't Array (base) type: ${t.typeSymbol.name}")
       
@@ -167,7 +165,7 @@ trait Common:
       else if t.isArray then t.arrayArgument
       else errorAndAbort(s"It isn't Iterable or Array type: ${t.typeSymbol.name}")
 
-    def repeatedBaseType: TypeRepr = t.dealias.matchable match
+    def repeatedBaseType: TypeRepr = t.dealias.asMatchable match
       case AppliedType(t1, _) if t.isRepeated => t1
       case _ => errorAndAbort(s"It isn't Iterable or Array  type: ${t.typeSymbol.name}")
 

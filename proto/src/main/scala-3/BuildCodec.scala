@@ -3,6 +3,7 @@ package proto
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted.*
 import scala.collection.immutable.ArraySeq
+import compiletime.asMatchable
 
 trait BuildCodec extends Common:
   implicit val qctx: Quotes
@@ -58,7 +59,7 @@ trait BuildCodec extends Common:
     )
   
   def writeOption[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo)(using Quotes): List[Expr[Unit]] =
-    val tpe = field.tpe.optionArgument.matchable
+    val tpe = field.tpe.optionArgument.asMatchable
     val getter = field.getter(a.asTerm)
     val getterOption = Select.unique(getter, "get")
     if tpe.isCommonType then
@@ -84,7 +85,7 @@ trait BuildCodec extends Common:
       )
 
   def writeCollection[A: Type](a: Expr[A], os: Expr[CodedOutputStream], field: FieldInfo)(using Quotes): List[Expr[Unit]] =
-    val tpe1 = field.tpe.repeatedArgument.matchable
+    val tpe1 = field.tpe.repeatedArgument.asMatchable
     val getter = field.getter(a.asTerm)
     val pType = tpe1.asType
     val sizeRef = Ref(field.sizeSym)
@@ -159,7 +160,7 @@ trait BuildCodec extends Common:
     List(increment(sizeAcc, sum))
   
   def sizeOption[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref)(using Quotes): List[Statement] =
-    val tpe = field.tpe.optionArgument.matchable
+    val tpe = field.tpe.optionArgument.asMatchable
     val getter: Term = field.getter(a.asTerm)
     val getterOption: Term = Select.unique(getter, "get")//getterOptionTerm(a, field)
     if (tpe.isCommonType) then
@@ -186,7 +187,7 @@ trait BuildCodec extends Common:
       )
 
   def sizeCollection[A: Type](a: Expr[A], field: FieldInfo, sizeAcc: Ref)(using Quotes): List[Statement] = 
-    val tpe1 = field.tpe.repeatedArgument.matchable
+    val tpe1 = field.tpe.repeatedArgument.asMatchable
     val getter = field.getter(a.asTerm)
     val pType = tpe1.asType
     pType match
@@ -313,7 +314,7 @@ trait BuildCodec extends Common:
             ('{ tag == 0 }.asTerm -> '{ done = true; }.asTerm) ::
             params.zip(readRefs)
               .flatMap{ case (p, ref) =>
-                if p.tpe.isRepeated && p.tpe.repeatedArgument.matchable.isCommonType then
+                if p.tpe.isRepeated && p.tpe.repeatedArgument.asMatchable.isCommonType then
                   (p, ref) :: (p.copy(nonPacked = true), ref) :: Nil
                 else (p, ref) :: Nil
               }
@@ -351,8 +352,8 @@ trait BuildCodec extends Common:
         readRef
       , Some_Apply(tpe=p.tpe, value=fun)
       ).asExpr
-    else if p.tpe.isOption && p.tpe.optionArgument.matchable.isCommonType then
-      val tpe1 = p.tpe.optionArgument.matchable
+    else if p.tpe.isOption && p.tpe.optionArgument.asMatchable.isCommonType then
+      val tpe1 = p.tpe.optionArgument.asMatchable
       val fun: Term = readFun(tpe1, is)
       Assign(
         readRef
@@ -368,8 +369,8 @@ trait BuildCodec extends Common:
         , Some_Apply(tpe=tpe1, value=fun)
         ).asExpr      
       )
-    else if p.tpe.isRepeated && p.tpe.repeatedArgument.matchable.isCommonType then
-      val tpe1 = p.tpe.repeatedArgument.matchable
+    else if p.tpe.isRepeated && p.tpe.repeatedArgument.asMatchable.isCommonType then
+      val tpe1 = p.tpe.repeatedArgument.asMatchable
       val fun: Term = readFun(tpe1, is)
       val addOneApply = Select.unique(readRef, "addOne").appliedTo(fun).asExpr
       if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || p.nonPacked then 
@@ -460,7 +461,7 @@ trait BuildCodec extends Common:
             Select.overloaded(Ref(companion) , "apply", Nil, params)
           case x: AppliedType =>
             val companion = x.typeSymbol.companionModule
-            Select.overloaded(Ref(companion) , "apply", x.matchable.typeArgs, params)
+            Select.overloaded(Ref(companion) , "apply", x.asMatchable.typeArgs, params)
 
   def increment(x: Ref, y: Expr[Int])(using Quotes): Assign =  Assign(x, '{ ${x.asExprOf[Int]} + ${y} }.asTerm)
 
