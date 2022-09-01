@@ -3,20 +3,20 @@ val `proto-parent` = project.in(file(".")).settings(
 , version := zero.git.version()
 ).aggregate(proto, protosyntax, protopurs, prototex, protoops, bench)
 
-ThisBuild / scalaVersion := "3.2.0-RC2"
-ThisBuild / crossScalaVersions := "3.2.0-RC2" :: "2.13.8" :: "2.12.16" :: Nil
+ThisBuild / scalaVersion := "3.2.0"
+ThisBuild / crossScalaVersions := "3.2.0" :: "2.13.8" :: "2.12.16" :: Nil
 
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
   version := zero.git.version(),
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.20.1",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % Test
+  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.21.5",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.13" % Test
 ).dependsOn(protoops)
 
 lazy val protopurs = project.in(file("purs")).settings(
   name := "proto-purs"
 , version := zero.git.version()
-, libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % Test
+, libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.13" % Test
 ).dependsOn(protoops, proto % Test)
 
 lazy val prototex = project.in(file("tex")).settings(
