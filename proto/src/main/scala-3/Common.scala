@@ -111,6 +111,9 @@ trait Common:
   val commonTypes: List[TypeRepr] =
     TypeRepr.of[String] :: TypeRepr.of[Int] :: TypeRepr.of[Long] :: TypeRepr.of[Boolean] :: TypeRepr.of[Double] :: TypeRepr.of[Float] :: ArrayByteType :: ArraySeqByteType :: Nil 
 
+  val packedTypes: List[TypeRepr] =
+    TypeRepr.of[Int] :: TypeRepr.of[Long] :: TypeRepr.of[Boolean] :: TypeRepr.of[Double] :: TypeRepr.of[Float] :: Nil
+
   extension (t: TypeRepr)
     def isNType: Boolean = t =:= NTpe
     def isCaseClass: Boolean = t.typeSymbol.flags.is(Flags.Case)
@@ -129,6 +132,7 @@ trait Common:
     def isArrayByte: Boolean = t =:= ArrayByteType
     def isArraySeqByte: Boolean = t =:= ArraySeqByteType
     def isCommonType: Boolean = commonTypes.exists(_ =:= t)
+    def isPackedType: Boolean = packedTypes.exists(_ =:= t)
 
     def typeArgsToReplace: Map[String, TypeRepr] =
       t.typeSymbol.primaryConstructor.paramSymss

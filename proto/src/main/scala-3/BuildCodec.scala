@@ -314,7 +314,7 @@ trait BuildCodec extends Common:
             ('{ tag == 0 }.asTerm -> '{ done = true; }.asTerm) ::
             params.zip(readRefs)
               .flatMap{ case (p, ref) =>
-                if p.tpe.isRepeated && p.tpe.repeatedArgument.asMatchable.isCommonType then
+                if p.tpe.isRepeated && p.tpe.repeatedArgument.asMatchable.isPackedType then
                   (p, ref) :: (p.copy(nonPacked = true), ref) :: Nil
                 else (p, ref) :: Nil
               }

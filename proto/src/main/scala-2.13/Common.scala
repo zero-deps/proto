@@ -30,6 +30,9 @@ trait Common {
   val commonTypes: List[c.Type] =
     StringClass.selfType :: IntClass.selfType :: LongClass.selfType :: BooleanClass.selfType :: DoubleClass.selfType :: FloatClass.selfType :: ArrayByteType :: ArraySeqByteType :: Nil 
 
+  val packedTypes: List[c.Type] =
+    IntClass.selfType :: LongClass.selfType :: BooleanClass.selfType :: DoubleClass.selfType :: FloatClass.selfType :: Nil 
+
   implicit class TypeOps (t: c.Type) {
 
     def isOption: Boolean = t.typeConstructor =:= OptionClass.selfType.typeConstructor
@@ -44,6 +47,7 @@ trait Common {
     }
 
     def isCommonType: Boolean = commonTypes.exists(_ =:= t)
+    def isPackedType: Boolean = packedTypes.exists(_ =:= t)
     def isIterable: Boolean = t.baseClasses.exists(_.asType.toType.typeConstructor <:< ItetableType.typeConstructor) && !(t =:= ArraySeqByteType)
     def iterableArgument: c.Type = if (t.isIterable) t.baseType(ItetableType.typeSymbol).typeArgs(0) else error(s"It isn't Iterable (argument) type: $t")
 

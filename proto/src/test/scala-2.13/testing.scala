@@ -166,9 +166,9 @@ class testing extends AnyFreeSpec {
   }
 
   "option basic" - {
-    object autocodec { implicit val codec = caseCodecAuto[OptionBasic] }
-    object numscodec { implicit val codec = caseCodecNums[OptionBasic]("int"->6, "long"->7, "bool"->8, "double"->9, "float"->10, "str"->20, "bytes"->21) }
-    object idxcodec { implicit val codec = caseCodecIdx[OptionBasic] }
+    object autocodec { implicit val codec: MessageCodec[OptionBasic] = caseCodecAuto }
+    object numscodec { implicit val codec: MessageCodec[OptionBasic] = caseCodecNums("int"->6, "long"->7, "bool"->8, "double"->9, "float"->10, "str"->20, "bytes"->21) }
+    object idxcodec { implicit val codec: MessageCodec[OptionBasic] = caseCodecIdx }
 
     "empty bytearray <-> all fields none" - {
       val data = OptionBasic(int = None, long = None, bool = None, double = None, float = None, str = None, bytes = None)
@@ -232,12 +232,12 @@ class testing extends AnyFreeSpec {
       implicit val vehicleCodec: MessageCodec[Vehicle] = {
         implicit val carCodec = caseCodecAuto[Car]
         implicit val busCodec = caseCodecAuto[Bus]
-        implicit val teleportCodec: MessageCodec[Teleport] = classCodecAuto[Teleport]
-        implicit val unknownCodec: MessageCodec[Unknown.type] = caseCodecAuto[Unknown.type]
+        implicit val teleportCodec: MessageCodec[Teleport] = classCodecAuto
+        implicit val unknownCodec: MessageCodec[Unknown.type] = caseCodecAuto
         sealedTraitCodecAuto[Vehicle]
       }
-      implicit val parkingCodec: MessageCodec[Parking] = caseCodecAuto[Parking]
-      implicit val shoppingMallCodec: MessageCodec[ShoppingMall] = caseCodecAuto[ShoppingMall]
+      implicit val parkingCodec: MessageCodec[Parking] = caseCodecAuto
+      implicit val shoppingMallCodec: MessageCodec[ShoppingMall] = caseCodecAuto
     }
     object numscodec {
       implicit val vehicleCodec: MessageCodec[Vehicle] = {
@@ -247,8 +247,8 @@ class testing extends AnyFreeSpec {
         implicit val unknownCodec = caseCodecNums[Unknown.type]()
         sealedTraitCodecNums[Vehicle]("Car"->10, "Bus"->22, "Teleport"->23, "Unknown"->51)
       }
-      implicit val parkingCodec = caseCodecNums[Parking]("place1"->1, "place2"->2, "other"->3, "reserved"->4)
-      implicit val shoppingMallCodec = caseCodecNums[ShoppingMall]("parking1"->1, "parking2"->2)
+      implicit val parkingCodec: MessageCodec[Parking] = caseCodecNums[Parking]("place1"->1, "place2"->2, "other"->3, "reserved"->4)
+      implicit val shoppingMallCodec: MessageCodec[ShoppingMall] = caseCodecNums("parking1"->1, "parking2"->2)
     }
     object idxcodec {
       implicit val vehicleCodec: MessageCodec[Vehicle] = {
@@ -258,26 +258,26 @@ class testing extends AnyFreeSpec {
         implicit val unknownCodec = caseCodecIdx[Unknown.type]
         sealedTraitCodecNums[Vehicle]("Car"->10, "Bus"->22, "Teleport"->23, "Unknown"->51)
       }
-      implicit val parkingCodec = caseCodecIdx[Parking]
-      implicit val shoppingMallCodec = caseCodecIdx[ShoppingMall]
+      implicit val parkingCodec: MessageCodec[Parking] = caseCodecIdx
+      implicit val shoppingMallCodec: MessageCodec[ShoppingMall] = caseCodecIdx
     }
   }
 
   object collections {
     object autocodec {
       import messages.autocodec._
-      implicit val tuple2IntInt = caseCodecIdx[Tuple2[Int, Int]]
-      implicit def tuple2StringA[A:MessageCodec] = caseCodecIdx[Tuple2[String, A]]
-      implicit def tuple2AString[A:MessageCodec] = caseCodecIdx[Tuple2[A, String]]
-      implicit def tuple2AB[A:MessageCodec, B:MessageCodec] = caseCodecIdx[Tuple2[A, B]]
+      implicit val tuple2IntInt: MessageCodec[(Int, Int)] = caseCodecIdx[Tuple2[Int, Int]]
+      implicit def tuple2StringA[A:MessageCodec]: MessageCodec[(String, A)] = caseCodecIdx[Tuple2[String, A]]
+      implicit def tuple2AString[A:MessageCodec]: MessageCodec[(A, String)] = caseCodecIdx[Tuple2[A, String]]
+      implicit def tuple2AB[A:MessageCodec, B:MessageCodec]: MessageCodec[(A, B)] = caseCodecIdx[Tuple2[A, B]]
       implicit val collectionCodec: MessageCodec[Collections] = caseCodecAuto[Collections]
     }
     object numscodec {
       import messages.numscodec._
-      implicit val tuple2IntInt = caseCodecNums[Tuple2[Int, Int]]("_1"->1, "_2"->2)
-      implicit def tuple2StringA[A:MessageCodec] = caseCodecNums[Tuple2[String, A]]("_1"->1, "_2"->2)
-      implicit def tuple2AString[A:MessageCodec] = caseCodecNums[Tuple2[A, String]]("_1"->1, "_2"->2)
-      implicit def tuple2AB[A:MessageCodec, B:MessageCodec] = caseCodecNums[Tuple2[A, B]]("_1"->1, "_2"->2)
+      implicit val tuple2IntInt: MessageCodec[(Int, Int)] = caseCodecNums[Tuple2[Int, Int]]("_1"->1, "_2"->2)
+      implicit def tuple2StringA[A:MessageCodec]: MessageCodec[(String, A)] = caseCodecNums[Tuple2[String, A]]("_1"->1, "_2"->2)
+      implicit def tuple2AString[A:MessageCodec]: MessageCodec[(A, String)] = caseCodecNums[Tuple2[A, String]]("_1"->1, "_2"->2)
+      implicit def tuple2AB[A:MessageCodec, B:MessageCodec]: MessageCodec[(A, B)] = caseCodecNums[Tuple2[A, B]]("_1"->1, "_2"->2)
       implicit val collectionCodec: MessageCodec[Collections] = caseCodecNums[Collections](
         "int"->7
       , "long"->8
@@ -299,10 +299,10 @@ class testing extends AnyFreeSpec {
     }
     object idxcodec {
       import messages.idxcodec._
-      implicit val tuple2IntInt = caseCodecIdx[Tuple2[Int, Int]]
-      implicit def tuple2StringA[A:MessageCodec] = caseCodecIdx[Tuple2[String, A]]
-      implicit def tuple2AString[A:MessageCodec] = caseCodecIdx[Tuple2[A, String]]
-      implicit def tuple2AB[A:MessageCodec, B:MessageCodec] = caseCodecIdx[Tuple2[A, B]]
+      implicit val tuple2IntInt: MessageCodec[Tuple2[Int, Int]] = caseCodecIdx
+      implicit def tuple2StringA[A:MessageCodec]: MessageCodec[(String, A)] = caseCodecIdx[Tuple2[String, A]]
+      implicit def tuple2AString[A:MessageCodec]: MessageCodec[(A, String)] = caseCodecIdx[Tuple2[A, String]]
+      implicit def tuple2AB[A:MessageCodec, B:MessageCodec]: MessageCodec[(A, B)] = caseCodecIdx[Tuple2[A, B]]
       implicit val collectionCodec: MessageCodec[Collections] = caseCodecIdx[Collections]
     }
   }
@@ -448,16 +448,16 @@ class testing extends AnyFreeSpec {
   object defaultValues {
     object autocodec {
       import messages.autocodec.vehicleCodec
-      implicit val DefaultValuesClassCodec = caseCodecAuto[DefaultValuesClass]
-      implicit val DefaultValuesClass1Codec = caseCodecAuto[DefaultValuesClass1]
+      implicit val DefaultValuesClassCodec: MessageCodec[DefaultValuesClass]  = caseCodecAuto
+      implicit val DefaultValuesClass1Codec: MessageCodec[DefaultValuesClass1] = caseCodecAuto
     }
     object numscodec {
       import messages.numscodec.vehicleCodec
-      implicit val DefaultValuesClassCodec = caseCodecNums[DefaultValuesClass]("int"->2,"bool"->3,"float"->4,"str"->5,"vehicle"->6)
+      implicit val DefaultValuesClassCodec: MessageCodec[DefaultValuesClass] = caseCodecNums("int"->2,"bool"->3,"float"->4,"str"->5,"vehicle"->6)
     }
     object idxcodec {
       import messages.idxcodec.vehicleCodec
-      implicit val DefaultValuesClassCodec = caseCodecIdx[DefaultValuesClass]
+      implicit val DefaultValuesClassCodec: MessageCodec[DefaultValuesClass] = caseCodecIdx
     }
   }
 

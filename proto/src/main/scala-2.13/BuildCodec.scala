@@ -240,7 +240,7 @@ trait BuildCodec extends Common {
 
     def tagMatch(is: TermName): List[c.Tree] = 
       params.flatMap(p =>
-        if (p.tpe.isRepeated && p.tpe.repeatedArgument.isCommonType)
+        if (p.tpe.isRepeated && p.tpe.repeatedArgument.isPackedType)
           p :: p.copy(nonPacked = true) :: Nil
         else p :: Nil
       ).map{ field =>
