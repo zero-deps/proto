@@ -41,7 +41,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
   import report.*
 
   def caseCodecAuto[A: Type]: Expr[MessageCodec[A]] =
-    val a_tpe = getCaseClassType[A].asMatchable
+    val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
     val params: List[Symbol] = aTypeSymbol.constructorParams
@@ -55,24 +55,24 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
         case Nil => errorAndAbort(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
         case _ => errorAndAbort(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
     )
-    messageCodec(a_tpe, nums, params, restrictDefaults=true)
+    messageCodec(a_tpe.asMatchable, nums, params, restrictDefaults=true)
 
   def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using Quotes): Expr[MessageCodec[A]] =
     val nums: Seq[(String, Int)] = numsExpr.valueOrAbort
-    val a_tpe = getCaseClassType[A].asMatchable
+    val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val params: List[Symbol] = aTypeSymbol.constructorParams
-    messageCodec(a_tpe, nums, params, restrictDefaults=false)
+    messageCodec(a_tpe.asMatchable, nums, params, restrictDefaults=false)
 
   def caseCodecIdx[A: Type]: Expr[MessageCodec[A]] =
-    val a_tpe = getCaseClassType[A].asMatchable
+    val a_tpe = getCaseClassType[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val params: List[Symbol] = aTypeSymbol.constructorParams
     val nums: List[(String, Int)] = params.zipWithIndex.map{case (p, idx) => (p.name, idx + 1) }
-    messageCodec(a_tpe, nums, params, restrictDefaults=false)
+    messageCodec(a_tpe.asMatchable, nums, params, restrictDefaults=false)
 
   def classCodecAuto[A: Type]: Expr[MessageCodec[A]] =
-    val a_tpe = TypeRepr.of[A].asMatchable
+    val a_tpe = TypeRepr.of[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
     val params: List[Symbol] = aTypeSymbol.constructorParams
@@ -87,7 +87,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
           case Nil => errorAndAbort(s"missing ${NTpe.typeSymbol.name} annotation for `${typeName}`")
           case _ => errorAndAbort(s"multiple ${NTpe.typeSymbol.name} annotations applied for `${typeName}`")
       )
-    messageCodec(a_tpe, nums, params, restrictDefaults=true)
+    messageCodec(a_tpe.asMatchable, nums, params, restrictDefaults=true)
 
   def classCodecNums[A: Type](
     numsExpr: Expr[Seq[(String, Int)]]
@@ -95,7 +95,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     constructor: Expr[Any]
   )(using Quotes): Expr[MessageCodec[A]] =
     val nums: Seq[(String, Int)] = numsExpr.valueOrAbort
-    val a_tpe = TypeRepr.of[A].asMatchable
+    val a_tpe = TypeRepr.of[A]
     val aTypeSymbol = a_tpe.typeSymbol
     val typeName = aTypeSymbol.fullName
     val members: List[Symbol] = aTypeSymbol.fieldMembers ++ aTypeSymbol.methodMembers
@@ -106,7 +106,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
           case Some(s) => errorAndAbort(s"`${typeName}` field `${name}` is not a term")
           case None => errorAndAbort(s"`${typeName}` has no field `${name}`")
       }.toList
-    messageCodec(a_tpe, nums, params, restrictDefaults=false, constructor=Some(constructor.asTerm))
+    messageCodec(a_tpe.asMatchable, nums, params, restrictDefaults=false, constructor=Some(constructor.asTerm))
 
   def messageCodec[A: Type](
     a_tpe: TypeRepr & Matchable
@@ -196,18 +196,18 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
     )
 
   def enumByN[A: Type]: Expr[MessageCodec[A]] =
-    val a_tpe = TypeRepr.of[A].asMatchable
+    val a_tpe = TypeRepr.of[A]
     val nums = collectNs(a_tpe)
-    sealedTraitCodec(a_tpe, nums)
+    sealedTraitCodec(a_tpe.asMatchable, nums)
 
   def sealedTraitCodecAuto[A: Type]: Expr[MessageCodec[A]] =
-    val a_tpe = getSealedTrait[A].asMatchable
+    val a_tpe = getSealedTrait[A]
     val nums = collectNs(a_tpe)
-    sealedTraitCodec(a_tpe, nums)
+    sealedTraitCodec(a_tpe.asMatchable, nums)
 
   def sealedTraitCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]]): Expr[MessageCodec[A]] =
     val nums: Seq[(String, Int)] = numsExpr.valueOrAbort
-    val a_tpe = getSealedTrait[A].asMatchable
+    val a_tpe = getSealedTrait[A]
     val nums1: List[(TypeRepr, Int)] =
       a_tpe.asMatchable.knownFinalSubclasses.map{ x =>
         x.tpe ->
@@ -217,7 +217,7 @@ private class Impl(using val qctx: Quotes) extends BuildCodec:
             errorAndAbort(s"missing num for `${x.name}: ${x.fullName}`")
           }
       }
-    sealedTraitCodec(a_tpe, nums1)
+    sealedTraitCodec(a_tpe.asMatchable, nums1)
 
   def sealedTraitCodec[A: Type](
     a_tpe: TypeRepr & Matchable

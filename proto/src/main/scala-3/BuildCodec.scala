@@ -67,7 +67,7 @@ trait BuildCodec extends Common:
         '{
           if ${Select.unique(getter, "isDefined").asExprOf[Boolean]} then {
             ${os}.writeUInt32NoTag(${Expr(field.tag)})
-            ${writeFun(os, tpe, getterOption)}
+            ${writeFun(os, tpe.asMatchable, getterOption)}
           }
         }
       )
@@ -99,7 +99,7 @@ trait BuildCodec extends Common:
                 .appliedTo(
                   '{ (v: t) => {
                       ${os}.writeUInt32NoTag(${Expr(field.tag)})
-                      ${writeFun(os, tpe1, 'v.asTerm)}
+                      ${writeFun(os, tpe1.asMatchable, 'v.asTerm)}
                     }
                   }.asTerm
                 ).asExprOf[Unit]
@@ -114,7 +114,7 @@ trait BuildCodec extends Common:
             , '{ ${os}.writeUInt32NoTag(${sizeRef.asExprOf[Int]}) }
             , Select.unique(getter, "foreach")
                 .appliedToType(unitLiteral.tpe)
-                .appliedTo('{ (v: t) => ${writeFun(os, tpe1, 'v.asTerm)} }.asTerm)
+                .appliedTo('{ (v: t) => ${writeFun(os, tpe1.asMatchable, 'v.asTerm)} }.asTerm)
                 .asExprOf[Unit]
               // a.field.foreach((v: V) => writeFun(os, v))
             )
@@ -164,7 +164,7 @@ trait BuildCodec extends Common:
     val getter: Term = field.getter(a.asTerm)
     val getterOption: Term = Select.unique(getter, "get")//getterOptionTerm(a, field)
     if (tpe.isCommonType) then
-      val fun = sizeFun(tpe, getterOption)
+      val fun = sizeFun(tpe.asMatchable, getterOption)
       val sum = '{ ${Expr(CodedOutputStream.computeTagSize(field.num))} + ${fun} }
       val incrementSize = increment(sizeAcc, sum)
       val isDefined = Select.unique(getter, "isDefined")
@@ -203,7 +203,7 @@ trait BuildCodec extends Common:
                   .appliedToType(unitLiteral.tpe)
                   .appliedTo(
                    '{ (v: t) => 
-                      ${ increment(sizeRef, '{ ${sizeFun(tpe1, 'v.asTerm)} + tagSize }).asExprOf[Unit] } 
+                      ${ increment(sizeRef, '{ ${sizeFun(tpe1.asMatchable, 'v.asTerm)} + tagSize }).asExprOf[Unit] } 
                     }.asTerm
                   ).asExpr
               } // a.field.foreach((v: V) =>  sizeRef = sizeRef + sizeFun(v) + tagSize)
@@ -217,7 +217,7 @@ trait BuildCodec extends Common:
                 .appliedToType(unitLiteral.tpe)
                 .appliedTo(
                  '{ (v: t) => 
-                    ${ increment(sizeRef, sizeFun(tpe1, 'v.asTerm)).asExprOf[Unit] } 
+                    ${ increment(sizeRef, sizeFun(tpe1.asMatchable, 'v.asTerm)).asExprOf[Unit] } 
                   }.asTerm
                 )
             val sizeRefExpr = sizeRef.asExprOf[Int]
@@ -354,7 +354,7 @@ trait BuildCodec extends Common:
       ).asExpr
     else if p.tpe.isOption && p.tpe.optionArgument.asMatchable.isCommonType then
       val tpe1 = p.tpe.optionArgument.asMatchable
-      val fun: Term = readFun(tpe1, is)
+      val fun: Term = readFun(tpe1.asMatchable, is)
       Assign(
         readRef
       , Some_Apply(tpe=tpe1, value=fun)
@@ -371,7 +371,7 @@ trait BuildCodec extends Common:
       )
     else if p.tpe.isRepeated && p.tpe.repeatedArgument.asMatchable.isCommonType then
       val tpe1 = p.tpe.repeatedArgument.asMatchable
-      val fun: Term = readFun(tpe1, is)
+      val fun: Term = readFun(tpe1.asMatchable, is)
       val addOneApply = Select.unique(readRef, "addOne").appliedTo(fun).asExpr
       if tpe1.isString || tpe1.isArrayByte || tpe1.isArraySeqByte || p.nonPacked then 
         addOneApply
