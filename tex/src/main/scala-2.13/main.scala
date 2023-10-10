@@ -9,6 +9,7 @@ import Ops._
 object Run {
   final case class GenRes(
     doc: Content
+  , argsExamples: Content
   )
   type ModuleName = String
   type Content = String
@@ -20,16 +21,20 @@ object Run {
   ): GenRes = {
     val decodeTpes = collectTpes(typeOf[D])
     val encodeTpes = collectTpes(typeOf[E])
+    val commonTpes = encodeTpes intersect decodeTpes
     GenRes(
-      {
+      doc = {
         val messages = findChildren(typeOf[D]) ++ findChildren(typeOf[E])
         val others = messages.map(_.tpe).flatMap(x => type_to_tpe(x)._1) match {
           case x +: xs =>
             collectTpes(head=x, tail=xs, acc=Nil, firstLevel=false)
           case Nil => Nil
         }
-        val all = (decodeTpes++encodeTpes).distinct
-        Doc.tex(messages=messages, others=others, all=all, category=category, ask=ask, ok=ok, err=err)
+        Doc.tex(messages=messages, others=others, category=category, ask=ask, ok=ok, err=err)
+      }
+    , argsExamples = {
+        val messages = findChildren(typeOf[E])
+        Doc.examples(messages, commonTpes.map(_.tpe))
       }
     )
   }

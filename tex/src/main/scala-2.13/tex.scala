@@ -8,7 +8,7 @@ import scala.reflect.runtime.universe.definitions._
 import Ops._
 
 object Doc {
-  def tex(messages: Seq[ChildMeta], others: Seq[Tpe], all: Seq[Tpe], category: Int => String, ask: String, ok: String, err: String): String = {
+  def tex(messages: Seq[ChildMeta], others: Seq[Tpe], category: Int => String, ask: String, ok: String, err: String): String = {
     val messagestex = messages.groupBy(x => category(x.n)).toList.sortBy(_._1).map{
       case (cat, ys) =>
         s"""\\subsection{${cat}}
@@ -124,5 +124,140 @@ object Doc {
   
   private def pursTypeTex(tpe: Type): String = {
     pursTypeParsTex(tpe).stripPrefix("(").stripSuffix(")")
+  }
+
+  def examples(messages: Seq[ChildMeta], commonTypes: Seq[Type]): String = {
+    val content = 
+      messages.map{ x =>
+        typeArgsExample(x.tpe, commonTypes, ident=0) match {
+          case ExampleRes(example,_,Nil) =>
+            s"""${x.name}: '${example}'"""
+          case ExampleRes(example,_,traits) =>
+            s"""${x.name}: '${example}${newLine}${traitsAsComment(traits)}'"""
+        }
+      }.mkString(",\n  ")
+    s"""
+    |export const ApiExamples = {
+    |  $content
+    |}""".stripMargin.stripPrefix("\n")
+  }
+
+  private def traitsAsComment(traits: List[TraitVariants]): String = {
+    traits
+      .distinctBy(_.traitName)
+      .map{ x => s"// ${x.traitName}:" :: x.variants.map("// " + _).appended("") }
+      .flatten
+      .mkString(newLine)
+  }
+
+  private val newLine = "\\n\\\n"
+
+  private case class ExampleRes(
+      example: String
+    , comment: Option[String] = None
+    , traits: List[TraitVariants] = Nil
+  )
+
+  private case class TraitVariants(
+      traitName: String
+    , variants: List[String]
+  )
+
+  private def typeArgsExample(
+      tpe: Type
+    , commonTypes: Seq[Type]
+    , ident: Int
+    , pretty: Boolean = true
+    , recursiveTpe: Option[Type] = None
+    , isTraitVariant: Boolean = false
+  ): ExampleRes = {
+    if (recursiveTpe.exists(_ =:= tpe)) {
+      ExampleRes("", Some(tpe.typeSymbol.name.encodedName.toString))
+    } else if (tpe =:= StringClass.selfType) {
+      ExampleRes(""""string"""")
+    } else if (tpe =:= IntClass.selfType) {
+      ExampleRes("0")
+    } else if (tpe =:= LongClass.selfType) {
+      ExampleRes("0")
+    } else if (tpe =:= BooleanClass.selfType) {
+      ExampleRes("false")
+    } else if (tpe =:= DoubleClass.selfType) {
+      ExampleRes("0")
+    } else if (tpe =:= typeOf[Array[Byte]] || tpe =:= typeOf[Bytes]) {
+      ExampleRes("new Uint8Array([11, 22, 33])")
+    } else if (tpe.typeConstructor =:= OptionClass.selfType.typeConstructor) {
+      val typeArg = tpe.typeArgs.head
+      typeArgsExample(typeArg, commonTypes, ident, pretty, recursiveTpe) match {
+        case e@ExampleRes(example,_,_) =>
+          e.copy(example = s"new maybe.Just(${example})")
+      }
+    } else if (isIterable(tpe)) {
+      iterablePurs(tpe) match {
+        case ArrayPurs(tpe1) =>
+          typeArgsExample(tpe1, commonTypes, ident, pretty, recursiveTpe) match {
+            case e@ExampleRes(example,_,_) =>
+              e.copy(example = s"[ $example ]")
+          }
+        case ArrayTuplePurs(tpe1, tpe2) =>
+          val key = typeArgsExample(tpe1, commonTypes, ident, pretty, recursiveTpe)
+          val value = typeArgsExample(tpe2, commonTypes, ident, pretty, recursiveTpe)
+          value match {
+            case e@ExampleRes(example,_,_) =>
+              e.copy(example = s"[ new tuple.Tuple(${key.example}, $example) ]")
+          }
+      }
+    } else if (isTrait(tpe)) {
+      val traitName = tpe.typeSymbol.name.encodedName.toString
+      val children = findChildren(tpe)
+      val head = typeArgsExample(children.head.tpe, commonTypes, ident, pretty=pretty, recursiveTpe, isTraitVariant=true)
+      val xs = children
+        .map(x => typeArgsExample(x.tpe, commonTypes, ident, pretty=false, recursiveTpe, isTraitVariant=true))
+      val allVariants = xs.map(_.example)
+      val traits = xs.map(_.traits).flatten.toList
+      head.copy(comment = Some(traitName), traits = TraitVariants(traitName, allVariants.toList) :: traits)
+    } else {
+      val recursiveTpe = if (isRecursive(tpe)) Some(tpe) else None
+      val fs = fields(tpe)
+
+      val (content, traits) =
+        if (fs.isEmpty) "" -> Nil
+        else {
+          val (start, end, tabs, nextIdent) = 
+            if (pretty) 
+              (s"{$newLine", s"$newLine${"	"*ident}}", "	"*(ident+1), ident+1)
+            else
+              ("{ "        , " }"                     , ""           , ident  )
+
+          val size = fs.size
+          val res = fs.zipWithIndex.map{
+            case ((fieldName,tpe,_,_), i) =>
+              val isLast = (size - 1) == i
+              typeArgsExample(tpe, commonTypes, nextIdent, pretty, recursiveTpe) match {
+                case ExampleRes(example, Some(comment), traits) if pretty & isLast =>
+                  s"""${tabs}${fieldName}: ${example} //${comment}""" -> traits
+                case ExampleRes(example, Some(comment), traits) if pretty =>
+                  s"""${tabs}${fieldName}: ${example}, //${comment}${newLine}""" -> traits
+                case ExampleRes(example, None, traits) if pretty & isLast =>
+                  s"""${tabs}${fieldName}: ${example}""" -> traits
+                case ExampleRes(example, None, traits) if pretty =>
+                  s"""${tabs}${fieldName}: ${example},${newLine}""" -> traits
+                case ExampleRes(example, _, traits) if isLast =>
+                  s"""${tabs}${fieldName}: ${example}""" -> traits
+                case ExampleRes(example, _, traits) =>
+                  s"""${tabs}${fieldName}: ${example}, """ -> traits
+              }
+          }
+          res.map(_._1).mkString(start, "", end) -> res.map(_._2).flatten
+        }
+      
+      if (isTraitVariant) {
+        val name = tpe.typeSymbol.name.encodedName.toString
+        if (commonTypes.exists(_ =:= tpe))
+          ExampleRes(s"""new common.${name}(${content})""", None, traits)
+        else
+          ExampleRes(s"""new pull.${name}(${content})""", None, traits)
+      } else
+        ExampleRes(content, None, traits)
+    }
   }
 }
