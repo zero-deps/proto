@@ -8,6 +8,43 @@ import scala.reflect.runtime.universe.definitions._
 import Ops._
 
 object Doc {
+
+  def tex1(messages: Seq[ChildMeta], others: Seq[Tpe], category: Int => String, ask: String, ok: String, err: String): String = {
+    val messagestex = messages.groupBy(x => category(x.n)).toList.sortBy(_._1).map{
+      case (cat, ys) =>
+        s"""\\subsection{${cat}}
+        |${correlation_tex(ys, ask, ok, err)}
+        |${caregoryMessages(ys, ask, ok, err)}""".stripMargin
+    }.mkString("\n")
+    val otherstex = s"""\\newpage
+      |\\subsection{Other Types}
+      |${others.map(messageDescription).mkString("\n")}""".stripMargin
+    (messagestex+"\n"+otherstex)
+  }
+
+  def caregoryMessages(xs: Seq[ChildMeta], ask: String, ok: String, err: String): String = {
+    xs.groupBy(x => x.name.stripSuffix(ask).stripSuffix(ok).stripSuffix(err)).map{ case (prefix, tpes) =>
+      val ys: Seq[(ChildMeta, String)] =
+        tpes.filterNot(x => x.name.endsWith(ok) || x.name.endsWith(err)).map(_ -> "req") ++
+        tpes.filter(_.name.endsWith(ok)).map(_ -> "ok") ++
+        tpes.filter(_.name.endsWith(err)).map(_ -> "err")
+      val ys1: Seq[(String, List[(String, String)], String)] =
+        ys.map{ case (child, reqType) => 
+          val fs = fields(child.tpe).map(y => (y._1, pursTypeTex(y._2)))
+          (child.name, fs, reqType)
+        }
+      val maxSize: Int = ys1.map(_._2.size).max
+      s"""
+      |\\begin{messages}
+      |${
+        ys1.map{ case (name, fields, reqType) => 
+          message_table(name, fields ++ List.fill(maxSize - fields.size)(("","")), reqType)
+        }.mkString("\n")
+      }
+      |\\end{messages}""".stripMargin
+    }.mkString("\n")
+  }
+
   def tex(messages: Seq[ChildMeta], others: Seq[Tpe], category: Int => String, ask: String, ok: String, err: String): String = {
     val messagestex = messages.groupBy(x => category(x.n)).toList.sortBy(_._1).map{
       case (cat, ys) =>
@@ -70,6 +107,35 @@ object Doc {
       |\\end{table}
       |""".stripMargin.stripPrefix("\n").stripSuffix("\n")
     case _ => ""
+  }
+
+  private val messageDescription: Tpe => String = {
+    case x: TraitType if !x.firstLevel =>
+      val n = 2
+      val a = x.children.map(_.name).map(x => s"\\hyperlink{$x}{$x}").grouped(n).map(_.padTo(n,"").mkString("", " & ", "\\\\")).mkString(s"\\hline\n", "\n", "\n\\hline")
+      val name = x.name
+      if (a.nonEmpty) s"""\\begin{longtable}[l]{${"l".repeat(n)}}
+        |\\multicolumn{$n}{l}{\\hypertarget{$name}{$name}}\\\\
+        |$a
+        |\\end{longtable}""".stripMargin
+      else throw new Exception(s"no children: check @N on children for ${x.name}")
+    case x @ (_: RegularType | _: RecursiveType | _: NoargsType) =>
+      val fs = fields(x.tpe).map(y => y._1 -> pursTypeTex(y._2))
+      message_table(x.name, fs, "")    
+    case _ => ""
+  }
+
+  private def message_table(name: String, fields: List[(String, String)], reqType: String): String = {
+    s"""
+    |\\begin{msgTable}{${name}}{$reqType}
+    |${
+      fields.map{
+        case ("", "") => "\\addEmptyCell"
+        case (fieldName, fieldTpe) => s"\\addParam{${fieldName}}{${fieldTpe}}"
+      }.mkString("\n")
+    }
+    |\\end{msgTable}
+    |""".stripMargin.stripPrefix("\n").stripSuffix("\n")
   }
 
   private def hasdefval(xs: Seq[(Any,Any,Any,DefVal)]): Boolean = {

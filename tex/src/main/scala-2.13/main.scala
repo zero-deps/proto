@@ -30,7 +30,7 @@ object Run {
             collectTpes(head=x, tail=xs, acc=Nil, firstLevel=false)
           case Nil => Nil
         }
-        Doc.tex(messages=messages, others=others, category=category, ask=ask, ok=ok, err=err)
+        Doc.tex1(messages=messages, others=others, category=category, ask=ask, ok=ok, err=err)
       }
     , argsExamples = {
         val messages = findChildren(typeOf[E])
