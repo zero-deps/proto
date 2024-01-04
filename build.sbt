@@ -82,6 +82,8 @@ ThisBuild / scalacOptions ++= {
       "-source", "future-migration", "-deprecation"
     , "release", "11"
     , "-Yexplicit-nulls"
+    , "-Xfatal-warnings"
+    , "-Wunused:imports"
     // , "-Xcheck-macros"
     )
   }

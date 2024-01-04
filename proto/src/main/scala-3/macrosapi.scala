@@ -1,8 +1,7 @@
 package proto
 
-import com.google.protobuf.{CodedOutputStream, CodedInputStream}
+import com.google.protobuf.{CodedInputStream}
 import scala.quoted.*
-import scala.collection.immutable.ArraySeq
 import compiletime.asMatchable
 
 //todo; optimisation for MessageCodec (add .size/.write and use these in proto.api.encode instead of .prepare)
@@ -37,7 +36,6 @@ end Macro
 
 private class Impl(using val qctx: Quotes) extends BuildCodec:
   import qctx.reflect.{*, given}
-  import qctx.reflect.defn.*
   import report.*
 
   def caseCodecAuto[A: Type]: Expr[MessageCodec[A]] =

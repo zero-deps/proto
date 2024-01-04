@@ -2,14 +2,12 @@ package proto
 
 import com.google.protobuf.{CodedOutputStream, CodedInputStream}
 import scala.quoted.*
-import scala.collection.immutable.ArraySeq
 import compiletime.asMatchable
 
 trait BuildCodec extends Common:
   implicit val qctx: Quotes
   import qctx.reflect.{*, given}
   import qctx.reflect.defn.*
-  import report.*
 
   def prepareTrait[A: Type](a: Expr[A], params: List[FieldInfo])(using Quotes): Expr[Prepare] =
     val a_term = a.asTerm
