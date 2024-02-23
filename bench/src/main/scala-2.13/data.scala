@@ -80,8 +80,8 @@ object States {
     val data = Data(value=value, lastModified=lastModified, vc=vc)
     import proto.encode
     import proto.macrosapi.caseCodecIdx
-    implicit val vCodec = caseCodecIdx[Version]
-    implicit val vcCodec = caseCodecIdx[VectorClock]
+    implicit val vCodec: MessageCodec[Version] = caseCodecIdx
+    implicit val vcCodec: MessageCodec[VectorClock] = caseCodecIdx
     val codec = caseCodecIdx[Data]
     val bytes: Array[Byte] = encode(data)(codec)
   }

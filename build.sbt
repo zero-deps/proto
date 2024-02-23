@@ -9,14 +9,14 @@ ThisBuild / crossScalaVersions := "3.3.1" :: "2.13.12" :: "2.12.18" :: Nil
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
   version := zero.git.version(),
-  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.23.3",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test
+  libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.25.3",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % Test
 ).dependsOn(protoops)
 
 lazy val protopurs = project.in(file("purs")).settings(
   name := "proto-purs"
 , version := zero.git.version()
-, libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test
+, libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % Test
 ).dependsOn(protoops, proto % Test)
 
 lazy val prototex = project.in(file("tex")).settings(
@@ -43,7 +43,7 @@ lazy val protosyntax = project.in(file("syntax")).settings(
 
 lazy val bench = project.in(file("bench")).settings(
   publish / skip := true
-, libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.14.0"
+, libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.16.1"
 , libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 13)) => Seq(

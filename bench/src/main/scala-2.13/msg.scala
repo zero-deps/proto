@@ -28,8 +28,8 @@ object States {
   class MacrosState {
     val msg = Msg(Stat("cpu", "0.45"), StatMeta("1571067208996", "127.0.0.1:8080"))
     import proto.macrosapi.caseCodecIdx
-    implicit val sCodec = caseCodecIdx[Stat]
-    implicit val smCodec = caseCodecIdx[StatMeta]
+    implicit val sCodec: MessageCodec[Stat] = caseCodecIdx
+    implicit val smCodec: MessageCodec[StatMeta] = caseCodecIdx
     val codec = caseCodecIdx[Msg]
     val bytes: Array[Byte] = encode(msg)(codec)
   }
