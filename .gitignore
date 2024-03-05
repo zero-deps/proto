@@ -1,8 +1,3 @@
-**/target/
-*.swp
 .DS_Store
 /.bsp/
-**/.bloop
-.metals
-**/metals.sbt
-.vscode
+target/

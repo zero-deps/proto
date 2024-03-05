@@ -1,9 +1,6 @@
 # proto
 
 [![Scaladex](https://index.scala-lang.org/zero-deps/proto/proto/latest-by-scala-version.svg)](https://index.scala-lang.org/zero-deps/proto/proto)
-[![CI](https://img.shields.io/github/workflow/status/zero-deps/proto/test?label=tests)](https://github.com/zero-deps/proto/actions/workflows/test.yml)
-[![License](https://img.shields.io/github/license/zero-deps/proto)](LICENSE)
-[![LoC](https://img.shields.io/tokei/lines/github/zero-deps/proto)](#)
 
 Lightweight and fast serialization library for Scala 2/3 based on Protocol Buffers with macros magic.
 
@@ -30,7 +27,7 @@ libraryDependencies += "io.github.zero-deps" %% "proto" % "latest.integration"
 
 Dependency as a git-submodule is also supported.
 
-## Benchmark
+## Benchmark #1
 
 data |        | library        | scala-2        | scala-3
 ---- | ------ |:-------------- | -------------: | ------------:
@@ -67,6 +64,43 @@ msg  | encode | scalapb        | ` 9202135.451` | `9056962.541`
 Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz\
 16 GB 2133 MHz LPDDR3\
 Java 15
+
+### run benchmark
+
+```bash
+sbt
+project bench
+++ 3.0.0
+jmh:run -i 2 -wi 1 -f1 -t1
+```
+
+## Benchmark #2
+
+data |        | library        | scala-3
+---- | ------ |:-------------- | -------------:
+data | decode | java           | `   92130,460`
+data | decode | jackson        | `  517036,354`
+data | decode | proto          | ` 6716619,956`
+
+data |        | library        | scala-3
+---- | ------ |:-------------- | -------------:
+data | encode | java           | `  537462,511`
+data | encode | jackson        | `  882065,311`
+data | encode | proto          | ` 9380874,587`
+
+data |        | library        | scala-3
+---- | ------ |:-------------- | -------------:
+msg  | decode | proto          | `11733555,275`
+
+data |        | library        | scala-3
+---- | ------ |:-------------- | -------------:
+msg  | encode | proto          | `18486833,582`
+
+### environment
+
+Apple M1\
+16 GB\
+Java 21
 
 ### run benchmark
 

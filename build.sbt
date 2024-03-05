@@ -3,8 +3,8 @@ val `proto-parent` = project.in(file(".")).settings(
 , version := zero.git.version()
 ).aggregate(proto, protosyntax, protopurs, prototex, protoops, bench)
 
-ThisBuild / scalaVersion := "3.3.1"
-ThisBuild / crossScalaVersions := "3.3.1" :: "2.13.12" :: "2.12.18" :: Nil
+ThisBuild / scalaVersion := "3.3.3"
+ThisBuild / crossScalaVersions := "3.3.3" :: "2.13.13" :: "2.12.19" :: Nil
 
 lazy val proto = project.in(file("proto")).settings(
   name := "proto",
@@ -47,9 +47,9 @@ lazy val bench = project.in(file("bench")).settings(
 , libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 13)) => Seq(
-        "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.6.4",
-        "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.6.4" % "compile-internal",
-        "io.suzaku" %% "boopickle" % "1.3.3",
+        "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.28.3",
+        "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.28.3" % "compile-internal",
+        "io.suzaku" %% "boopickle" % "1.4.0",
       )
       case _ => Nil
     }
@@ -88,8 +88,6 @@ ThisBuild / scalacOptions ++= {
     )
   }
 }
-
-ThisBuild / resolvers += Resolver.JCenterRepository
 
 turbo := true
 useCoursier := true

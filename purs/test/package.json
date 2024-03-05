@@ -1,8 +1,7 @@
 {
   "private": true,
   "devDependencies": {
-    "purescript": "*",
-    "purescript-psa": "*",
-    "spago": "*"
+    "purescript": "0.14.7",
+    "spago": "0.21.0"
   }
 }
