@@ -5,7 +5,7 @@ import scala.collection.immutable.ArraySeq
 import compiletime.asMatchable
 import scala.annotation.*
 
-trait Common:
+trait CommonOps:
   implicit val qctx: Quotes
   import qctx.reflect.{*, given}
   import qctx.reflect.defn.*

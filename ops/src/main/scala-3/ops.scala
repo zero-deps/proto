@@ -3,7 +3,7 @@ package proto
 import scala.quoted.*
 import scala.annotation.*
 
-trait Ops extends Common:
+trait Ops extends CommonOps:
   implicit val qctx: Quotes
   import qctx.reflect.{*, given}
   import report.*
