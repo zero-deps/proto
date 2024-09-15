@@ -107,7 +107,7 @@ ThisBuild / developers := List(Developer("Z", "D", "zerodeps.org@gmail.com", url
 ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 ThisBuild / version := zero.git.version()
 ThisBuild / versionScheme := Some("pvp")
-ThisBuild / publishTo := Some(Opts.resolver.sonatypeStaging)
+ThisBuild / publishTo := sonatypePublishToBundle.value
 ThisBuild / credentials += Credentials("GnuPG Key ID", "gpg", "F68F0EADDB81EF533C4E8E3228C90422E5A0DB21", "ignored")
 ThisBuild / isSnapshot := true
 
