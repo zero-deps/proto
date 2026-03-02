@@ -44,7 +44,27 @@ trait Ops extends CommonOps:
             val id = s"`${tpe_sym.name}_${sym.name}_default`"
             compMod.methodMember(defaultMethodName(i)) match
               case List(methodSym) =>
-                Some(Expr(id) -> Ref(compMod).select(methodSym).asExpr)
+                val y = methodSym.tree.asInstanceOf[DefDef]
+                val returnTpe = y.returnTpt.tpe
+                if !returnTpe.isCommonType then {
+                  val fs = fields(returnTpe).map(_._1)
+                  val xs = returnTpe.typeSymbol.caseFields
+                  val methodCall = Ref(compMod).select(methodSym)
+                  val fieldExprs = xs.map { field =>
+                    val nameExpr = Expr(field.name)
+                    val valueExpr = methodCall.select(field).asExpr
+                    val fieldValueExprStr =
+                      if field.tpe.isString then
+                        '{ s""""${$valueExpr}"""" }
+                      else
+                        valueExpr
+                    List(nameExpr, Expr(": "), fieldValueExprStr, Expr(", "))
+                  }
+                  val resultExpr = Expr.ofList(Expr("{ ") +: fieldExprs.flatten.init :+ Expr("}"))
+                  Some(Expr(id) -> resultExpr)
+                }  else {
+                  Some(Expr(id) -> Ref(compMod).select(methodSym).asExpr)
+                }
               case _ => errorAndAbort(s"${sym.fullName}`: default value method not found")
           else None
       }

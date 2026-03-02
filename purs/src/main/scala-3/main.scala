@@ -2,6 +2,7 @@ package proto
 package purs
 
 import scala.quoted.*
+import compiletime.asMatchable
 
 type Content = String
 type ModuleName = String
@@ -14,7 +15,13 @@ case class GenResRaw(
     val purs = this.purs.map( (moduleName, contents) =>
       var content: String = contents.mkString
       defaultValues.foreach{ (id, value) =>
-        content = content.replace(id, value.toString).nn
+        val valueStr = (
+          value.asMatchable match {
+            case xs: List[?] => xs.mkString("")
+            case other => other.toString
+          }
+        ).replace("Map()", "[]")
+        content = content.replace(id, valueStr).nn
       }
       moduleName -> content
     )
