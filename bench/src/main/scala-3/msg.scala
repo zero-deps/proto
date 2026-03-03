@@ -15,7 +15,7 @@ object States {
     import com.github.plokhotnyuk.jsoniter_scala.macros._
     import com.github.plokhotnyuk.jsoniter_scala.core._
     val codec: JsonValueCodec[Msg] = JsonCodecMaker.make[Msg](CodecMakerConfig)
-    val bytes: Array[Byte] = writeToArray(msg)(codec)
+    val bytes: Array[Byte] = writeToArray(msg)(using codec)
   }
 
   // @State(Scope.Benchmark)
@@ -38,7 +38,7 @@ class Encode {
   @Benchmark
   def jsoniter_scala(state: States.JsoniterState, bh: Blackhole): Unit = {
     import com.github.plokhotnyuk.jsoniter_scala.core._
-    bh.consume(writeToArray(state.msg)(state.codec))
+    bh.consume(writeToArray(state.msg)(using state.codec))
   }
 
   // @Benchmark
@@ -56,7 +56,7 @@ class Decode {
   @Benchmark
   def jsoniter_scala(state: States.JsoniterState, bh: Blackhole): Unit = {
     import com.github.plokhotnyuk.jsoniter_scala.core._
-    bh.consume(readFromArray(state.bytes)(state.codec): Msg)
+    bh.consume(readFromArray(state.bytes)(using state.codec): Msg)
   }
 
   // @Benchmark

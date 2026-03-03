@@ -85,7 +85,7 @@ trait Doc extends Ops:
       val n = 2
       val a = x.children.map(_.name).map(x => s"\\hyperlink{$x}{$x}").grouped(n).map(_.padTo(n,"").mkString("", " & ", "\\\\")).mkString(s"\\hline\n", "\n", "\n\\hline")
       val name = x.name
-      if (a.nonEmpty) s"""\\begin{longtable}[l]{${"l".repeat(n)}}
+      if a.nonEmpty then s"""\\begin{longtable}[l]{${"l".repeat(n)}}
         |\\multicolumn{$n}{l}{\\hypertarget{$name}{$name}}\\\\
         |$a
         |\\end{longtable}""".stripMargin
@@ -93,7 +93,7 @@ trait Doc extends Ops:
     case x @ (_: RegularType | _: RecursiveType | _: NoargsType) =>
       val fs = fields(x.tpe)
       val (rows, col3, align3) =
-        if (hasdefval(fs)) (fs.map(y => s"${y._1} & ${pursTypeTex(y._2)} & ${defval(y._4)}\\\\"), " & default", "|r")
+        if hasdefval(fs) then (fs.map(y => s"${y._1} & ${pursTypeTex(y._2)} & ${defval(y._4)}\\\\"), " & default", "|r")
         else (fs.map(y => s"${y._1} & ${pursTypeTex(y._2)}\\\\"), "", "")
       import x.name
       s"""
@@ -112,7 +112,7 @@ trait Doc extends Ops:
       val n = 2
       val a = x.children.map(_.name).map(x => s"\\hyperlink{$x}{$x}").grouped(n).map(_.padTo(n,"").mkString("", " & ", "\\\\")).mkString(s"\\hline\n", "\n", "\n\\hline")
       val name = x.name
-      if (a.nonEmpty) s"""\\begin{longtable}[l]{${"l".repeat(n)}}
+      if a.nonEmpty then s"""\\begin{longtable}[l]{${"l".repeat(n)}}
         |\\multicolumn{$n}{l}{\\hypertarget{$name}{$name}}\\\\
         |$a
         |\\end{longtable}""".stripMargin
@@ -146,34 +146,34 @@ trait Doc extends Ops:
   }
 
   private def pursTypeParsTex(tpe: TypeRepr): String = {
-    if (tpe.isString) {
+    if tpe.isString then {
       "String"
-    } else if (tpe.isInt) {
+    } else if tpe.isInt then {
       "Int"
-    } else if (tpe.isLong) {
+    } else if tpe.isLong then {
       "Number"
-    } else if (tpe.isBoolean) {
+    } else if tpe.isBoolean then {
       "Boolean"
-    } else if (tpe.isDouble) {
+    } else if tpe.isDouble then {
       "Number"
-    } else if (tpe.isArrayByte) {
+    } else if tpe.isArrayByte then {
       "Uint8Array"
-    } else if (tpe.isOption) {
+    } else if tpe.isOption then {
       val typeArg = tpe.optionArgument
-      if (typeArg.isLong) {
+      if typeArg.isLong then {
         "(Maybe Number)"
-      } else if (typeArg.isDouble) {
+      } else if typeArg.isDouble then {
         "(Maybe Number)"
       } else {
         val name = typeArg.typeSymbol.name
-        if (!typeArg.isCommonType) s"(Maybe \\hyperlink{$name}{$name})"
+        if !typeArg.isCommonType then s"(Maybe \\hyperlink{$name}{$name})"
         else s"(Maybe $name)"
       }
-    } else if (tpe.isIterable) {
+    } else if tpe.isIterable then {
       iterablePurs(tpe) match {
         case ArrayPurs(tpe) =>
           val name = tpe.typeSymbol.name
-          if (!tpe.isCommonType) s"[\\hyperlink{$name}{$name}]"
+          if !tpe.isCommonType then s"[\\hyperlink{$name}{$name}]"
           else s"[$name]"
         case ArrayTuplePurs(tpe1, tpe2) =>
           val name1 = pursTypeParsTex(tpe1)
@@ -235,27 +235,27 @@ trait Doc extends Ops:
     , recursiveTpe: Option[TypeRepr] = None
     , isTraitVariant: Boolean = false
   ): ExampleRes = {
-    if (recursiveTpe.exists(_ =:= tpe)) {
+    if recursiveTpe.exists(_ =:= tpe) then {
       ExampleRes("", Some(tpe.typeSymbol.name))
-    } else if (tpe.isString) {
+    } else if tpe.isString then {
       ExampleRes(""""string"""")
-    } else if (tpe.isInt) {
+    } else if tpe.isInt then {
       ExampleRes("0")
-    } else if (tpe.isLong) {
+    } else if tpe.isLong then {
       ExampleRes("0")
-    } else if (tpe.isBoolean) {
+    } else if tpe.isBoolean then {
       ExampleRes("false")
-    } else if (tpe.isDouble) {
+    } else if tpe.isDouble then {
       ExampleRes("0")
-    } else if (tpe.isArrayByte) {
+    } else if tpe.isArrayByte then {
       ExampleRes("new Uint8Array([11, 22, 33])")
-    } else if (tpe.isOption) {
+    } else if tpe.isOption then {
       val typeArg = tpe.optionArgument
       typeArgsExample(typeArg, commonTypes, ident, pretty, recursiveTpe) match {
         case e@ExampleRes(example,_,_) =>
           e.copy(example = s"new maybe.Just(${example})")
       }
-    } else if (tpe.isIterable) {
+    } else if tpe.isIterable then {
       iterablePurs(tpe) match {
         case ArrayPurs(tpe1) =>
           typeArgsExample(tpe1, commonTypes, ident, pretty, recursiveTpe) match {
@@ -270,7 +270,7 @@ trait Doc extends Ops:
               e.copy(example = s"[ new tuple.Tuple(${key.example}, $example) ]")
           }
       }
-    } else if (tpe.isSealedTrait) {
+    } else if tpe.isSealedTrait then {
       val traitName = tpe.typeSymbol.name
       val children = findChildren(tpe)
       val head = typeArgsExample(children.head.tpe, commonTypes, ident, pretty=pretty, recursiveTpe, isTraitVariant=true)
@@ -280,14 +280,14 @@ trait Doc extends Ops:
       val traits = xs.map(_.traits).flatten.toList
       head.copy(comment = Some(traitName), traits = TraitVariants(traitName, allVariants.toList) :: traits)
     } else {
-      val recursiveTpe = if (isRecursive(tpe)) Some(tpe) else None
+      val recursiveTpe = if isRecursive(tpe) then Some(tpe) else None
       val fs = fields(tpe)
 
       val (content, traits) =
-        if (fs.isEmpty) "" -> Nil
+        if fs.isEmpty then "" -> Nil
         else {
           val (start, end, tabs, nextIdent) = 
-            if (pretty) 
+            if pretty then 
               (s"{$newLine", s"$newLine${"	"*ident}}", "	"*(ident+1), ident+1)
             else
               ("{ "        , " }"                     , ""           , ident  )
@@ -314,9 +314,9 @@ trait Doc extends Ops:
           res.map(_._1).mkString(start, "", end) -> res.map(_._2).flatten
         }
       
-      if (isTraitVariant) {
+      if isTraitVariant then {
         val name = tpe.typeSymbol.name.stripSuffix("$") //strip $ for case objects
-        if (commonTypes.exists(_ =:= tpe))
+        if commonTypes.exists(_ =:= tpe) then
           ExampleRes(s"""new common.${name}(${content})""", None, traits)
         else
           ExampleRes(s"""new pull.${name}(${content})""", None, traits)

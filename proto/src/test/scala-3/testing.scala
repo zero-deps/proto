@@ -307,16 +307,16 @@ class testing extends AnyFreeSpec:
     object autocodec:
       import messages.autocodec.given
       given MessageCodec[Tuple2[Int, Int]] = caseCodecIdx
-      given c1[A: MessageCodec]: MessageCodec[Tuple2[String, A]] = caseCodecIdx
-      given c2[A: MessageCodec]: MessageCodec[Tuple2[A, String]] = caseCodecIdx
-      given [A: MessageCodec, B: MessageCodec]: MessageCodec[Tuple2[A, B]] = caseCodecIdx
+      given c1: [A: MessageCodec] => MessageCodec[Tuple2[String, A]] = caseCodecIdx
+      given c2: [A: MessageCodec] => MessageCodec[Tuple2[A, String]] = caseCodecIdx
+      given [A: MessageCodec, B: MessageCodec] => MessageCodec[Tuple2[A, B]] = caseCodecIdx
       given MessageCodec[Collections] = caseCodecAuto
     object numscodec:
       import messages.numscodec.given
       given MessageCodec[Tuple2[Int, Int]] = caseCodecNums("_1"->1, "_2"->2)
-      given c1[A: MessageCodec]: MessageCodec[Tuple2[String, A]] = caseCodecNums("_1"->1, "_2"->2)
-      given c2[A: MessageCodec]: MessageCodec[Tuple2[A, String]] = caseCodecNums("_1"->1, "_2"->2)
-      given [A: MessageCodec, B: MessageCodec]: MessageCodec[Tuple2[A, B]] = caseCodecNums("_1"->1, "_2"->2)
+      given c1: [A: MessageCodec] => MessageCodec[Tuple2[String, A]] = caseCodecNums("_1"->1, "_2"->2)
+      given c2: [A: MessageCodec] => MessageCodec[Tuple2[A, String]] = caseCodecNums("_1"->1, "_2"->2)
+      given [A: MessageCodec, B: MessageCodec] => MessageCodec[Tuple2[A, B]] = caseCodecNums("_1"->1, "_2"->2)
       given MessageCodec[Collections] = caseCodecNums(
         "int"->7
       , "long"->8
@@ -340,9 +340,9 @@ class testing extends AnyFreeSpec:
     object idxcodec:
       import messages.idxcodec.given
       given MessageCodec[Tuple2[Int, Int]] = caseCodecIdx
-      given c1[A: MessageCodec]: MessageCodec[Tuple2[String, A]] = caseCodecIdx
-      given c2[A: MessageCodec]: MessageCodec[Tuple2[A, String]] = caseCodecIdx
-      given [A: MessageCodec, B: MessageCodec]: MessageCodec[Tuple2[A, B]] = caseCodecIdx
+      given c1: [A: MessageCodec] => MessageCodec[Tuple2[String, A]] = caseCodecIdx
+      given c2: [A: MessageCodec] => MessageCodec[Tuple2[A, String]] = caseCodecIdx
+      given [A: MessageCodec, B: MessageCodec] => MessageCodec[Tuple2[A, B]] = caseCodecIdx
       given MessageCodec[Collections] = caseCodecIdx
 
   "collections" - {
@@ -454,7 +454,7 @@ class testing extends AnyFreeSpec:
 
     "synthetic function 2 with generic" in {
       import messages.numscodec.given
-      given [A: MessageCodec]: MessageCodec[SimpleClass[A]] = custom.codecSynthetic3[A]
+      given [A: MessageCodec] => MessageCodec[SimpleClass[A]] = custom.codecSynthetic3[A]
       val data: SimpleClass[Vehicle] = SimpleClass.init3(987654321, List(Bus(id="123"), Unknown))
       val decoded: SimpleClass[Vehicle] = decode[SimpleClass[Vehicle]](encode(data))
       assert(data.id === decoded.id)
@@ -479,7 +479,7 @@ class testing extends AnyFreeSpec:
 
     "anonymous function 2 with generic" in {
       import messages.numscodec.given
-      given [A: MessageCodec]: MessageCodec[SimpleClass[A]] = custom.codecAnonymous3[A]
+      given [A: MessageCodec] => MessageCodec[SimpleClass[A]] = custom.codecAnonymous3[A]
       val data: SimpleClass[Vehicle] = SimpleClass.init3(987654321, List(Bus(id="123"), Unknown))
       val decoded: SimpleClass[Vehicle] = decode[SimpleClass[Vehicle]](encode(data))
       assert(data.id === decoded.id)

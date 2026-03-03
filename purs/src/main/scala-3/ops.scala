@@ -152,7 +152,7 @@ trait Ops extends CommonOps:
           tpe_CompanionSym.methodMember(defaultMethodName(i)) match
             case List(x) if x.isDefDef =>
               val y = x.tree.asInstanceOf[DefDef]              
-              if (y.returnTpt.tpe.isString) StrDef(id)
+              if y.returnTpt.tpe.isString then StrDef(id)
               else OthDef(id)
             case _ => errorAndAbort(s"${sym.fullName}`: default value method not found")
         else if tpe1.isOption then
@@ -189,8 +189,8 @@ trait Ops extends CommonOps:
     val xs = fields(head).map(_._2)
     val ys = xs.filter(x => !x.isCommonType)
     val z =
-      if (xs.isEmpty) NoargsType(head, head.typeSymbol.name.stripSuffix("$")) //strip $ for case objects
-      else if (isRecursive(head)) RecursiveType(head, head.typeSymbol.name)
+      if xs.isEmpty then NoargsType(head, head.typeSymbol.name.stripSuffix("$")) //strip $ for case objects
+      else if isRecursive(head) then RecursiveType(head, head.typeSymbol.name)
       else RegularType(head, head.typeSymbol.name)
     (ys, z)
   }

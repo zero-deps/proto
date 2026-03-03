@@ -12,8 +12,8 @@ trait Decoders extends Ops with Purs:
     types.map{
       case TraitType(tpe, name, children, true) =>
         val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
-          if (noargs)   s"$n -> decode (decode$name1 _xs_ pos1) \\_ -> $name1"
-          else if (rec) s"$n -> decode (decode$name1 _xs_ pos1) $name1''"
+          if noargs then   s"$n -> decode (decode$name1 _xs_ pos1) \\_ -> $name1"
+          else if rec then s"$n -> decode (decode$name1 _xs_ pos1) $name1''"
           else          s"$n -> decode (decode$name1 _xs_ pos1) $name1"
         }
         val tmpl =
@@ -28,8 +28,8 @@ trait Decoders extends Ops with Purs:
         Coder(tmpl, Some(s"decode$name"))
       case TraitType(tpe, name, children, false) =>
         val cases = children.flatMap{ case ChildMeta(name1, _, n, noargs, rec) =>
-          if (noargs)   s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) \\_ -> Just $name1" :: Nil
-          else if (rec) s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) (Just <<< $name1'')" :: Nil
+          if noargs then   s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) \\_ -> Just $name1" :: Nil
+          else if rec then s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) (Just <<< $name1'')" :: Nil
           else          s"$n -> decodeFieldLoop end (decode$name1 _xs_ pos2) (Just <<< $name1)" :: Nil
         }
         val tmpl =
@@ -82,8 +82,8 @@ trait Decoders extends Ops with Purs:
         val simplify = fs.forall{ case (name, tpe, _, defval) => defval.isInstanceOf[HasDefFun] }
         val hasDefval = fs.exists(_._4.isInstanceOf[FillDef])
         val tmpl =
-          if (simplify) {
-            if (hasDefval) {
+          if simplify then {
+            if hasDefval then {
               val defs = fs.map{
                 case (name, _, _, defval: FillDef) => s"$name: fromMaybe ${defval.value} $name"
                 case (name, _, _, _) => name
@@ -116,7 +116,7 @@ trait Decoders extends Ops with Purs:
                   |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
             }
           } else {
-            if (hasDefval) {
+            if hasDefval then {
               val name = tpe.typeSymbol.name
               val name1 = tpe.typeSymbol.name + "'"
               val cases = fs.flatMap(decodeFieldLoop.tupled)
@@ -174,8 +174,8 @@ trait Decoders extends Ops with Purs:
         val simplify = fs.forall{ case (name, tpe, _, defval) => defval.isInstanceOf[HasDefFun] }
         val hasDefval = fs.exists(_._4.isInstanceOf[FillDef])
         val tmpl =
-          if (simplify) {
-            if (hasDefval) {
+          if simplify then {
+            if hasDefval then {
               val defs = fs.map{
                 case (name, _, _, defval: FillDef) => s"$name: fromMaybe ${defval.value} $name"
                 case (name, _, _, _) => name
@@ -205,7 +205,7 @@ trait Decoders extends Ops with Purs:
                   |        _ -> decodeFieldLoop end (Decode.skipType _xs_ pos2 $$ tag .&. 7) \\_ -> acc
                   |    decode end acc pos1 = pure $$ Done { pos: pos1, val: acc }""".stripMargin
           } else {
-            if (hasDefval) {
+            if hasDefval then {
               val defs = fs.map{
                 case (name, _, _, defval: FillDef) => s"$name: fromMaybe ${defval.value} $name"
                 case (name, _, _, _) => name
@@ -261,38 +261,38 @@ trait Decoders extends Ops with Purs:
   }
 
   private def decodeFieldLoopTmpl(tmpl: (Int, String, String) => List[String])(name: String, tpe: TypeRepr, n: Int, @unused defval: DefVal): List[String] = {
-    if (tpe.isString) {
+    if tpe.isString then {
       tmpl(n, "Decode.string", s"$name = Just val")
-    } else if (tpe.isInt) {
+    } else if tpe.isInt then {
       tmpl(n, "Decode.signedVarint32", s"$name = Just val")
-    } else if (tpe.isLong) {
+    } else if tpe.isLong then {
       tmpl(n, "Decode.bigInt", s"$name = Just val")
-    } else if (tpe.isBoolean) {
+    } else if tpe.isBoolean then {
       tmpl(n, "Decode.boolean", s"$name = Just val")
-    } else if (tpe.isDouble) {
+    } else if tpe.isDouble then {
       tmpl(n, "Decode.double", s"$name = Just val")
-    } else if (tpe.isOption) {
+    } else if tpe.isOption then {
       val tpe1 = tpe.optionArgument
-      if (tpe1.isString) {
+      if tpe1.isString then {
         tmpl(n, "Decode.string", s"$name = Just val")
-      } else if (tpe1.isInt) {
+      } else if tpe1.isInt then {
         tmpl(n, "Decode.signedVarint32", s"$name = Just val")
-      } else if (tpe1.isLong) {
+      } else if tpe1.isLong then {
         tmpl(n, "Decode.bigInt", s"$name = Just val")
-      } else if (tpe1.isBoolean) {
+      } else if tpe1.isBoolean then {
         tmpl(n, "Decode.boolean", s"$name = Just val")
-      } else if (tpe1.isDouble) {
+      } else if tpe1.isDouble then {
         tmpl(n, "Decode.double", s"$name = Just val")
       } else {
         val typeArgName = tpe1.typeSymbol.name
         tmpl(n, s"decode$typeArgName", s"$name = Just val")
       }
-    } else if (tpe.isArrayByte) {
+    } else if tpe.isArrayByte then {
        tmpl(n, "Decode.bytes", s"$name = Just val")
-    } else if (tpe.isRepeated) {
+    } else if tpe.isRepeated then {
       iterablePurs(tpe) match {
         case ArrayPurs(tpe1) =>
-          if (tpe1.isString) {
+          if tpe1.isString then {
             tmpl(n, "Decode.string", s"$name = snoc acc.$name val")
           } else {
             val tpeName = tpe1.typeSymbol.name

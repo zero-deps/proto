@@ -34,7 +34,7 @@ class PurescriptSpec extends AnyFreeSpec with Matchers {
       val minbigint = encode[TestSchema](new ClassWithLong(Long.MinValue))
       val maxint = encode[TestSchema](new ClassWithInt(Int.MaxValue))
       val minint = encode[TestSchema](new ClassWithInt(Int.MinValue))
-      def bytes_to_str(xs: Array[Byte]): String = xs.map(x => if (x >= 0) x.toString else (x+256).toString).mkString(" ")
+      def bytes_to_str(xs: Array[Byte]): String = xs.map(x => if x >= 0 then x.toString else (x+256).toString).mkString(" ")
       val exp =
         s"""|module Cases where
             |

@@ -12,10 +12,10 @@ trait Encoders extends Ops:
     types.map{
       case TraitType(tpe, name, children, true) =>
         val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
-          if (noargs)
+          if noargs then
             s"encode$name $name1 = concatAll [ Encode.unsignedVarint32 ${(n << 3) + 2}, encode$name1 ]" :: Nil
           else {
-            val pursTypeName = if (rec) s"$name1''" else name1
+            val pursTypeName = if rec then s"$name1''" else name1
             s"encode$name ($pursTypeName x) = concatAll [ Encode.unsignedVarint32 ${(n << 3) + 2}, encode$name1 x ]" :: Nil
           }
         }
@@ -25,14 +25,14 @@ trait Encoders extends Ops:
         Coder(tmpl, Some(s"encode$name"))
       case TraitType(tpe, name, children, false) =>
         val cases = children.map{ case ChildMeta(name1, _, n, noargs, rec) =>
-          if (noargs)
+          if noargs then
             List(
               s"encode$name $name1 = do"
             , s"  let xs = concatAll [ Encode.unsignedVarint32 ${(n << 3) + 2}, encode$name1 ]"
             , s"  concatAll [ Encode.unsignedVarint32 $$ length xs, xs ]"
             ).mkString("\n") :: Nil
           else {
-            val pursTypeName = if (rec) s"$name1''" else name1
+            val pursTypeName = if rec then s"$name1''" else name1
             List(
               s"encode$name ($pursTypeName x) = do"
             , s"  let xs = concatAll [ Encode.unsignedVarint32 ${(n << 3) + 2}, encode$name1 x ]"
@@ -62,7 +62,7 @@ trait Encoders extends Ops:
       case RecursiveType(tpe, name) =>
         val encodeFields = fields(tpe).flatMap(encodeField.tupled)
         val tmpl =
-          if (encodeFields.nonEmpty) {
+          if encodeFields.nonEmpty then {
             s"""|encode$name :: $name -> Uint8Array
                 |encode$name ($name msg) = do
                 |  let xs = concatAll
@@ -76,7 +76,7 @@ trait Encoders extends Ops:
       case RegularType(tpe, name) =>
         val encodeFields = fields(tpe).flatMap(encodeField.tupled)
         val tmpl =
-          if (encodeFields.nonEmpty) {
+          if encodeFields.nonEmpty then {
             s"""|encode$name :: $name -> Uint8Array
                 |encode$name msg = do
                 |  let xs = concatAll
@@ -138,7 +138,7 @@ trait Encoders extends Ops:
     else if tpe.isRepeated then
       iterablePurs(tpe) match {
         case ArrayPurs(x) =>
-          if (x.isString) {
+          if x.isString then {
             s"""concatAll $$ concatMap (\\x -> [ Encode.unsignedVarint32 ${(n<<3)+2}, Encode.string x ]) msg.$name""" :: Nil
           } else {
             s"""concatAll $$ concatMap (\\x -> [ Encode.unsignedVarint32 ${(n<<3)+2}, encode${x.typeSymbol.name} x ]) msg.$name""" :: Nil

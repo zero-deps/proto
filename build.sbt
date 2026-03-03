@@ -10,8 +10,8 @@ val `proto-parent` = project.in(file("."))
   , bench
   )
 
-val scala = "3.3.3" :: "2.13.14" :: "2.12.20" :: "2.11.12" :: Nil
-val protobuf = "4.28.1"
+val scala = "3.7.4" :: "2.13.18" :: "2.12.20" :: "2.11.12" :: Nil
+val protobuf = "4.34.0"
 val scalatest = "3.2.19"
 
 ThisBuild / scalaVersion := scala.head
@@ -126,7 +126,8 @@ ThisBuild / scalacOptions ++= {
     , "-Wconf:cat=deprecation&msg=Auto-application:silent"
     )
     case _ => Seq(
-      "-source", "future-migration", "-deprecation"
+      "-rewrite"
+    , "-source", "future-migration", "-deprecation"
     , "release", "11"
     , "-Yexplicit-nulls"
     , "-Xfatal-warnings"

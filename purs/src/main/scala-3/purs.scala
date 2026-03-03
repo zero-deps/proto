@@ -2,14 +2,13 @@ package proto
 package purs
 
 import scala.quoted.*
-import compiletime.asMatchable
 
 trait Purs extends Ops:
   implicit val qctx: Quotes
   import qctx.reflect.*
 
   def nothingValue(name: String, tpe: TypeRepr): String = {
-    if (tpe.isRepeated) {
+    if tpe.isRepeated then {
       iterablePurs(tpe) match {
         case _: ArrayPurs => s"$name: []"
         case _: ArrayTuplePurs => s"$name: []"
@@ -18,8 +17,8 @@ trait Purs extends Ops:
   }
 
   def justValue(name: String, tpe: TypeRepr): String = {
-    if (tpe.isOption) name
-    else if (tpe.isRepeated) name
+    if tpe.isOption then name
+    else if tpe.isRepeated then name
     else {
       s"$name: Just $name"
     }
@@ -47,14 +46,14 @@ trait Purs extends Ops:
         val defaults = f.collect{ case (name1, tpe1, _, v: HasDefFun) => (name1, pursType(tpe1)._1, v) }
         Seq(
           Some(PursType(List(x, eq), Some(s"$name($name)")))
-        , if (defaults.nonEmpty) {
+        , if defaults.nonEmpty then {
             val tmpl1 = s"default$name :: { ${defaults.map{ case (name1, tpe1, _) => s"$name1 :: $tpe1" }.mkString(", ")} }"
             val tmpl2 = s"default$name = { ${defaults.map{ case (name1, _, v) => s"$name1: ${v.value}" }.mkString(", ")} }"
             Some(PursType(Seq(tmpl1, tmpl2), Some(s"default$name")))
           } else None
-        , if (genMaybe) {
+        , if genMaybe then {
             val params1 = fs.map{ case (name1, tpe) => s"$name1 :: ${tpe._2}" }.mkString(", ")
-            if (params != params1) {
+            if params != params1 then {
               val x1 = s"type $name' = { $params1 }"
               Some(PursType(List(x1), None))
             } else None
@@ -64,18 +63,18 @@ trait Purs extends Ops:
         val f = fields(tpe)
         val fs = f.map{ case (name1, tpe1, _, _) => name1 -> pursType(tpe1) }
         val params = fs.map{ case (name1, tpe1) => s"$name1 :: ${tpe1._1}" }.mkString(", ")
-        val x = if (params.nonEmpty) s"type $name = { $params }" else s"type $name = {}"
+        val x = if params.nonEmpty then s"type $name = { $params }" else s"type $name = {}"
         val defaults = f.collect{ case (name1, tpe1, _, v: HasDefFun) => (name1, pursType(tpe1)._1, v) }
         Seq(
           Some(PursType(Seq(x), Some(s"$name")))
-        , if (defaults.nonEmpty) {
+        , if defaults.nonEmpty then {
             val tmpl1 = s"default$name :: { ${defaults.map{ case (name1, tpe1, _) => s"$name1 :: $tpe1" }.mkString(", ")} }"
             val tmpl2 = s"default$name = { ${defaults.map{ case (name1, _, v) => s"$name1: ${v.value}" }.mkString(", ")} }"
             Some(PursType(Seq(tmpl1, tmpl2), Some(s"default$name")))
           } else None
-        , if (genMaybe) {
+        , if genMaybe then {
             val params1 = fs.map{ case (name1, tpe1) => s"$name1 :: ${tpe1._2}" }.mkString(", ")
-            if (params != params1) {
+            if params != params1 then {
               val x1 = s"type $name' = { $params1 }"
               Some(PursType(Seq(x1), None))
             } else None
