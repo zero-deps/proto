@@ -17,6 +17,7 @@ jobs:
     - uses: actions/setup-node@v4.0.3
       with:
         node-version: 22.8.0
+    - uses: sbt/setup-sbt@v1
     - env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: sbt +compile +Test/compile +test
