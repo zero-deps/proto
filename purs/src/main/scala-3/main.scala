@@ -44,11 +44,11 @@ object Macro:
       moduleEncodeExpr: Expr[ModuleName]
     , moduleDecodeExpr: Expr[ModuleName]
     , moduleCommonExpr: Expr[ModuleName]
-    )(using qctx: Quotes): Expr[GenRes] = 
-    Impl().generate[D, E](moduleEncodeExpr, moduleDecodeExpr, moduleCommonExpr)
+    )(using Quotes): Expr[GenRes] = 
+    new Impl().generate[D, E](moduleEncodeExpr, moduleDecodeExpr, moduleCommonExpr)
 end Macro
 
-private class Impl(using val qctx: Quotes) extends Ops with Encoders with Decoders:
+private class Impl(using Quotes) extends Ops with Encoders with Decoders:
   import qctx.reflect.*
 
   def generate[D: Type, E: Type](

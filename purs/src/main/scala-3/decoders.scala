@@ -5,7 +5,6 @@ import scala.annotation.unused
 import scala.quoted.*
 
 trait Decoders extends Ops with Purs:
-  implicit val qctx: Quotes
   import qctx.reflect.*
 
   def decodersFrom(types: Seq[Tpe]): Seq[Coder] =

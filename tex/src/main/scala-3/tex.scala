@@ -4,7 +4,6 @@ package tex
 import scala.quoted.*
 
 trait Doc extends Ops:
-  implicit val qctx: Quotes
   import qctx.reflect.*
 
   def tex1(messages: Seq[ChildMeta], others: Seq[Tpe], category: Int => String, ask: String, ok: String, err: String): String = {

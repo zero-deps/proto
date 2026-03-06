@@ -4,7 +4,6 @@ package purs
 import scala.quoted.*
 
 trait Purs extends Ops:
-  implicit val qctx: Quotes
   import qctx.reflect.*
 
   def nothingValue(name: String, tpe: TypeRepr): String = {

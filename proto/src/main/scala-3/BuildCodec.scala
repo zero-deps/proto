@@ -5,7 +5,6 @@ import scala.quoted.*
 import compiletime.asMatchable
 
 trait BuildCodec extends Common:
-  implicit val qctx: Quotes
   import qctx.reflect.{*, given}
   import qctx.reflect.defn.*
 

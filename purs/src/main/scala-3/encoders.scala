@@ -5,7 +5,6 @@ import scala.quoted.*
 import scala.annotation.unused
 
 trait Encoders extends Ops:
-  implicit val qctx: Quotes
   import qctx.reflect.*
 
   def encodersFrom(types: Seq[Tpe]): Seq[Coder] =

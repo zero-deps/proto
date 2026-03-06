@@ -33,11 +33,11 @@ object Macro:
     , ask: Expr[String]
     , ok: Expr[String]
     , err: Expr[String]
-    )(using qctx: Quotes): Expr[GenRes] = 
-    Impl().generate[D, E](category, ask, ok, err)
+    )(using Quotes): Expr[GenRes] = 
+    new Impl().generate[D, E](category, ask, ok, err)
 end Macro
 
-private class Impl(using val qctx: Quotes) extends Ops with Doc:
+private class Impl(using Quotes) extends Ops with Doc:
   import qctx.reflect.*
 
   def generate[D: Type, E: Type](

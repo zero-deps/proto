@@ -17,24 +17,24 @@ inline def sealedTraitCodecNums[A](inline nums: (String, Int)*): MessageCodec[A]
 inline def enumByN[A]: MessageCodec[A] = ${Macro.enumByN[A]}
 
 object Macro:
-  def caseCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
+  def caseCodecAuto[A: Type](using Quotes): Expr[MessageCodec[A]] = Impl().caseCodecAuto[A]
 
-  def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecNums[A](numsExpr)
+  def caseCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using Quotes): Expr[MessageCodec[A]] = Impl().caseCodecNums[A](numsExpr)
 
-  def caseCodecIdx[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().caseCodecIdx[A]
+  def caseCodecIdx[A: Type](using Quotes): Expr[MessageCodec[A]] = Impl().caseCodecIdx[A]
 
-  def classCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().classCodecAuto[A]
+  def classCodecAuto[A: Type](using Quotes): Expr[MessageCodec[A]] = Impl().classCodecAuto[A]
 
-  def classCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(constructorExpr: Expr[Any])(using qctx: Quotes): Expr[MessageCodec[A]] = Impl().classCodecNums[A](numsExpr)(constructorExpr)
+  def classCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(constructorExpr: Expr[Any])(using Quotes): Expr[MessageCodec[A]] = Impl().classCodecNums[A](numsExpr)(constructorExpr)
 
-  def enumByN[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().enumByN[A]
+  def enumByN[A: Type](using Quotes): Expr[MessageCodec[A]] = Impl().enumByN[A]
 
-  def sealedTraitCodecAuto[A: Type](using qctx: Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecAuto[A]
+  def sealedTraitCodecAuto[A: Type](using Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecAuto[A]
 
-  def sealedTraitCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using qctx: Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecNums[A](numsExpr)
+  def sealedTraitCodecNums[A: Type](numsExpr: Expr[Seq[(String, Int)]])(using Quotes): Expr[MessageCodec[A]] = Impl().sealedTraitCodecNums[A](numsExpr)
 end Macro
 
-private class Impl(using val qctx: Quotes) extends BuildCodec:
+private class Impl(using Quotes) extends BuildCodec:
   import qctx.reflect.{*, given}
   import report.*
 
