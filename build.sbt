@@ -6,6 +6,7 @@ val `proto-parent` = project.in(file("."))
     proto.jvm, proto.native, proto.js
   , syntax.jvm, syntax.native, syntax.js
   , purs
+  , ts
   , tex
   , bench
   )
@@ -44,6 +45,19 @@ lazy val purs = project
   .dependsOn(syntax.jvm, proto.jvm % Test)
   .settings(
     name := "proto-purs"
+  , libraryDependencies += "org.scalatest" %% "scalatest" % scalatest % Test
+  , libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, 13)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+        case _ => Nil
+      }
+    }
+  )
+
+lazy val ts = project
+  .dependsOn(syntax.jvm, proto.jvm % Test)
+  .settings(
+    name := "proto-ts"
   , libraryDependencies += "org.scalatest" %% "scalatest" % scalatest % Test
   , libraryDependencies ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
